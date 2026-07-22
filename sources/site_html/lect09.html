@@ -1,0 +1,388 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> C 标准库和实现
+ </h1>
+<h2> 1. Review & Comments
+ </h2>
+<div class="slideshow" name="review_and_comments"><div>
+<h1 id="m2">M2 发布</h1>
+<h2 id="330">3.30 更新过一次</h2>
+<ul>
+<li>大家可以观察一下 Makefile</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="nv">NAME</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="k">$(</span>shell<span class="w"> </span>basename<span class="w"> </span><span class="k">$(</span>PWD<span class="k">))</span>
+<span class="k">export </span><span class="nv">MODULE</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span>M2
+<span class="nf">all</span><span class="o">:</span><span class="w"> </span><span class="k">$(</span><span class="nv">NAME</span><span class="k">)</span>
+
+<span class="cp">include ../oslab.mk</span>
+<span class="cp">include ../.shadow/oslab.mk</span>
+</code></pre></div>
+
+<h2 id="online-judge">Online Judge 本周开放</h2>
+<ul>
+<li>(你完全可以 vibe coding 一些 test cases，无需 Online Judge)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_applications"><div>
+<h1 id="_1">复习：操作系统上的进程</h1>
+<h2 id="cpython">一个汇编/C/Python/… 程序</h2>
+<ul>
+<li>只有寄存器和内存是可以通过指令不受监管 “随意访问”</li>
+<li>其他所有功能都需要通过系统调用实现<ul>
+<li>进程管理 API: fork, execve, exit</li>
+<li>内存管理 API: mmap, munmap, mprotect</li>
+<li>访问对象 API: open, read, write, lseek</li>
+</ul>
+</li>
+</ul>
+<h2 id="api">实际上，用这些 API 就可以构建<strong>应用生态</strong>了</h2>
+<ul>
+<li>UNIX 世界为我们提供了一系列的<strong>对象</strong><ul>
+<li>/proc/[pid]/maps, …</li>
+<li>man -P cat [anything] | claude Summarize.<ul>
+<li>pts (4), proc (5), pipe (7)</li>
+<li>我甚至 vibe code 了工具来遍历完整的手册！</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>C → (C++, Python, …); C++ → (Java, Node.js, …); …<ul>
+<li>(今天的主题)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. C 和 libc
+ </h2>
+<div class="slideshow" name="the_c_pl"><div>
+<h1 id="the-c-programming-language">The C Programming Language</h1>
+<h2 id="simplec">回顾：SimpleC 的语法和语义</h2>
+<ul>
+<li>指针、数组、结构体、函数调用</li>
+<li>都是<strong>内存和寄存器的直接操作</strong>
+</li>
+</ul>
+<h2 id="c">但这并不是 C 语言的 “完全体”</h2>
+<ul>
+<li>还有跨越语言边界的能力 (Foreign Function Interface, FFI)<ul>
+<li>C 可以和汇编实现的函数<strong>链接</strong> (ABI)</li>
+<li>C 可以使用 inline assembly</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">_start</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">__asm__</span><span class="p">(</span><span class="s">"mov $60, %eax</span><span class="se">\n</span><span class="s">"</span><span class="w">  </span><span class="c1">// syscall: exit</span>
+<span class="w">            </span><span class="s">"xor %edi, %edi</span><span class="se">\n</span><span class="s">"</span><span class="w"> </span><span class="c1">// status: 0</span>
+<span class="w">            </span><span class="s">"syscall"</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="aside_inline_asm"><div>
+<h1 id="aside-inline-assembly-demystified">Aside: Inline Assembly Demystified</h1>
+<h2 id="dsl"><a href="https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html">一个设计得很糟的嵌入式 DSL</a></h2>
+<ul>
+<li>Instructions : Outputs : Inputs : Clobbers : GotoLabels (保持和 C 的 syntax parser 兼容)</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">7</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">;</span>
+<span class="n">__asm__</span><span class="w"> </span><span class="p">(</span><span class="s">"leal (%1,%1,4), %0"</span><span class="w"> </span><span class="c1">// result = a*5</span>
+<span class="w">    </span><span class="o">:</span><span class="w"> </span><span class="s">"=r"</span><span class="w"> </span><span class="p">(</span><span class="n">result</span><span class="p">)</span><span class="w"> </span><span class="c1">// output operand</span>
+<span class="w">    </span><span class="o">:</span><span class="w"> </span><span class="s">"r"</span><span class="w"> </span><span class="p">(</span><span class="n">a</span><span class="p">));</span><span class="w"> </span><span class="c1">// input operand</span>
+<span class="n">printf</span><span class="p">(</span><span class="s">"%d * %d = %d</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">a</span><span class="p">,</span><span class="w"> </span><span class="n">b</span><span class="p">,</span><span class="w"> </span><span class="n">result</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>就这玩意地球人绝对写不对啊！<ul>
+<li>故事：2019 年的时候开始做这份工作，结果手慢了被别人拿到了 Distinguished Paper Award</li>
+<li>没想到 AI 时代再也不会需要这样的工作了</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="build_app_world"><div>
+<h1 id="_1">构建应用生态：组合、复用、分层</h1>
+<h2 id="_2">在抽象层上累积抽象层</h2>
+<ul>
+<li>1950s: 只有汇编语言</li>
+<li>1970s: 用汇编语言编程 = 行为艺术<ul>
+<li>1960s 高级语言就开始普及了</li>
+<li>C, Pascal 和结构化程序设计；UNIX……</li>
+</ul>
+</li>
+<li>2010s: C 语言 = “古法编程” (虽然还挺好用的)<ul>
+<li>Python, Java, JavaScript, …</li>
+</ul>
+</li>
+<li>2026: 用高级语言编程 = 行为艺术<ul>
+<li>自然语言就是编程语言</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">标准化的力量</h2>
+<ul>
+<li>ISO IEC 标准的一部分 (ISO C)<ul>
+<li>稳定、可靠 (不用担心升级版本会破坏实现)、<strong>世界最佳的移植性</strong>
+</li>
+</ul>
+</li>
+<li>POSIX C 的子集 (unistd.h, …)<ul>
+<li>几乎所有 “能用” 的操作系统都提供一定的 POSIX 兼容性</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="c_standard_library"><div>
+<h1 id="the-c-standard-library">The C Standard Library</h1>
+<h2 id="ai">有请 AI 老师上场</h2>
+<ul>
+<li>2025: claude-sonnect-3.7 各种翻车<ul>
+<li>那时候觉得自己可能还有点用</li>
+</ul>
+</li>
+<li>2026: 🤡 竟是我自己<ul>
+<li>世界变化就是这么快</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/minilibc.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="learning_libc_implementation"><div>
+<h1 id="libc">学习已有 libc 的实现</h1>
+<h2 id="glibc">调试 glibc？</h2>
+<ul>
+<li>可以，但不必要</li>
+<li>glibc 的代码有非常沉重的历史包袱<ul>
+<li>以及非常多的优化——都是对 “理解原理” 的阻碍</li>
+<li>新手阅读体验极差</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">基本原则：<strong>总有办法的</strong>
+</h2>
+<ul>
+<li>是否有比 glibc 更适合学习的 libc 实现？<ul>
+<li>你们只要能问出正确的问题就行了</li>
+<li>AI 都知道，你为什么不知道呢？让我们学习 <a href="https://musl.libc.org">musl</a> 吧<ul>
+<li>直接让他帮我用 -g3 -O1 编译得到一个 musl-gcc，豆包一次搞定</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/musl-demos"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/musl-demos">调试 “小程序”</a></h1>
+<p>再次回到学习 C 语言时 “最简单” 的例子；但当我们有了操作系统的知识以后，我们就可以深入调试其中的每一个细节。从汇编指令到系统调用到，我们可以看到程序和处理器、操作系统的所有交互。</p>
+</div></div>
+</div>
+<h2> 3. 探索 libc
+ </h2>
+<h3> 3.1. 指令集体系结构和计算的封装
+ </h3>
+<div class="slideshow" name="arch_abs"><div>
+<h1 id="freestanding">Freestanding 环境</h1>
+<h2 id="c">C 代码是直接翻译成指令在机器上执行的</h2>
+<ul>
+<li>有些标准库功能是依赖操作系统的 (例子: putchar, exit)<ul>
+<li>
+<a href="https://en.cppreference.com/w/cpp/freestanding">Freestanding</a>: 不依赖任何 Host OS 功能 (syscall)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">机器/平台相关的常数和定义</h2>
+<ul>
+<li>
+<a href="https://cplusplus.com/reference/cstddef/">stddef.h</a>, <a href="https://cplusplus.com/reference/cfloat/">float.h</a>, <a href="https://cplusplus.com/reference/climits/">limits.h</a>, <a href="https://cplusplus.com/reference/cinttypes/">inttypes.h</a>, <a href="https://cplusplus.com/reference/cstdint/">stdint.h</a><ul>
+<li>你所有 “不知道” 的定义都在里面</li>
+<li>还有一个有趣的 “offsetof(T, m)” (遍历手册的乐趣)</li>
+<li>看看 PRIdPTR PRIuPTR 在 gcc -E 后的结果吧</li>
+</ul>
+</li>
+</ul>
+<h2 id="abi">指令集的语义和 ABI 相关的参数解析</h2>
+<ul>
+<li>
+<a href="https://cplusplus.com/reference/cstdarg/">stdarg.h</a><ul>
+<li>由于寄存器传参，它的实现相当复杂……</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="string_array_operations"><div>
+<h1 id="_1">一些 “随手可以实现” 的函数</h1>
+<h2 id="stringh">
+<a href="https://cplusplus.com/reference/cstring/">string.h</a>: 字符串/数组操作</h2>
+<ul>
+<li>memcpy, memmove, strcpy, …</li>
+</ul>
+<h2 id="stdlibh">
+<a href="https://cplusplus.com/reference/cstdlib/">stdlib.h</a>: 常用功能</h2>
+<ul>
+<li>rand, atoi, qsort , …<ul>
+<li>这些都是 “课后习题” (作为 “高级汇编语言”，标准库是真的很难做)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">qsort</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="p">)(</span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="p">));</span>
+</code></pre></div>
+
+<h2 id="mathh"><a href="https://cplusplus.com/reference/cmath/">math.h</a></h2>
+<ul>
+<li>什么数满足 !(a &gt; a || a &lt; a || a == a)？<ul>
+<li>
+<a href="https://arxiv.org/pdf/2209.05433.pdf">FP8: E4M3/E5M2</a>; <a href="https://spectrum.ieee.org/number-representation">Quantization</a>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="setjmp"><div>
+<h1 id="setjmplongjmp">setjmp/longjmp: 长跳转</h1>
+<h2 id="simplec">还记得 SimpleC 的模拟器 (形式语义) 吗？</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">pc</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">PC</span>
+<span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">PC</span><span class="o">.</span><span class="n">next</span><span class="p">()</span>
+<span class="n">inst</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+</code></pre></div>
+
+<h2 id="_1">栈上的 “标记” 和 “长跳转”</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">match</span> <span class="n">inst</span><span class="p">[</span><span class="n">pc</span><span class="p">]:</span>
+    <span class="k">case</span> <span class="s2">"call setjmp"</span><span class="p">:</span>
+        <span class="n">buf</span><span class="o">.</span><span class="n">depth</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">stack</span><span class="p">)</span>
+        <span class="n">buf</span><span class="o">.</span><span class="n">pc</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">PC</span>
+        <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">retval</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">case</span> <span class="s2">"call longjmp"</span><span class="p">:</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="n">stack</span><span class="p">[:</span><span class="n">buf</span><span class="o">.</span><span class="n">depth</span><span class="p">]</span>
+        <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">PC</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">pc</span>
+        <span class="n">stack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">retval</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="o">!=</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">case</span><span class="w"> </span><span class="k">_</span><span class="p">:</span>
+        <span class="n">inst</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+</code></pre></div>
+</div></div>
+
+<h3> 3.2. 系统调用的封装
+ </h3>
+<div class="slideshow" name="standard_io"><div>
+<h1 id="_1">文件描述符</h1>
+<h2 id="standard-io-stdioh">Standard I/O: <a href="https://www.cplusplus.com/reference/cstdio/">stdio.h</a>
+</h2>
+<ul>
+<li>FILE * 背后其实是一个文件描述符<ul>
+<li>C 和 UNIX 的设计就是这样密不可分</li>
+</ul>
+</li>
+<li>我们可以用 gdb 查看具体的 FILE *<ul>
+<li>例如 stdout</li>
+</ul>
+</li>
+<li>封装了文件描述符上的系统调用 (fseek, fgetpos, ftell, feof, …)</li>
+</ul>
+<h2 id="the-printf-family">The printf() family</h2>
+<ul>
+<li>这些代码理应没有 “code clones”</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">vfprintf</span><span class="p">(</span><span class="kt">FILE</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">va_list</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="proc_man"><div>
+<h1 id="_1">进程管理</h1>
+<h2 id="_2">退出管理</h2>
+<ul>
+<li>abort: 给自己发送 SIGABRT (从而触发 core dump)</li>
+<li>exit: 正常退出，包含 flush stdio buffers</li>
+<li>atexit: 注册 exit handler (normal exit 时被调用)</li>
+</ul>
+<h2 id="_3">与其他进程协同</h2>
+<ul>
+<li>system: 启动 Shell</li>
+<li>popen, pclose: 管道通信<ul>
+<li>一个设计有历史包袱和缺陷的 API: Since a pipe is by definition unidirectional, the type argument may specify only reading or writing, <em>not both</em>; the resulting stream is correspondingly read-only or write-only.</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="error_handling"><div>
+<h1 id="err-error-perror">err, error, perror</h1>
+<h2 id="api">所有 API 都可能失败</h2>
+<div class="codehilite"><pre><span></span><code>$ gcc nonexist.c
+gcc: error: nonexist.c: No such file or directory
+</code></pre></div>
+
+<ul>
+<li>系统调用明确规定了返回的错误码 (ERRORS in manpages)</li>
+</ul>
+<h2 id="no-such-file-or-directory">反复出现的 “No such file or directory”</h2>
+<ul>
+<li>这不是巧合！<ul>
+<li>我们也可以 “山寨” 出同样的效果</li>
+<li>试试 LANGUAGE=zh_CN ls nonexist</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 3.3. 进程运行环境的封装
+ </h3>
+<div class="slideshow" name="environ"><div>
+<h1 id="_1">进程的运行环境</h1>
+<h2 id="envp">环境 (envp) 会影响应用的行为</h2>
+<ul>
+<li>UNIX 通过 “环境变量” 和 “默认子进程继承” 机制实现<ul>
+<li>man 3 exec</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">argc</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">argv</span><span class="p">[],</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">envp</span><span class="p">[]);</span>
+</code></pre></div>
+
+<h2 id="man-7-environ">man 7 environ</h2>
+<ul>
+<li>全局变量 environ 是谁赋值的？<ul>
+<li>environ 是一个<strong>变量</strong> (符号)</li>
+<li>进程初始化时的 envp 因为 ASLR 并不知道在哪里<ul>
+<li>那一定就是 libc 干得了！</li>
+</ul>
+</li>
+<li>是时候请出我们的老朋友 watch point 了</li>
+</ul>
+</li>
+<li>System V ABI “Initial Process Stack”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="c_runtime"><div>
+<h1 id="c-runtime">C Runtime</h1>
+<h2 id="_start">终究，程序是从 _start 开始运行的</h2>
+<ul>
+<li>这也是 libc 的一部分！<ul>
+<li>你会发现二进制文件链接了 crt1.o</li>
+<li>“C runtime”，最终把控制权交给 __libc_start_main<ul>
+<li>你还会发现 crtbegin.o, crtend.o, crtn.o 😊</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="musl-libc">让我们从第一条指令开始调试 musl libc 吧！</h2>
+<ul>
+<li>好消息：做的事情不多</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>在系统调用和语言机制的基础上，libc 为我们提供了开发跨平台应用程序的 “第一级抽象”。在此基础上构建起了万千世界：C++ (扩充了 C 标准库)、Java、浏览器世界……今天，C 语言在应用开发方面有很多缺陷，但仍然为 “第一级抽象” 提供了一个有趣的范本：<a href="https://dl.acm.org/doi/pdf/10.1145/3209212">C is not a low-level language</a>, 以及 <a href="https://gankra.github.io/blah/c-isnt-a-language/">C isn’t a programming language any more</a>。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>在 AI 的帮助下调试 musl libc 中你感兴趣的函数。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e C 标准库和实现\n \u003c/h1\u003e\n\u003ch2\u003e 1. Review \u0026 Comments\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"review_and_comments\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"m2\"\u003eM2 发布\u003c/h1\u003e\n\u003ch2 id=\"330\"\u003e3.30 更新过一次\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e大家可以观察一下 Makefile\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"nv\"\u003eNAME\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e:=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003e$(\u003c/span\u003eshell\u003cspan class=\"w\"\u003e \u003c/span\u003ebasename\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003e$(\u003c/span\u003ePWD\u003cspan class=\"k\"\u003e))\u003c/span\u003e\n\u003cspan class=\"k\"\u003eexport \u003c/span\u003e\u003cspan class=\"nv\"\u003eMODULE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e:=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003eM2\n\u003cspan class=\"nf\"\u003eall\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003e$(\u003c/span\u003e\u003cspan class=\"nv\"\u003eNAME\u003c/span\u003e\u003cspan class=\"k\"\u003e)\u003c/span\u003e\n\n\u003cspan class=\"cp\"\u003einclude ../oslab.mk\u003c/span\u003e\n\u003cspan class=\"cp\"\u003einclude ../.shadow/oslab.mk\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"online-judge\"\u003eOnline Judge 本周开放\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e(你完全可以 vibe coding 一些 test cases，无需 Online Judge)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_applications\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e复习：操作系统上的进程\u003c/h1\u003e\n\u003ch2 id=\"cpython\"\u003e一个汇编/C/Python/… 程序\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e只有寄存器和内存是可以通过指令不受监管 “随意访问”\u003c/li\u003e\n\u003cli\u003e其他所有功能都需要通过系统调用实现\u003cul\u003e\n\u003cli\u003e进程管理 API: fork, execve, exit\u003c/li\u003e\n\u003cli\u003e内存管理 API: mmap, munmap, mprotect\u003c/li\u003e\n\u003cli\u003e访问对象 API: open, read, write, lseek\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"api\"\u003e实际上，用这些 API 就可以构建\u003cstrong\u003e应用生态\u003c/strong\u003e了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eUNIX 世界为我们提供了一系列的\u003cstrong\u003e对象\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e/proc/[pid]/maps, …\u003c/li\u003e\n\u003cli\u003eman -P cat [anything] | claude Summarize.\u003cul\u003e\n\u003cli\u003epts (4), proc (5), pipe (7)\u003c/li\u003e\n\u003cli\u003e我甚至 vibe code 了工具来遍历完整的手册！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eC → (C++, Python, …); C++ → (Java, Node.js, …); …\u003cul\u003e\n\u003cli\u003e(今天的主题)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. C 和 libc\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"the_c_pl\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"the-c-programming-language\"\u003eThe C Programming Language\u003c/h1\u003e\n\u003ch2 id=\"simplec\"\u003e回顾：SimpleC 的语法和语义\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e指针、数组、结构体、函数调用\u003c/li\u003e\n\u003cli\u003e都是\u003cstrong\u003e内存和寄存器的直接操作\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"c\"\u003e但这并不是 C 语言的 “完全体”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e还有跨越语言边界的能力 (Foreign Function Interface, FFI)\u003cul\u003e\n\u003cli\u003eC 可以和汇编实现的函数\u003cstrong\u003e链接\u003c/strong\u003e (ABI)\u003c/li\u003e\n\u003cli\u003eC 可以使用 inline assembly\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003e_start\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003e__asm__\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"mov $60, %eax\u003c/span\u003e\u003cspan class=\"se\"\u003e\\n\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// syscall: exit\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"s\"\u003e\"xor %edi, %edi\u003c/span\u003e\u003cspan class=\"se\"\u003e\\n\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// status: 0\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"s\"\u003e\"syscall\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"aside_inline_asm\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aside-inline-assembly-demystified\"\u003eAside: Inline Assembly Demystified\u003c/h1\u003e\n\u003ch2 id=\"dsl\"\u003e\u003ca href=\"https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html\"\u003e一个设计得很糟的嵌入式 DSL\u003c/a\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eInstructions : Outputs : Inputs : Clobbers : GotoLabels (保持和 C 的 syntax parser 兼容)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ea\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e7\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eb\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e5\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eresult\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003e__asm__\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"leal (%1,%1,4), %0\"\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// result = a*5\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s\"\u003e\"=r\"\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eresult\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// output operand\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s\"\u003e\"r\"\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ea\u003c/span\u003e\u003cspan class=\"p\"\u003e));\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// input operand\u003c/span\u003e\n\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"%d * %d = %d\u003c/span\u003e\u003cspan class=\"se\"\u003e\\n\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ea\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eb\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eresult\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e就这玩意地球人绝对写不对啊！\u003cul\u003e\n\u003cli\u003e故事：2019 年的时候开始做这份工作，结果手慢了被别人拿到了 Distinguished Paper Award\u003c/li\u003e\n\u003cli\u003e没想到 AI 时代再也不会需要这样的工作了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"build_app_world\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e构建应用生态：组合、复用、分层\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e在抽象层上累积抽象层\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e1950s: 只有汇编语言\u003c/li\u003e\n\u003cli\u003e1970s: 用汇编语言编程 = 行为艺术\u003cul\u003e\n\u003cli\u003e1960s 高级语言就开始普及了\u003c/li\u003e\n\u003cli\u003eC, Pascal 和结构化程序设计；UNIX……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e2010s: C 语言 = “古法编程” (虽然还挺好用的)\u003cul\u003e\n\u003cli\u003ePython, Java, JavaScript, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e2026: 用高级语言编程 = 行为艺术\u003cul\u003e\n\u003cli\u003e自然语言就是编程语言\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e标准化的力量\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eISO IEC 标准的一部分 (ISO C)\u003cul\u003e\n\u003cli\u003e稳定、可靠 (不用担心升级版本会破坏实现)、\u003cstrong\u003e世界最佳的移植性\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003ePOSIX C 的子集 (unistd.h, …)\u003cul\u003e\n\u003cli\u003e几乎所有 “能用” 的操作系统都提供一定的 POSIX 兼容性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"c_standard_library\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"the-c-standard-library\"\u003eThe C Standard Library\u003c/h1\u003e\n\u003ch2 id=\"ai\"\u003e有请 AI 老师上场\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e2025: claude-sonnect-3.7 各种翻车\u003cul\u003e\n\u003cli\u003e那时候觉得自己可能还有点用\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e2026: 🤡 竟是我自己\u003cul\u003e\n\u003cli\u003e世界变化就是这么快\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/minilibc.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"learning_libc_implementation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"libc\"\u003e学习已有 libc 的实现\u003c/h1\u003e\n\u003ch2 id=\"glibc\"\u003e调试 glibc？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e可以，但不必要\u003c/li\u003e\n\u003cli\u003eglibc 的代码有非常沉重的历史包袱\u003cul\u003e\n\u003cli\u003e以及非常多的优化——都是对 “理解原理” 的阻碍\u003c/li\u003e\n\u003cli\u003e新手阅读体验极差\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e基本原则：\u003cstrong\u003e总有办法的\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e是否有比 glibc 更适合学习的 libc 实现？\u003cul\u003e\n\u003cli\u003e你们只要能问出正确的问题就行了\u003c/li\u003e\n\u003cli\u003eAI 都知道，你为什么不知道呢？让我们学习 \u003ca href=\"https://musl.libc.org\"\u003emusl\u003c/a\u003e 吧\u003cul\u003e\n\u003cli\u003e直接让他帮我用 -g3 -O1 编译得到一个 musl-gcc，豆包一次搞定\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/musl-demos\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/musl-demos\"\u003e调试 “小程序”\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e再次回到学习 C 语言时 “最简单” 的例子；但当我们有了操作系统的知识以后，我们就可以深入调试其中的每一个细节。从汇编指令到系统调用到，我们可以看到程序和处理器、操作系统的所有交互。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 3. 探索 libc\n \u003c/h2\u003e\n\u003ch3\u003e 3.1. 指令集体系结构和计算的封装\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"arch_abs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"freestanding\"\u003eFreestanding 环境\u003c/h1\u003e\n\u003ch2 id=\"c\"\u003eC 代码是直接翻译成指令在机器上执行的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e有些标准库功能是依赖操作系统的 (例子: putchar, exit)\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://en.cppreference.com/w/cpp/freestanding\"\u003eFreestanding\u003c/a\u003e: 不依赖任何 Host OS 功能 (syscall)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e机器/平台相关的常数和定义\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://cplusplus.com/reference/cstddef/\"\u003estddef.h\u003c/a\u003e, \u003ca href=\"https://cplusplus.com/reference/cfloat/\"\u003efloat.h\u003c/a\u003e, \u003ca href=\"https://cplusplus.com/reference/climits/\"\u003elimits.h\u003c/a\u003e, \u003ca href=\"https://cplusplus.com/reference/cinttypes/\"\u003einttypes.h\u003c/a\u003e, \u003ca href=\"https://cplusplus.com/reference/cstdint/\"\u003estdint.h\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e你所有 “不知道” 的定义都在里面\u003c/li\u003e\n\u003cli\u003e还有一个有趣的 “offsetof(T, m)” (遍历手册的乐趣)\u003c/li\u003e\n\u003cli\u003e看看 PRIdPTR PRIuPTR 在 gcc -E 后的结果吧\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"abi\"\u003e指令集的语义和 ABI 相关的参数解析\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://cplusplus.com/reference/cstdarg/\"\u003estdarg.h\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e由于寄存器传参，它的实现相当复杂……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"string_array_operations\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一些 “随手可以实现” 的函数\u003c/h1\u003e\n\u003ch2 id=\"stringh\"\u003e\n\u003ca href=\"https://cplusplus.com/reference/cstring/\"\u003estring.h\u003c/a\u003e: 字符串/数组操作\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ememcpy, memmove, strcpy, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"stdlibh\"\u003e\n\u003ca href=\"https://cplusplus.com/reference/cstdlib/\"\u003estdlib.h\u003c/a\u003e: 常用功能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003erand, atoi, qsort , …\u003cul\u003e\n\u003cli\u003e这些都是 “课后习题” (作为 “高级汇编语言”，标准库是真的很难做)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eqsort\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e)(\u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e));\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"mathh\"\u003e\u003ca href=\"https://cplusplus.com/reference/cmath/\"\u003emath.h\u003c/a\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e什么数满足 !(a \u0026gt; a || a \u0026lt; a || a == a)？\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://arxiv.org/pdf/2209.05433.pdf\"\u003eFP8: E4M3/E5M2\u003c/a\u003e; \u003ca href=\"https://spectrum.ieee.org/number-representation\"\u003eQuantization\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"setjmp\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"setjmplongjmp\"\u003esetjmp/longjmp: 长跳转\u003c/h1\u003e\n\u003ch2 id=\"simplec\"\u003e还记得 SimpleC 的模拟器 (形式语义) 吗？\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003epc\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ePC\u003c/span\u003e\n\u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ePC\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003enext\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\n\u003cspan class=\"n\"\u003einst\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003epc\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eexecute\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_1\"\u003e栈上的 “标记” 和 “长跳转”\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ematch\u003c/span\u003e \u003cspan class=\"n\"\u003einst\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003epc\u003c/span\u003e\u003cspan class=\"p\"\u003e]:\u003c/span\u003e\n    \u003cspan class=\"k\"\u003ecase\u003c/span\u003e \u003cspan class=\"s2\"\u003e\"call setjmp\"\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\n        \u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"nb\"\u003elen\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n        \u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003epc\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ePC\u003c/span\u003e\n        \u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eretval\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"mi\"\u003e0\u003c/span\u003e\n    \u003cspan class=\"k\"\u003ecase\u003c/span\u003e \u003cspan class=\"s2\"\u003e\"call longjmp\"\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\n        \u003cspan class=\"n\"\u003estack\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e[:\u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\n        \u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ePC\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003epc\u003c/span\u003e\n        \u003cspan class=\"n\"\u003estack\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eretval\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e \u003cspan class=\"k\"\u003eif\u003c/span\u003e \u003cspan class=\"n\"\u003ex\u003c/span\u003e \u003cspan class=\"o\"\u003e!=\u003c/span\u003e \u003cspan class=\"mi\"\u003e0\u003c/span\u003e \u003cspan class=\"k\"\u003eelse\u003c/span\u003e \u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n    \u003cspan class=\"k\"\u003ecase\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003e_\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\n        \u003cspan class=\"n\"\u003einst\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003epc\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eexecute\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.2. 系统调用的封装\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"standard_io\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e文件描述符\u003c/h1\u003e\n\u003ch2 id=\"standard-io-stdioh\"\u003eStandard I/O: \u003ca href=\"https://www.cplusplus.com/reference/cstdio/\"\u003estdio.h\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFILE * 背后其实是一个文件描述符\u003cul\u003e\n\u003cli\u003eC 和 UNIX 的设计就是这样密不可分\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们可以用 gdb 查看具体的 FILE *\u003cul\u003e\n\u003cli\u003e例如 stdout\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e封装了文件描述符上的系统调用 (fseek, fgetpos, ftell, feof, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"the-printf-family\"\u003eThe printf() family\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这些代码理应没有 “code clones”\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003evfprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eFILE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eva_list\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"proc_man\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e进程管理\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e退出管理\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eabort: 给自己发送 SIGABRT (从而触发 core dump)\u003c/li\u003e\n\u003cli\u003eexit: 正常退出，包含 flush stdio buffers\u003c/li\u003e\n\u003cli\u003eatexit: 注册 exit handler (normal exit 时被调用)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e与其他进程协同\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003esystem: 启动 Shell\u003c/li\u003e\n\u003cli\u003epopen, pclose: 管道通信\u003cul\u003e\n\u003cli\u003e一个设计有历史包袱和缺陷的 API: Since a pipe is by definition unidirectional, the type argument may specify only reading or writing, \u003cem\u003enot both\u003c/em\u003e; the resulting stream is correspondingly read-only or write-only.\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"error_handling\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"err-error-perror\"\u003eerr, error, perror\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e所有 API 都可能失败\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e$ gcc nonexist.c\ngcc: error: nonexist.c: No such file or directory\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e系统调用明确规定了返回的错误码 (ERRORS in manpages)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"no-such-file-or-directory\"\u003e反复出现的 “No such file or directory”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这不是巧合！\u003cul\u003e\n\u003cli\u003e我们也可以 “山寨” 出同样的效果\u003c/li\u003e\n\u003cli\u003e试试 LANGUAGE=zh_CN ls nonexist\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.3. 进程运行环境的封装\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"environ\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e进程的运行环境\u003c/h1\u003e\n\u003ch2 id=\"envp\"\u003e环境 (envp) 会影响应用的行为\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eUNIX 通过 “环境变量” 和 “默认子进程继承” 机制实现\u003cul\u003e\n\u003cli\u003eman 3 exec\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emain\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eargc\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eargv\u003c/span\u003e\u003cspan class=\"p\"\u003e[],\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eenvp\u003c/span\u003e\u003cspan class=\"p\"\u003e[]);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"man-7-environ\"\u003eman 7 environ\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e全局变量 environ 是谁赋值的？\u003cul\u003e\n\u003cli\u003eenviron 是一个\u003cstrong\u003e变量\u003c/strong\u003e (符号)\u003c/li\u003e\n\u003cli\u003e进程初始化时的 envp 因为 ASLR 并不知道在哪里\u003cul\u003e\n\u003cli\u003e那一定就是 libc 干得了！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e是时候请出我们的老朋友 watch point 了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eSystem V ABI “Initial Process Stack”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"c_runtime\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"c-runtime\"\u003eC Runtime\u003c/h1\u003e\n\u003ch2 id=\"_start\"\u003e终究，程序是从 _start 开始运行的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这也是 libc 的一部分！\u003cul\u003e\n\u003cli\u003e你会发现二进制文件链接了 crt1.o\u003c/li\u003e\n\u003cli\u003e“C runtime”，最终把控制权交给 __libc_start_main\u003cul\u003e\n\u003cli\u003e你还会发现 crtbegin.o, crtend.o, crtn.o 😊\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"musl-libc\"\u003e让我们从第一条指令开始调试 musl libc 吧！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e好消息：做的事情不多\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e在系统调用和语言机制的基础上，libc 为我们提供了开发跨平台应用程序的 “第一级抽象”。在此基础上构建起了万千世界：C++ (扩充了 C 标准库)、Java、浏览器世界……今天，C 语言在应用开发方面有很多缺陷，但仍然为 “第一级抽象” 提供了一个有趣的范本：\u003ca href=\"https://dl.acm.org/doi/pdf/10.1145/3209212\"\u003eC is not a low-level language\u003c/a\u003e, 以及 \u003ca href=\"https://gankra.github.io/blah/c-isnt-a-language/\"\u003eC isn’t a programming language any more\u003c/a\u003e。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e在 AI 的帮助下调试 musl libc 中你感兴趣的函数。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect9.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

@@ -1,0 +1,768 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 操作系统概述
+ </h1>
+<h2> 1. 个人/课程简介
+ </h2>
+<div class="slideshow" name="self_intro"><div>
+<h1 id="_1">个人简介</h1>
+<h2 id="_2">
+<a href="https://zhuanlan.zhihu.com/p/1986494838795941546">🎓 副教授</a> (新老体制交替的飞升疾走受害者)</h2>
+<ul>
+<li>教<strong>操作系统</strong>、做 <strong>PL</strong> 的<strong>软工</strong>人 😂<ul>
+<li>身体里还有 1/4 Theory 的血 (ICPC World Finalist)<ul>
+<li>给小学生出了 10 年题 😈</li>
+</ul>
+</li>
+<li>5 个 CCF-A 类 Paper Awards<ul>
+<li>对于现在的 AI 时代来说，已经都入土了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">计算机学院教学委员会成员</h2>
+<ul>
+<li>南京大学 “我最喜爱的老师”</li>
+<li>操刀了新版教学计划<ul>
+<li>已经减下了学时，剩下的只能艰难推进了</li>
+<li>本学期课程主线按照 3 学分建设，剩下的课时讲 OS 相关的课外内容</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="course_intro"><div>
+<h1 id="_1">课程简介</h1>
+<h2 id="_2">课程目标</h2>
+<ul>
+<li>真正理解 “操作系统给我们带来了什么”<ul>
+<li>每节课都带着 “实现一点什么” 的目标，探索操作系统 API 和背后的设计理念</li>
+<li>还有含金量不断增加的 UNIX Philosophy</li>
+<li>AI 时代，99.9% 的人不再需要知道底层细节<ul>
+<li>违背祖宗的决定：砍掉了所有内核内容</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">课程信息</h2>
+<ul>
+<li>
+<a href="https://jyywiki.cn/OS/2026/">课程主页</a>可以找到所有信息</li>
+<li>传统：不强制要求到课 (但不保证录制不会翻车)<ul>
+<li>后续重要信息将群发邮件通知</li>
+</ul>
+</li>
+<li>助教：刘瀚之 (hanzhiliu@smail.nju.edu.cn)</li>
+<li>Office Hour: 每周四下午 16:30-17:30</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="grading_policy"><div>
+<h1 id="_1">课程简介：成绩组成</h1>
+<h2 id="50">期末考试 50%</h2>
+<ul>
+<li>以课堂内容为主</li>
+</ul>
+<h2 id="10">随堂期中测验 10%</h2>
+<ul>
+<li>放轻松，跟上课堂示例代码即可</li>
+</ul>
+<h2 id="40">实验 40%</h2>
+<ul>
+<li>MiniLab Only</li>
+<li>都是有趣的编程实验<ul>
+<li>(注意 AIGC Policy)</li>
+<li>AI 时代，Hackathon 这种形式的 lab 也许更好</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="enroll"><div>
+<h1 id="_1">课程简介：蹭课</h1>
+<h2 id="_2">仅限校内同学</h2>
+<ul>
+<li>从<a href="https://table.nju.edu.cn/dtable/forms/89294bff-427b-46af-b2aa-bcbcbc314f24/">此链接</a>报名蹭课<ul>
+<li>开学两周后截止</li>
+<li>之后会通过 @smail.nju.edu.cn 发送 TOKEN</li>
+<li>(正式选修的同学无需报名)</li>
+</ul>
+</li>
+</ul>
+<h2 id="online-judge">关于 Online Judge</h2>
+<ul>
+<li>希望完全开源<ul>
+<li>在 2027 年后结束这门课 (早日退休)</li>
+<li>秋季学期开一门面向所有人的 “Vibe Coding”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="feedback"><div>
+<h1 id="_1">意见与反馈</h1>
+<h3 id="jyynjueducn">邮件：jyy@nju.edu.cn</h3>
+<ul>
+<li>保证邮件 100% 回复 (太久不回可以戳我)</li>
+<li>线上反馈：会看，但不会回复<ul>
+<li>(没有时间)</li>
+</ul>
+</li>
+<li>但感谢一切 critical 的建议<ul>
+<li>批评总是有原因的</li>
+<li>我会试图考虑背后的逻辑/改动的必要</li>
+</ul>
+</li>
+</ul>
+<h3 id="qq">QQ 群</h3>
+<ul>
+<li>选课名单确定后，群发邮件</li>
+<li>未必能看到/及时回复</li>
+</ul>
+</div></div>
+
+<h2> 2. (Why) 为什么学习操作系统
+ </h2>
+<div class="slideshow" name="ai_today"><div>
+<h1 id="ac-anno-chatgpt-05">AC (Anno ChatGPT) 05 年</h1>
+<h2 id="_1">模型能力</h2>
+<ul>
+<li>非常强的幻觉抑制和指令遵循<ul>
+<li>IMO/IOI 金牌；AK ICPC World Finals</li>
+</ul>
+</li>
+<li>Agent “勉强能用” → “非常能用”</li>
+<li>Context 128K → 1M</li>
+</ul>
+<h2 id="_2">推理速度</h2>
+<ul>
+<li>LLaMA3 8B: <a href="https://chatjimmy.ai/">15,000 token/s</a> (这个速度意味着什么？)<ul>
+<li>实时交互、脑机接口、Beam search……<strong>全行业的血洗</strong>
+</li>
+<li>27B Dense/35B MoE 的能力已经非常出众了</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">现象级应用</h2>
+<ul>
+<li>Claude Code (我一直用 cc 管理个人数据库)</li>
+<li>Clawdbot (我也实现过微信 AgentBot)<ul>
+<li>结果跟微信系统号聊了一上午废话 😂</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="ai_age"><div>
+<h1 id="ai">从算法时代到 AI 时代：反思</h1>
+<h2 id="_1">算法时代</h2>
+<ul>
+<li>计算机能解决 mathematically <strong>well-formed</strong> 问题<ul>
+<li>数据持久化、约束求解、优化、加密……</li>
+<li>由<strong>软件工程师</strong>将现实世界的问题建模求解，并提供给人访问的接口 (App, GUI, …)<ul>
+<li>“软件是物理世界过程在信息世界中的投影”</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="ai_1">AI 时代</h2>
+<ul>
+<li>计算机能解决 mathematically <strong>ill-formed</strong> 问题了<ul>
+<li>甚至可以从中提取出 well-formed 的部分，调用工具求解 (Agent)</li>
+<li>具备<strong>动态生成</strong>一切 (文本、声音、图像、界面……) 的能力</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="why_cs"><div>
+<h1 id="cs">学 CS 还有意义吗？</h1>
+<h2 id="_1">“软件已死，氛围当立”</h2>
+<ul>
+<li>残酷的事实：PhD Student 还不如 AI 好用<ul>
+<li>AI 技术已经使顶级的 “人类劳动力” 逐渐失去价值</li>
+<li>(也许共产主义真的就要实现了？)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">但是！复杂系统的实现仍然需要<strong>抽象</strong>
+</h2>
+<ul>
+<li>抽象是分解和隔离复杂性的途径<ul>
+<li>《操作系统》传递的 takeaway message 是<strong>抽象层的设计与实现</strong><ul>
+<li>Claude Code 就是一个 CLI “用户”</li>
+<li>Skills 就是编程语言中的抽象和复用机制</li>
+</ul>
+</li>
+<li>操作系统 (和上面的应用生态) 赋予 AI 手和脚<ul>
+<li>提供了显示界面、发送网络、隔离虚拟环境……的底层能力</li>
+<li>安全、可靠、高效、有保障</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="why_os"><div>
+<h1 id="_1">舞台已经到搭好，去书写你的传奇</h1>
+<h2 id="_2">《操作系统》是你的最后一门编程课</h2>
+<ul>
+<li>能够知道程序<strong>能做什么</strong>、<strong>为什么能做</strong><ul>
+<li>为什么能创建窗口？</li>
+<li>
+<a href="https://stackoverflow.blog/2017/05/23/stack-overflow-helping-one-million-developers-exit-vim/">为什么 Ctrl-C 有时不能退出程序</a>？<ul>
+<li>StackOverflow helped 1,000,000 developers exit Vim (2017.5)</li>
+<li>
+<a href="https://www.digit.in/features/general/stack-overflow-is-dying-blame-it-on-chatgpt-and-ai-coding-tools.html">StackOverflow is dying</a> (2026.1)</li>
+</ul>
+</li>
+<li>Code Agent 里面是什么？</li>
+<li>怎么把服务器的 CPU 和 GPU 都用满？</li>
+</ul>
+</li>
+<li>每天都在用的东西，能实现出来了<ul>
+<li>浏览器、编译器、IDE、游戏/外挂、杀毒软件、病毒……</li>
+</ul>
+</li>
+</ul>
+<h2 id="ai">AI 时代赋予了每个人追寻童年梦想的能力</h2>
+<ul>
+<li>Code is cheap, show me the talk——当然，你需要首先能<strong>掌控</strong>代码</li>
+</ul>
+</div></div>
+
+<h2> 3. (What) 什么是操作系统
+ </h2>
+<div class="slideshow" name="os_def"><div>
+<h1 id="_1">操作系统：定义</h1>
+<blockquote>
+<p>Operating System: A body of software, in fact, that is responsible for <em>making it easy to run programs</em> (even allowing you to seemingly run many at the same time), allowing programs to share memory, enabling programs to interact with devices, and other fun stuff like that. (OSTEP)</p>
+</blockquote>
+<h2 id="_2">诸多疑点</h2>
+<ul>
+<li>“Programs” 就完了？<ul>
+<li>我看到的一切都是 program 啊？</li>
+<li>窗口管理器 (Sway)、终端、浏览器、虚拟机、Claude Code……</li>
+</ul>
+</li>
+<li>“Shared memory, interact with devices, …”？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_fun"><div>
+<h1 id="_1">操作系统：不需要定义</h1>
+<h2 id="_2">操作系统是来帮我们的，不是来折磨我们的</h2>
+<ul>
+<li>我们不需要 “精准” 的教科书定义<ul>
+<li><strong>操作系统是帮我们更好地开发程序的</strong></li>
+<li>很多事办起来很复杂，所以需要操作系统 (所以知道 “能做什么” 很有必要)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">理解操作系统：理解它发展的历史</h2>
+<ul>
+<li>操作系统如何从一开始变成现在这样的？</li>
+<li>三个重要的线索<ul>
+<li>
+<strong>硬件</strong> (计算机)、<strong>软件</strong> (程序，<strong>本课程视角</strong>)、<strong>操作系统</strong> (管理硬件和软件的软件)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 3.1. 硬件、软件和操作系统
+ </h3>
+<div class="slideshow" name="review_hw"><div>
+<h1 id="_1">复习：理解计算机硬件 (电路)</h1>
+<h2 id="quiz">Quiz: 《数字逻辑电路》课学了个什么？</h2>
+<ul>
+<li>一个极简的公理系统 (导线、时钟、逻辑门、触发器)</li>
+<li>能支撑非常复杂的数字系统设计 (例如，高性能计算机)</li>
+</ul>
+<p><img alt="" src="static/img/seven-seg.svg"></p>
+</div></div>
+
+<div class="code-card" path="intro/logisim"><div><div>
+<h1 id="_1"><a href="/OS/demos/intro/logisim">数字电路模拟器</a></h1>
+<p>时钟、导线、NAND、寄存器是数字系统的基本组成部分：数字系统在时钟驱动下离散地更新下一周期的寄存器状态。</p>
+<p>这一小段程序模拟数字电路的执行过程，它也是 <a href="https://github.com/NJU-ProjectN/nvboard">nvboard</a> 的基本原理。这个例子还展示了 UNIX Philosophy 中命令行工具的协作原理——C 程序 logisim 输出类似 <code>A=0; B=1; ...</code> 的数码管状态，而另一个程序负责解析这些输出并真实地 “画” 出来。</p>
+</div></div>
+</div>
+<div class="note" name="ascii_art"><div>
+<h1 id="ascii-art">ASCII Art</h1>
+<p>ASCII Art 起源于缺乏图形显示能力的打字机与早期计算机时代，人们利用基础的文本字符 (如字母、数字和符号) 来拼凑和构建图像。在 BBS 和早期互联网时期，它迎来了蓬勃发展的黄金期，成为极客文化、论坛签名和纯文本游戏中不可或缺的视觉载体。尽管今天图形技术已极其发达，ASCII Art 仍作为一种独特的复古美学活跃于现代数字世界，被广泛应用于程序员的代码注释彩蛋、终端命令行界面设计、部分独立游戏的美术风格以及网络梗中。</p>
+</div></div>
+
+<div class="code-card" path="intro/mini-rv32ima"><div><div>
+<h1 id="risc-v"><a href="/OS/demos/intro/mini-rv32ima">RISC-V 处理器模拟器</a></h1>
+<p>C 语言实现的 single-header RISC-V32IMA 系统模拟器 (项目源自<a href="https://github.com/cnlohr/mini-rv32ima">mini-rv32ima</a>)。因为有 M-Mode，这个模拟器可以运行几乎 “任意复杂” 的程序——甚至是没有 MMU 的 Linux。我们稍稍修改了这份代码，更好地体现《操作系统》课程的教学目标。</p>
+</div></div>
+</div>
+<h4> 3.1.1. Aside: 有没有觉得怪怪的？
+ </h4>
+<div class="slideshow" name="lecture_this_year"><div>
+<h1 id="_1">为什么要用这个方式上课？</h1>
+<h2 id="_2">今年所有的课程内容，都在一份代码里</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">with</span><span class="w"> </span><span class="n">Vibe</span><span class="p">()</span><span class="o">:</span>
+<span class="w">    </span><span class="n">slideshow</span><span class="p">()</span>
+<span class="w">    </span><span class="p">...</span>
+</code></pre></div>
+
+<h2 id="system-design">“System design” 的有趣之处</h2>
+<ul>
+<li>前后端分离 (TUI/WebUI)</li>
+<li>可控的 AIGC 和代码演示 (logisim)</li>
+<li>自动生成 lecture notes</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="content_as_code"><div>
+<h1 id="content-as-code">Content as Code</h1>
+<h2 id="_1">没什么东西是不能用代码表示的</h2>
+<ul>
+<li>图形/动画: SVG, Python (matplotlib), …<ul>
+<li><a href="https://www.remotion.dev/">Remotion: Make videos programmatically</a></li>
+</ul>
+</li>
+<li>幻灯片: Markdown, HTML, CSS, …</li>
+<li>……</li>
+</ul>
+<h2 id="ai">程序化的好处：人类、AI、机器都友好</h2>
+<ul>
+<li>在现代计算机系统上可以高效执行<ul>
+<li>现成的工具还可以分析日志/trace</li>
+</ul>
+</li>
+<li>AI 可以理解、修改、定制、<strong>创造更多的工具</strong>！</li>
+</ul>
+<h2 id="_2">生成定制、交互式的数字人也没有任何根本性的障碍</h2>
+<ul>
+<li>大学教师危在旦夕</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="programming_power"><div>
+<h1 id="_1">会编程，你就拥有全世界！</h1>
+<h2 id="logisim">Logisim 是本次课程的第一个彩蛋</h2>
+<ul>
+<li>同样的方式可以模拟任何数字系统 (包括计算机系统)</li>
+<li>同时还体验了 UNIX 哲学<ul>
+<li>Make each program do one thing well</li>
+<li>Expect the output of every program to become the input to another</li>
+<li>Use text interface</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">命令行是一个非常有趣的设计</h2>
+<ul>
+<li>在自然语言和编程语言之间达到了平衡<ul>
+<li>因此大语言模型 (agent) 用起来得心应手！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="review_sw"><div>
+<h1 id="_1">复习：理解计算机软件 (程序)</h1>
+<h2 id="quiz">Quiz:《计算机系统基础》课学了个什么？</h2>
+<ul>
+<li>高级语言代码 → 指令序列 → 二进制文件 → 处理器执行</li>
+<li>Everything is a state machine</li>
+</ul>
+<p><img alt="" src="static/img/pal.webp"></p>
+</div></div>
+
+<div class="code-card" path="intro/hanoi-nr"><div><div>
+<h1 id="_1"><a href="/OS/demos/intro/hanoi-nr">汉诺塔</a></h1>
+<p>汉诺塔是递归和分治的经典问题，而同学们也曾经在理解这个程序的时候遇到困难。遇到困难是正常的：C/C++ 中的 “函数” 和数学的函数很不一样，例如我们可以把 Fibonacci 数列的递归写成</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="c1">// 也可以 return y + x;</span>
+<span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">y</span><span class="p">;</span>
+</code></pre></div>
+
+<p>或是任意调换函数调用的次序，但汉诺塔不行。</p>
+<p>不行的根本原因在于汉诺塔中的 printf 会带来全局的副作用。但 C/C++ 遵循 “顺序执行” 的原则，函数的执行有 “先后” (不像数学的函数，先后是无关的)，按照不同顺序调用会导致程序输出不同的结果。实际上，C 标准中 <code>return f(n - 1) + f(n - 2);</code> 甚至不保证从左到右的调用顺序。(但现代编译器为了防止产生难以理解的执行，通常按照自然顺序调用、不做激进优化。)</p>
+</div></div>
+</div>
+<div class="slideshow" name="understand_os"><div>
+<h1 id="_1">到底什么是操作系统？</h1>
+<h2 id="_2">本课程讨论<strong>狭义的操作系统</strong>
+</h2>
+<ul>
+<li>
+<strong>硬件和软件的中间层</strong><ul>
+<li>对单机 (多处理器) 作出抽象</li>
+<li>支撑应用程序生态的平稳运行</li>
+</ul>
+</li>
+<li>这个概念可以推广到 “Systems”<ul>
+<li>对多台计算机抽象 (分布式系统)、对存储设备的抽象 (存储系统)、……</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">理解操作系统</h2>
+<ul>
+<li>理解硬件 (计算机) 和软件 (程序) 的发展历史</li>
+<li><strong>夹在中间的就是操作系统</strong></li>
+</ul>
+</div></div>
+
+<h3> 3.2. 1940s 的操作系统
+ </h3>
+<div class="slideshow" name="eniac"><div>
+<h1 id="eniac-1946214">一个新时代的诞生：ENIAC (1946.2.14)</h1>
+<h2 id="_1">“图灵机” 的数字电路实现尝试</h2>
+<ul>
+<li>数字电路，遵循状态机模型<ul>
+<li>有 PC 的概念<ul>
+<li>但 next PC 是用物理线路 “hard-wire” 的</li>
+<li>重编程需要重新接线：<a href="https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&amp;arnumber=8467000">Programming the ENIAC</a>
+</li>
+</ul>
+</li>
+<li>在一个周期里，所有寄存器都可以更新</li>
+</ul>
+</li>
+</ul>
+<p><img alt="模拟ENIAC运行" src="static/img/eniacrun.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="hw_1940s"><div>
+<h1 id="1940s">1940s 的计算机硬件</h1>
+<h2 id="_1">电子计算机的实现</h2>
+<ul>
+<li>逻辑门：<a href="https://www.bilibili.com/video/av59005720">真空电子管</a>
+</li>
+<li>存储器：水银延迟线 (delay lines)</li>
+<li>输入/输出：打孔纸带/指示灯</li>
+</ul>
+<p><img alt="1940s电子计算机电路结构图" src="static/img/computer-1940s.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="sw_1940s"><div>
+<h1 id="1940s">1940s 的计算机软件</h1>
+<h2 id="_1">打印平方数、素数表、计算弹道……</h2>
+<ul>
+<li>解释了《程序设计》教课书上经典习题的来源<ul>
+<li>如果大家对 “为什么要做这些” 有疑问，说明教科书没有把历史讲好</li>
+<li>(以及，教科书完全可以增加更现代的例子)</li>
+</ul>
+</li>
+<li>大家还在和真正的 “bugs” 战斗</li>
+</ul>
+<p><img alt="世界上的第一个 “bug”，一个真正的虫子" src="static/img/first-bug.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="os_1940s"><div>
+<h1 id="1940s">1940s 的操作系统</h1>
+<h2 id="_1"><strong>没有操作系统</strong></h2>
+<ul>
+<li>甚至连编程语言都没有<ul>
+<li>大家还在画流程图、写机制代码、戳纸带</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">能把程序跑起来就很了不起了</h2>
+<ul>
+<li>程序直接用指令操作硬件</li>
+<li>不需要画蛇添足的程序来管理它<ul>
+<li>颇像今天 Agents, MCP, Skills 所处的时代</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 3.3. 1950s 的操作系统
+ </h3>
+<div class="slideshow" name="hw_1950s"><div>
+<h1 id="1950s-1960s">1950s-1960s 的计算机硬件</h1>
+<h2 id="-io">硬件改进了，逻辑门-存储-I/O 的基本格局没有变</h2>
+<ul>
+<li>晶体管、磁芯内存、丰富的 I/O 设备</li>
+<li>I/O 设备的速度严重低于处理器的速度，中断机制出现 (1953)</li>
+</ul>
+<p><img alt="" src="static/img/computer-1950s.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="sw_1950s"><div>
+<h1 id="1950s-1960s">1950s-1960s 的计算机软件</h1>
+<h2 id="_1">更复杂的通用的数值计算</h2>
+<ul>
+<li>高级语言和 API 诞生 (Fortran, 1957)：一行代码，一张卡片<ul>
+<li>80 行的规范沿用至今</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/fortran-card.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="sw_1950s_cont"><div>
+<h1 id="1950s-1960s-contd">1950s-1960s 的计算机软件 (cont’d)</h1>
+<h2 id="fortran">Fortran 已经足够好用</h2>
+<ul>
+<li>迎来了自然科学、工程机械、军事……对计算机的需求暴涨</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>C---- LARGE LANGUAGE MODEL CAN EXPLAIN EVERYTHING.
+  100 READ(5,10) I1, I2, I3
+   10 FORMAT(3I5)
+      IF (I1.EQ.0 .AND. I2.EQ.0 .AND. I3.EQ.0) GOTO 200
+      ISUM = I1 + I2 + I3
+      WRITE(6,20) I1, I2, I3, ISUM
+   20 FORMAT(7HSUM OF , I5, 2H, , I5, 5H AND , I5,
+     *   4H IS , I6)
+      GOTO 100
+  200 STOP
+      END
+</code></pre></div>
+
+<ul>
+<li>Content as Code 的好处：可以让 Coding Agent 直接解释这个代码！</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_1950s"><div>
+<h1 id="1950s-1960s">1950s-1960s 的操作系统</h1>
+<h2 id="_1"><strong>库函数 + 管理程序排队运行的调度代码</strong></h2>
+<ul>
+<li>写程序 (戳纸带)、跑程序都是非常费事的</li>
+<li>计算机非常贵<ul>
+<li>$50,000-$1,000,000$</li>
+<li>通常一个学校只有一台</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">算力成为服务，操作系统概念形成</h2>
+<ul>
+<li>
+<strong>多用户轮流共享计算机</strong>，operator 负责操作程序切换</li>
+<li>Operating systems (操作系统/作業系統)<ul>
+<li>(今天算力又成为服务了)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_1950s_ctss"><div>
+<h1 id="1950s-1960s">1950s-1960s 的操作系统</h1>
+<h2 id="ctss-compatible-time-sharing-system">CTSS (Compatible Time-Sharing System)</h2>
+<ul>
+<li>操作系统中出现了各类对象：设备、文件、任务……</li>
+<li>CTSS Subroutines “抽象层”<ul>
+<li>现在这些功能是编程语言的一部分 (和标准库)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>RDFLXA: Read an input line from console
+WRFLX: Write an output line to console
+DEAD: Put the user into dead status, with no program in memory
+DORMNT: Put the user into dormant status, with program in memory
+GETMEM: Get the size of the memory allocation
+SETMEM: Set the size of the memory allocation
+TSSFIL: Get access to the CTSS system files on the disk
+USRFIL: Change back to user's own directory
+GETBRK: Get the instruction location counter at quit
+</code></pre></div>
+</div></div>
+
+<h3> 3.4. 1960s 的操作系统
+ </h3>
+<div class="slideshow" name="hw_1960s"><div>
+<h1 id="1960s-1970s">1960s-1970s 的计算机硬件</h1>
+<h2 id="_1">集成电路、总线出现</h2>
+<ul>
+<li>更快的处理器</li>
+<li>更快、更大的内存；虚拟存储出现<ul>
+<li><strong>可以同时载入多个程序而不用 “换卡” 了</strong></li>
+</ul>
+</li>
+<li>更丰富的 I/O 设备；完善的中断/异常机制</li>
+</ul>
+<p><img alt="" src="static/img/sketchpad.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="sw_1960s"><div>
+<h1 id="1960s-1970s">1960s-1970s 的计算机软件</h1>
+<h2 id="_1">更多的高级语言和编译器出现</h2>
+<ul>
+<li>COBOL (1960), APL (1962), BASIC (1965), PASCAL (1970), C (1972)</li>
+<li>计算机科学家们在今天难以想象的计算力下开发惊奇的程序<ul>
+<li>许多那个时候沿用至今的程序都会在本课程中覆盖</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/spacewar.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="pc_era"><div>
+<h1 id="_1">个人电脑登上历史舞台</h1>
+<h2 id="altair-8800-1975">Altair 8800 (1975)</h2>
+<ul>
+<li>Bill Gates 和 Paul Allen 的传奇故事</li>
+<li>竟然和我们的《计算机系统基础》不谋而合<ul>
+<li><a href="https://www.amazon.com/Fire-Valley-Birth-Personal-Computer/dp/1937785769">Fire in the Valley</a></li>
+<li>今天是更热烈的 “PC 时代”</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/altair8800.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="os_1960s"><div>
+<h1 id="1960s-1970s">1960s-1970s 的操作系统：资源虚拟化</h1>
+<h2 id="_1">几乎就是 “今天的计算机” 了</h2>
+<ul>
+<li>内存和磁盘的空分复用是非常 “自然” 的 (MMU → 进程)</li>
+<li>借助中断的 CPU 时分复用</li>
+</ul>
+<p><img alt="" src="static/img/modern-os.jpg"></p>
+</div></div>
+
+<h3> 3.5. 1970s+ 的操作系统
+ </h3>
+<div class="slideshow" name="os_1970s"><div>
+<h1 id="1970s">1970s+ 的操作系统和应用生态</h1>
+<h2 id="unix-pre-ai"><strong>UNIX 奠定了 pre-AI 时代计算机世界的基础</strong></h2>
+<ul>
+<li>1973: 信号 API、管道 (对象)、grep (应用程序)</li>
+<li>1983: BSD socket (对象)</li>
+<li>1984: procfs (对象)……</li>
+<li>UNIX 衍生出的大家族<ul>
+<li>1BSD (1977), GNU (1983), MacOS (1984), AIX (1986), Minix (1987), Windows (1985), Linux 0.01 (1991), Windows NT (1993), Debian (1996), Windows XP (2002), Ubuntu (2004), iOS (2007), Android (2008), Windows 10 (2015), ……</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">然后就是大家熟悉的故事了</h2>
+<ul>
+<li>PC 普及、云计算、智能手机、AI 时代……</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_2030s"><div>
+<h1 id="2030s">2030s+ 的操作系统：展望</h1>
+<h2 id="_1">操作系统不再是只给 “人” 用了</h2>
+<ul>
+<li>Model context 也会和 OS 交互</li>
+<li>底层的操作系统也许不会变，但会增加更多的抽象层<ul>
+<li>Model context 类似于 “一个人” (agent)</li>
+<li>“人”：可以调用工具、创建分身、互相抬杠……</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">让我们共同期待</h2>
+<ul>
+<li>无论如何，在这门课里把现代操作系统为应用程序提供的接口讲清楚</li>
+<li>从解锁 “理解一切软件” 的能力</li>
+</ul>
+</div></div>
+
+<h2> 4. (How) 怎么学习操作系统
+ </h2>
+<div class="slideshow" name="find_motivation"><div>
+<h1 id="_1">找到乐趣和动机</h1>
+<h2 id="_2">上课是为了理解人类文明的高光时刻</h2>
+<ul>
+<li>基本<strong>动机</strong>、基本方法、里程碑、走过的弯路</li>
+<li>走向应用、创新、<strong>革命</strong><ul>
+<li>《操作系统》课的主题很明确：就是一套 API，支撑起一切了不起的软件</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">上课是实现童年梦想的途径</h2>
+<ul>
+<li>每一节课都让你 “能力增长”<ul>
+<li>(并且马上就能用获得的新能力做点什么)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="forget_reward_hacking"><div>
+<h1 id="reward-hacking">忘掉 Reward Hacking 的本能</h1>
+<h2 id="long-term-reward">大学教育是为了 long-term reward (实现梦想)</h2>
+<ul>
+<li>即便分数很重要，也可以用更合理的学习方法<ul>
+<li>我们不考犄角旮旯的细节 (不是没有细节，但如果你真正理解了 first principles，就可以根据自己的理解补充细节)</li>
+</ul>
+</li>
+</ul>
+<h2 id="academic-integrity">坚守 <a href="https://integrity.mit.edu/">Academic integrity</a>: “诚朴雄伟” 的精神</h2>
+<ul>
+<li>世界上已经没什么 “学不懂” 的东西了<ul>
+<li>相比于大家，我更苦恼 “没时间学”</li>
+</ul>
+</li>
+<li>不再需要为了眼前的分数而损失了更长期的价值<ul>
+<li>(其实我是觉得 AI 时代，大学没什么用了)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="get_into_new_world"><div>
+<h1 id="_1">拥抱新时代</h1>
+<h2 id="_2">大语言模型</h2>
+<ul>
+<li>Next-token prediction 的一个概率分布<ul>
+<li>聊天、解题、写代码，样样在行</li>
+<li>过去一年：指令遵循和幻觉抑制大幅提升</li>
+</ul>
+</li>
+</ul>
+<h2 id="agent">Agent</h2>
+<ul>
+<li>具备了手和脚的大语言模型<ul>
+<li>能对你的<strong>整个项目</strong>开刀，按需调取其中的部分，还能修改</li>
+<li>想象力限制了你 Agent 的能力 🦞</li>
+</ul>
+</li>
+</ul>
+<h2 id="copilot">Copilot</h2>
+<ul>
+<li>把过去发生的事情告诉模型<ul>
+<li>模型就知道你干得好不好、下一步想干什么</li>
+<li>Agent 也能帮你干</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="aigc_policy"><div>
+<h1 id="aigc-policy">AIGC Policy</h1>
+<h2 id="ai">日常学习：鼓励使用 AI 辅助</h2>
+<ul>
+<li>解释概念、命令行工具、API 等</li>
+<li>获取方法指导 (使用什么工具调试、如何调试、有何技巧)</li>
+<li>生成辅助性的代码 (调试、可视化……)<ul>
+<li>这些都可以做成 Copilot 随时随地帮助你</li>
+</ul>
+</li>
+</ul>
+<h2 id="minilab-api">MiniLab：仅限单个 API 使用的生成</h2>
+<ul>
+<li>禁止将自然语言需求翻译成代码<ul>
+<li>✅: 帮助我调用 pipe()，并将读口和写口的文件描述符赋值给 read_fd 和 write_fd</li>
+<li>❌: 帮我完成实验，测试通过以后直接提交</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>操作系统是软件和硬件之间的桥梁；因此我们 “找到” 一些合适的软件、一些相对简单的硬件，理解操作系统就会变得容易——我们的课程通过讲解操作系统上的应用，帮助你实现 “编程” 的梦想。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>课程网站 (首页上的信息、课程概述、参考书与参考资料、生存指南)；教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>Preface 前言</li>
+<li>第 1 章 - Dialogue on the Book</li>
+<li>第 2 章 - Introduction to Operating Systems</li>
+<li>延伸阅读 (如果有兴趣): Harley Hahn’s Guide to Unix and Linux。</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 操作系统概述\n \u003c/h1\u003e\n\u003ch2\u003e 1. 个人/课程简介\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"self_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e个人简介\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e\n\u003ca href=\"https://zhuanlan.zhihu.com/p/1986494838795941546\"\u003e🎓 副教授\u003c/a\u003e (新老体制交替的飞升疾走受害者)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e教\u003cstrong\u003e操作系统\u003c/strong\u003e、做 \u003cstrong\u003ePL\u003c/strong\u003e 的\u003cstrong\u003e软工\u003c/strong\u003e人 😂\u003cul\u003e\n\u003cli\u003e身体里还有 1/4 Theory 的血 (ICPC World Finalist)\u003cul\u003e\n\u003cli\u003e给小学生出了 10 年题 😈\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e5 个 CCF-A 类 Paper Awards\u003cul\u003e\n\u003cli\u003e对于现在的 AI 时代来说，已经都入土了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e计算机学院教学委员会成员\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e南京大学 “我最喜爱的老师”\u003c/li\u003e\n\u003cli\u003e操刀了新版教学计划\u003cul\u003e\n\u003cli\u003e已经减下了学时，剩下的只能艰难推进了\u003c/li\u003e\n\u003cli\u003e本学期课程主线按照 3 学分建设，剩下的课时讲 OS 相关的课外内容\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"course_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e课程简介\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e课程目标\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e真正理解 “操作系统给我们带来了什么”\u003cul\u003e\n\u003cli\u003e每节课都带着 “实现一点什么” 的目标，探索操作系统 API 和背后的设计理念\u003c/li\u003e\n\u003cli\u003e还有含金量不断增加的 UNIX Philosophy\u003c/li\u003e\n\u003cli\u003eAI 时代，99.9% 的人不再需要知道底层细节\u003cul\u003e\n\u003cli\u003e违背祖宗的决定：砍掉了所有内核内容\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e课程信息\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://jyywiki.cn/OS/2026/\"\u003e课程主页\u003c/a\u003e可以找到所有信息\u003c/li\u003e\n\u003cli\u003e传统：不强制要求到课 (但不保证录制不会翻车)\u003cul\u003e\n\u003cli\u003e后续重要信息将群发邮件通知\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e助教：刘瀚之 (hanzhiliu@smail.nju.edu.cn)\u003c/li\u003e\n\u003cli\u003eOffice Hour: 每周四下午 16:30-17:30\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"grading_policy\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e课程简介：成绩组成\u003c/h1\u003e\n\u003ch2 id=\"50\"\u003e期末考试 50%\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e以课堂内容为主\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"10\"\u003e随堂期中测验 10%\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e放轻松，跟上课堂示例代码即可\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"40\"\u003e实验 40%\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eMiniLab Only\u003c/li\u003e\n\u003cli\u003e都是有趣的编程实验\u003cul\u003e\n\u003cli\u003e(注意 AIGC Policy)\u003c/li\u003e\n\u003cli\u003eAI 时代，Hackathon 这种形式的 lab 也许更好\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"enroll\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e课程简介：蹭课\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e仅限校内同学\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从\u003ca href=\"https://table.nju.edu.cn/dtable/forms/89294bff-427b-46af-b2aa-bcbcbc314f24/\"\u003e此链接\u003c/a\u003e报名蹭课\u003cul\u003e\n\u003cli\u003e开学两周后截止\u003c/li\u003e\n\u003cli\u003e之后会通过 @smail.nju.edu.cn 发送 TOKEN\u003c/li\u003e\n\u003cli\u003e(正式选修的同学无需报名)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"online-judge\"\u003e关于 Online Judge\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e希望完全开源\u003cul\u003e\n\u003cli\u003e在 2027 年后结束这门课 (早日退休)\u003c/li\u003e\n\u003cli\u003e秋季学期开一门面向所有人的 “Vibe Coding”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"feedback\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e意见与反馈\u003c/h1\u003e\n\u003ch3 id=\"jyynjueducn\"\u003e邮件：jyy@nju.edu.cn\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e保证邮件 100% 回复 (太久不回可以戳我)\u003c/li\u003e\n\u003cli\u003e线上反馈：会看，但不会回复\u003cul\u003e\n\u003cli\u003e(没有时间)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e但感谢一切 critical 的建议\u003cul\u003e\n\u003cli\u003e批评总是有原因的\u003c/li\u003e\n\u003cli\u003e我会试图考虑背后的逻辑/改动的必要\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch3 id=\"qq\"\u003eQQ 群\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e选课名单确定后，群发邮件\u003c/li\u003e\n\u003cli\u003e未必能看到/及时回复\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. (Why) 为什么学习操作系统\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"ai_today\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ac-anno-chatgpt-05\"\u003eAC (Anno ChatGPT) 05 年\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e模型能力\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e非常强的幻觉抑制和指令遵循\u003cul\u003e\n\u003cli\u003eIMO/IOI 金牌；AK ICPC World Finals\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eAgent “勉强能用” → “非常能用”\u003c/li\u003e\n\u003cli\u003eContext 128K → 1M\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e推理速度\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLLaMA3 8B: \u003ca href=\"https://chatjimmy.ai/\"\u003e15,000 token/s\u003c/a\u003e (这个速度意味着什么？)\u003cul\u003e\n\u003cli\u003e实时交互、脑机接口、Beam search……\u003cstrong\u003e全行业的血洗\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e27B Dense/35B MoE 的能力已经非常出众了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e现象级应用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eClaude Code (我一直用 cc 管理个人数据库)\u003c/li\u003e\n\u003cli\u003eClawdbot (我也实现过微信 AgentBot)\u003cul\u003e\n\u003cli\u003e结果跟微信系统号聊了一上午废话 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ai_age\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ai\"\u003e从算法时代到 AI 时代：反思\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e算法时代\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机能解决 mathematically \u003cstrong\u003ewell-formed\u003c/strong\u003e 问题\u003cul\u003e\n\u003cli\u003e数据持久化、约束求解、优化、加密……\u003c/li\u003e\n\u003cli\u003e由\u003cstrong\u003e软件工程师\u003c/strong\u003e将现实世界的问题建模求解，并提供给人访问的接口 (App, GUI, …)\u003cul\u003e\n\u003cli\u003e“软件是物理世界过程在信息世界中的投影”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai_1\"\u003eAI 时代\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机能解决 mathematically \u003cstrong\u003eill-formed\u003c/strong\u003e 问题了\u003cul\u003e\n\u003cli\u003e甚至可以从中提取出 well-formed 的部分，调用工具求解 (Agent)\u003c/li\u003e\n\u003cli\u003e具备\u003cstrong\u003e动态生成\u003c/strong\u003e一切 (文本、声音、图像、界面……) 的能力\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"why_cs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"cs\"\u003e学 CS 还有意义吗？\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“软件已死，氛围当立”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e残酷的事实：PhD Student 还不如 AI 好用\u003cul\u003e\n\u003cli\u003eAI 技术已经使顶级的 “人类劳动力” 逐渐失去价值\u003c/li\u003e\n\u003cli\u003e(也许共产主义真的就要实现了？)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e但是！复杂系统的实现仍然需要\u003cstrong\u003e抽象\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e抽象是分解和隔离复杂性的途径\u003cul\u003e\n\u003cli\u003e《操作系统》传递的 takeaway message 是\u003cstrong\u003e抽象层的设计与实现\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003eClaude Code 就是一个 CLI “用户”\u003c/li\u003e\n\u003cli\u003eSkills 就是编程语言中的抽象和复用机制\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e操作系统 (和上面的应用生态) 赋予 AI 手和脚\u003cul\u003e\n\u003cli\u003e提供了显示界面、发送网络、隔离虚拟环境……的底层能力\u003c/li\u003e\n\u003cli\u003e安全、可靠、高效、有保障\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"why_os\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e舞台已经到搭好，去书写你的传奇\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e《操作系统》是你的最后一门编程课\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e能够知道程序\u003cstrong\u003e能做什么\u003c/strong\u003e、\u003cstrong\u003e为什么能做\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e为什么能创建窗口？\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://stackoverflow.blog/2017/05/23/stack-overflow-helping-one-million-developers-exit-vim/\"\u003e为什么 Ctrl-C 有时不能退出程序\u003c/a\u003e？\u003cul\u003e\n\u003cli\u003eStackOverflow helped 1,000,000 developers exit Vim (2017.5)\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.digit.in/features/general/stack-overflow-is-dying-blame-it-on-chatgpt-and-ai-coding-tools.html\"\u003eStackOverflow is dying\u003c/a\u003e (2026.1)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eCode Agent 里面是什么？\u003c/li\u003e\n\u003cli\u003e怎么把服务器的 CPU 和 GPU 都用满？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e每天都在用的东西，能实现出来了\u003cul\u003e\n\u003cli\u003e浏览器、编译器、IDE、游戏/外挂、杀毒软件、病毒……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai\"\u003eAI 时代赋予了每个人追寻童年梦想的能力\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCode is cheap, show me the talk——当然，你需要首先能\u003cstrong\u003e掌控\u003c/strong\u003e代码\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. (What) 什么是操作系统\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"os_def\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e操作系统：定义\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eOperating System: A body of software, in fact, that is responsible for \u003cem\u003emaking it easy to run programs\u003c/em\u003e (even allowing you to seemingly run many at the same time), allowing programs to share memory, enabling programs to interact with devices, and other fun stuff like that. (OSTEP)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_2\"\u003e诸多疑点\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“Programs” 就完了？\u003cul\u003e\n\u003cli\u003e我看到的一切都是 program 啊？\u003c/li\u003e\n\u003cli\u003e窗口管理器 (Sway)、终端、浏览器、虚拟机、Claude Code……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“Shared memory, interact with devices, …”？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_fun\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e操作系统：不需要定义\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e操作系统是来帮我们的，不是来折磨我们的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们不需要 “精准” 的教科书定义\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e操作系统是帮我们更好地开发程序的\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003e很多事办起来很复杂，所以需要操作系统 (所以知道 “能做什么” 很有必要)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e理解操作系统：理解它发展的历史\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e操作系统如何从一开始变成现在这样的？\u003c/li\u003e\n\u003cli\u003e三个重要的线索\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e硬件\u003c/strong\u003e (计算机)、\u003cstrong\u003e软件\u003c/strong\u003e (程序，\u003cstrong\u003e本课程视角\u003c/strong\u003e)、\u003cstrong\u003e操作系统\u003c/strong\u003e (管理硬件和软件的软件)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.1. 硬件、软件和操作系统\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"review_hw\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e复习：理解计算机硬件 (电路)\u003c/h1\u003e\n\u003ch2 id=\"quiz\"\u003eQuiz: 《数字逻辑电路》课学了个什么？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一个极简的公理系统 (导线、时钟、逻辑门、触发器)\u003c/li\u003e\n\u003cli\u003e能支撑非常复杂的数字系统设计 (例如，高性能计算机)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/seven-seg.svg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/logisim\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/intro/logisim\"\u003e数字电路模拟器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e时钟、导线、NAND、寄存器是数字系统的基本组成部分：数字系统在时钟驱动下离散地更新下一周期的寄存器状态。\u003c/p\u003e\n\u003cp\u003e这一小段程序模拟数字电路的执行过程，它也是 \u003ca href=\"https://github.com/NJU-ProjectN/nvboard\"\u003envboard\u003c/a\u003e 的基本原理。这个例子还展示了 UNIX Philosophy 中命令行工具的协作原理——C 程序 logisim 输出类似 \u003ccode\u003eA=0; B=1; ...\u003c/code\u003e 的数码管状态，而另一个程序负责解析这些输出并真实地 “画” 出来。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"ascii_art\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ascii-art\"\u003eASCII Art\u003c/h1\u003e\n\u003cp\u003eASCII Art 起源于缺乏图形显示能力的打字机与早期计算机时代，人们利用基础的文本字符 (如字母、数字和符号) 来拼凑和构建图像。在 BBS 和早期互联网时期，它迎来了蓬勃发展的黄金期，成为极客文化、论坛签名和纯文本游戏中不可或缺的视觉载体。尽管今天图形技术已极其发达，ASCII Art 仍作为一种独特的复古美学活跃于现代数字世界，被广泛应用于程序员的代码注释彩蛋、终端命令行界面设计、部分独立游戏的美术风格以及网络梗中。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/mini-rv32ima\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"risc-v\"\u003e\u003ca href=\"/OS/demos/intro/mini-rv32ima\"\u003eRISC-V 处理器模拟器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eC 语言实现的 single-header RISC-V32IMA 系统模拟器 (项目源自\u003ca href=\"https://github.com/cnlohr/mini-rv32ima\"\u003emini-rv32ima\u003c/a\u003e)。因为有 M-Mode，这个模拟器可以运行几乎 “任意复杂” 的程序——甚至是没有 MMU 的 Linux。我们稍稍修改了这份代码，更好地体现《操作系统》课程的教学目标。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch4\u003e 3.1.1. Aside: 有没有觉得怪怪的？\n \u003c/h4\u003e\n\u003cdiv class=\"slideshow\" name=\"lecture_this_year\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e为什么要用这个方式上课？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e今年所有的课程内容，都在一份代码里\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003ewith\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eVibe\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eslideshow\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"system-design\"\u003e“System design” 的有趣之处\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e前后端分离 (TUI/WebUI)\u003c/li\u003e\n\u003cli\u003e可控的 AIGC 和代码演示 (logisim)\u003c/li\u003e\n\u003cli\u003e自动生成 lecture notes\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"content_as_code\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"content-as-code\"\u003eContent as Code\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e没什么东西是不能用代码表示的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e图形/动画: SVG, Python (matplotlib), …\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://www.remotion.dev/\"\u003eRemotion: Make videos programmatically\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e幻灯片: Markdown, HTML, CSS, …\u003c/li\u003e\n\u003cli\u003e……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai\"\u003e程序化的好处：人类、AI、机器都友好\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在现代计算机系统上可以高效执行\u003cul\u003e\n\u003cli\u003e现成的工具还可以分析日志/trace\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eAI 可以理解、修改、定制、\u003cstrong\u003e创造更多的工具\u003c/strong\u003e！\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e生成定制、交互式的数字人也没有任何根本性的障碍\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e大学教师危在旦夕\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"programming_power\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e会编程，你就拥有全世界！\u003c/h1\u003e\n\u003ch2 id=\"logisim\"\u003eLogisim 是本次课程的第一个彩蛋\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e同样的方式可以模拟任何数字系统 (包括计算机系统)\u003c/li\u003e\n\u003cli\u003e同时还体验了 UNIX 哲学\u003cul\u003e\n\u003cli\u003eMake each program do one thing well\u003c/li\u003e\n\u003cli\u003eExpect the output of every program to become the input to another\u003c/li\u003e\n\u003cli\u003eUse text interface\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e命令行是一个非常有趣的设计\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在自然语言和编程语言之间达到了平衡\u003cul\u003e\n\u003cli\u003e因此大语言模型 (agent) 用起来得心应手！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"review_sw\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e复习：理解计算机软件 (程序)\u003c/h1\u003e\n\u003ch2 id=\"quiz\"\u003eQuiz:《计算机系统基础》课学了个什么？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e高级语言代码 → 指令序列 → 二进制文件 → 处理器执行\u003c/li\u003e\n\u003cli\u003eEverything is a state machine\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/pal.webp\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/hanoi-nr\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/intro/hanoi-nr\"\u003e汉诺塔\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e汉诺塔是递归和分治的经典问题，而同学们也曾经在理解这个程序的时候遇到困难。遇到困难是正常的：C/C++ 中的 “函数” 和数学的函数很不一样，例如我们可以把 Fibonacci 数列的递归写成\u003c/p\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 也可以 return y + x;\u003c/span\u003e\n\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e或是任意调换函数调用的次序，但汉诺塔不行。\u003c/p\u003e\n\u003cp\u003e不行的根本原因在于汉诺塔中的 printf 会带来全局的副作用。但 C/C++ 遵循 “顺序执行” 的原则，函数的执行有 “先后” (不像数学的函数，先后是无关的)，按照不同顺序调用会导致程序输出不同的结果。实际上，C 标准中 \u003ccode\u003ereturn f(n - 1) + f(n - 2);\u003c/code\u003e 甚至不保证从左到右的调用顺序。(但现代编译器为了防止产生难以理解的执行，通常按照自然顺序调用、不做激进优化。)\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"understand_os\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e到底什么是操作系统？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e本课程讨论\u003cstrong\u003e狭义的操作系统\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e硬件和软件的中间层\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e对单机 (多处理器) 作出抽象\u003c/li\u003e\n\u003cli\u003e支撑应用程序生态的平稳运行\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e这个概念可以推广到 “Systems”\u003cul\u003e\n\u003cli\u003e对多台计算机抽象 (分布式系统)、对存储设备的抽象 (存储系统)、……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e理解操作系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e理解硬件 (计算机) 和软件 (程序) 的发展历史\u003c/li\u003e\n\u003cli\u003e\u003cstrong\u003e夹在中间的就是操作系统\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.2. 1940s 的操作系统\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"eniac\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"eniac-1946214\"\u003e一个新时代的诞生：ENIAC (1946.2.14)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“图灵机” 的数字电路实现尝试\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e数字电路，遵循状态机模型\u003cul\u003e\n\u003cli\u003e有 PC 的概念\u003cul\u003e\n\u003cli\u003e但 next PC 是用物理线路 “hard-wire” 的\u003c/li\u003e\n\u003cli\u003e重编程需要重新接线：\u003ca href=\"https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=\u0026amp;arnumber=8467000\"\u003eProgramming the ENIAC\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e在一个周期里，所有寄存器都可以更新\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"模拟ENIAC运行\" src=\"static/img/eniacrun.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"hw_1940s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1940s\"\u003e1940s 的计算机硬件\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e电子计算机的实现\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e逻辑门：\u003ca href=\"https://www.bilibili.com/video/av59005720\"\u003e真空电子管\u003c/a\u003e\n\u003c/li\u003e\n\u003cli\u003e存储器：水银延迟线 (delay lines)\u003c/li\u003e\n\u003cli\u003e输入/输出：打孔纸带/指示灯\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"1940s电子计算机电路结构图\" src=\"static/img/computer-1940s.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sw_1940s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1940s\"\u003e1940s 的计算机软件\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e打印平方数、素数表、计算弹道……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e解释了《程序设计》教课书上经典习题的来源\u003cul\u003e\n\u003cli\u003e如果大家对 “为什么要做这些” 有疑问，说明教科书没有把历史讲好\u003c/li\u003e\n\u003cli\u003e(以及，教科书完全可以增加更现代的例子)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e大家还在和真正的 “bugs” 战斗\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"世界上的第一个 “bug”，一个真正的虫子\" src=\"static/img/first-bug.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_1940s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1940s\"\u003e1940s 的操作系统\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e\u003cstrong\u003e没有操作系统\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e甚至连编程语言都没有\u003cul\u003e\n\u003cli\u003e大家还在画流程图、写机制代码、戳纸带\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e能把程序跑起来就很了不起了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e程序直接用指令操作硬件\u003c/li\u003e\n\u003cli\u003e不需要画蛇添足的程序来管理它\u003cul\u003e\n\u003cli\u003e颇像今天 Agents, MCP, Skills 所处的时代\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.3. 1950s 的操作系统\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"hw_1950s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1950s-1960s\"\u003e1950s-1960s 的计算机硬件\u003c/h1\u003e\n\u003ch2 id=\"-io\"\u003e硬件改进了，逻辑门-存储-I/O 的基本格局没有变\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e晶体管、磁芯内存、丰富的 I/O 设备\u003c/li\u003e\n\u003cli\u003eI/O 设备的速度严重低于处理器的速度，中断机制出现 (1953)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/computer-1950s.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sw_1950s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1950s-1960s\"\u003e1950s-1960s 的计算机软件\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e更复杂的通用的数值计算\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e高级语言和 API 诞生 (Fortran, 1957)：一行代码，一张卡片\u003cul\u003e\n\u003cli\u003e80 行的规范沿用至今\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fortran-card.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sw_1950s_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1950s-1960s-contd\"\u003e1950s-1960s 的计算机软件 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"fortran\"\u003eFortran 已经足够好用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e迎来了自然科学、工程机械、军事……对计算机的需求暴涨\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003eC---- LARGE LANGUAGE MODEL CAN EXPLAIN EVERYTHING.\n  100 READ(5,10) I1, I2, I3\n   10 FORMAT(3I5)\n      IF (I1.EQ.0 .AND. I2.EQ.0 .AND. I3.EQ.0) GOTO 200\n      ISUM = I1 + I2 + I3\n      WRITE(6,20) I1, I2, I3, ISUM\n   20 FORMAT(7HSUM OF , I5, 2H, , I5, 5H AND , I5,\n     *   4H IS , I6)\n      GOTO 100\n  200 STOP\n      END\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003eContent as Code 的好处：可以让 Coding Agent 直接解释这个代码！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_1950s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1950s-1960s\"\u003e1950s-1960s 的操作系统\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e\u003cstrong\u003e库函数 + 管理程序排队运行的调度代码\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e写程序 (戳纸带)、跑程序都是非常费事的\u003c/li\u003e\n\u003cli\u003e计算机非常贵\u003cul\u003e\n\u003cli\u003e$50,000-$1,000,000$\u003c/li\u003e\n\u003cli\u003e通常一个学校只有一台\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e算力成为服务，操作系统概念形成\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e多用户轮流共享计算机\u003c/strong\u003e，operator 负责操作程序切换\u003c/li\u003e\n\u003cli\u003eOperating systems (操作系统/作業系統)\u003cul\u003e\n\u003cli\u003e(今天算力又成为服务了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_1950s_ctss\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1950s-1960s\"\u003e1950s-1960s 的操作系统\u003c/h1\u003e\n\u003ch2 id=\"ctss-compatible-time-sharing-system\"\u003eCTSS (Compatible Time-Sharing System)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e操作系统中出现了各类对象：设备、文件、任务……\u003c/li\u003e\n\u003cli\u003eCTSS Subroutines “抽象层”\u003cul\u003e\n\u003cli\u003e现在这些功能是编程语言的一部分 (和标准库)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003eRDFLXA: Read an input line from console\nWRFLX: Write an output line to console\nDEAD: Put the user into dead status, with no program in memory\nDORMNT: Put the user into dormant status, with program in memory\nGETMEM: Get the size of the memory allocation\nSETMEM: Set the size of the memory allocation\nTSSFIL: Get access to the CTSS system files on the disk\nUSRFIL: Change back to user's own directory\nGETBRK: Get the instruction location counter at quit\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.4. 1960s 的操作系统\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"hw_1960s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1960s-1970s\"\u003e1960s-1970s 的计算机硬件\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e集成电路、总线出现\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e更快的处理器\u003c/li\u003e\n\u003cli\u003e更快、更大的内存；虚拟存储出现\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e可以同时载入多个程序而不用 “换卡” 了\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e更丰富的 I/O 设备；完善的中断/异常机制\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sketchpad.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sw_1960s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1960s-1970s\"\u003e1960s-1970s 的计算机软件\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e更多的高级语言和编译器出现\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCOBOL (1960), APL (1962), BASIC (1965), PASCAL (1970), C (1972)\u003c/li\u003e\n\u003cli\u003e计算机科学家们在今天难以想象的计算力下开发惊奇的程序\u003cul\u003e\n\u003cli\u003e许多那个时候沿用至今的程序都会在本课程中覆盖\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/spacewar.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"pc_era\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e个人电脑登上历史舞台\u003c/h1\u003e\n\u003ch2 id=\"altair-8800-1975\"\u003eAltair 8800 (1975)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eBill Gates 和 Paul Allen 的传奇故事\u003c/li\u003e\n\u003cli\u003e竟然和我们的《计算机系统基础》不谋而合\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://www.amazon.com/Fire-Valley-Birth-Personal-Computer/dp/1937785769\"\u003eFire in the Valley\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003e今天是更热烈的 “PC 时代”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/altair8800.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_1960s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1960s-1970s\"\u003e1960s-1970s 的操作系统：资源虚拟化\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e几乎就是 “今天的计算机” 了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e内存和磁盘的空分复用是非常 “自然” 的 (MMU → 进程)\u003c/li\u003e\n\u003cli\u003e借助中断的 CPU 时分复用\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/modern-os.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.5. 1970s+ 的操作系统\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"os_1970s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1970s\"\u003e1970s+ 的操作系统和应用生态\u003c/h1\u003e\n\u003ch2 id=\"unix-pre-ai\"\u003e\u003cstrong\u003eUNIX 奠定了 pre-AI 时代计算机世界的基础\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e1973: 信号 API、管道 (对象)、grep (应用程序)\u003c/li\u003e\n\u003cli\u003e1983: BSD socket (对象)\u003c/li\u003e\n\u003cli\u003e1984: procfs (对象)……\u003c/li\u003e\n\u003cli\u003eUNIX 衍生出的大家族\u003cul\u003e\n\u003cli\u003e1BSD (1977), GNU (1983), MacOS (1984), AIX (1986), Minix (1987), Windows (1985), Linux 0.01 (1991), Windows NT (1993), Debian (1996), Windows XP (2002), Ubuntu (2004), iOS (2007), Android (2008), Windows 10 (2015), ……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e然后就是大家熟悉的故事了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ePC 普及、云计算、智能手机、AI 时代……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_2030s\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"2030s\"\u003e2030s+ 的操作系统：展望\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e操作系统不再是只给 “人” 用了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eModel context 也会和 OS 交互\u003c/li\u003e\n\u003cli\u003e底层的操作系统也许不会变，但会增加更多的抽象层\u003cul\u003e\n\u003cli\u003eModel context 类似于 “一个人” (agent)\u003c/li\u003e\n\u003cli\u003e“人”：可以调用工具、创建分身、互相抬杠……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e让我们共同期待\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e无论如何，在这门课里把现代操作系统为应用程序提供的接口讲清楚\u003c/li\u003e\n\u003cli\u003e从解锁 “理解一切软件” 的能力\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 4. (How) 怎么学习操作系统\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"find_motivation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e找到乐趣和动机\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e上课是为了理解人类文明的高光时刻\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e基本\u003cstrong\u003e动机\u003c/strong\u003e、基本方法、里程碑、走过的弯路\u003c/li\u003e\n\u003cli\u003e走向应用、创新、\u003cstrong\u003e革命\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e《操作系统》课的主题很明确：就是一套 API，支撑起一切了不起的软件\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e上课是实现童年梦想的途径\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每一节课都让你 “能力增长”\u003cul\u003e\n\u003cli\u003e(并且马上就能用获得的新能力做点什么)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"forget_reward_hacking\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"reward-hacking\"\u003e忘掉 Reward Hacking 的本能\u003c/h1\u003e\n\u003ch2 id=\"long-term-reward\"\u003e大学教育是为了 long-term reward (实现梦想)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e即便分数很重要，也可以用更合理的学习方法\u003cul\u003e\n\u003cli\u003e我们不考犄角旮旯的细节 (不是没有细节，但如果你真正理解了 first principles，就可以根据自己的理解补充细节)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"academic-integrity\"\u003e坚守 \u003ca href=\"https://integrity.mit.edu/\"\u003eAcademic integrity\u003c/a\u003e: “诚朴雄伟” 的精神\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e世界上已经没什么 “学不懂” 的东西了\u003cul\u003e\n\u003cli\u003e相比于大家，我更苦恼 “没时间学”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e不再需要为了眼前的分数而损失了更长期的价值\u003cul\u003e\n\u003cli\u003e(其实我是觉得 AI 时代，大学没什么用了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"get_into_new_world\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e拥抱新时代\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e大语言模型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eNext-token prediction 的一个概率分布\u003cul\u003e\n\u003cli\u003e聊天、解题、写代码，样样在行\u003c/li\u003e\n\u003cli\u003e过去一年：指令遵循和幻觉抑制大幅提升\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"agent\"\u003eAgent\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e具备了手和脚的大语言模型\u003cul\u003e\n\u003cli\u003e能对你的\u003cstrong\u003e整个项目\u003c/strong\u003e开刀，按需调取其中的部分，还能修改\u003c/li\u003e\n\u003cli\u003e想象力限制了你 Agent 的能力 🦞\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"copilot\"\u003eCopilot\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把过去发生的事情告诉模型\u003cul\u003e\n\u003cli\u003e模型就知道你干得好不好、下一步想干什么\u003c/li\u003e\n\u003cli\u003eAgent 也能帮你干\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"aigc_policy\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aigc-policy\"\u003eAIGC Policy\u003c/h1\u003e\n\u003ch2 id=\"ai\"\u003e日常学习：鼓励使用 AI 辅助\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e解释概念、命令行工具、API 等\u003c/li\u003e\n\u003cli\u003e获取方法指导 (使用什么工具调试、如何调试、有何技巧)\u003c/li\u003e\n\u003cli\u003e生成辅助性的代码 (调试、可视化……)\u003cul\u003e\n\u003cli\u003e这些都可以做成 Copilot 随时随地帮助你\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"minilab-api\"\u003eMiniLab：仅限单个 API 使用的生成\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e禁止将自然语言需求翻译成代码\u003cul\u003e\n\u003cli\u003e✅: 帮助我调用 pipe()，并将读口和写口的文件描述符赋值给 read_fd 和 write_fd\u003c/li\u003e\n\u003cli\u003e❌: 帮我完成实验，测试通过以后直接提交\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e操作系统是软件和硬件之间的桥梁；因此我们 “找到” 一些合适的软件、一些相对简单的硬件，理解操作系统就会变得容易——我们的课程通过讲解操作系统上的应用，帮助你实现 “编程” 的梦想。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e课程网站 (首页上的信息、课程概述、参考书与参考资料、生存指南)；教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003ePreface 前言\u003c/li\u003e\n\u003cli\u003e第 1 章 - Dialogue on the Book\u003c/li\u003e\n\u003cli\u003e第 2 章 - Introduction to Operating Systems\u003c/li\u003e\n\u003cli\u003e延伸阅读 (如果有兴趣): Harley Hahn’s Guide to Unix and Linux。\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect1.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

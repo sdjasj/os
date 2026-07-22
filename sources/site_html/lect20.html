@@ -1,0 +1,516 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> CPU、GPU 和 SIMT 编程模型
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">计算图</h2>
+<ul>
+<li>理解并行计算的关键</li>
+<li>(这是一个非常核心的概念)</li>
+</ul>
+<h2 id="_2">轻量化线程</h2>
+<ul>
+<li>Generators/coroutine</li>
+<li>Non-blocking I/O</li>
+<li>借助编译器的 trick 实现能并行执行的 “线程”: goroutine</li>
+</ul>
+<h2 id="_3">异步编程</h2>
+<ul>
+<li>Event-based concurrency</li>
+<li>Promise API 描述动态计算图</li>
+<li>async/await 语法糖</li>
+</ul>
+<h2 id="cpu">这些都是 CPU 上的并行/并发模型</h2>
+<ul>
+<li>是时候推翻 CPU 的统治了！</li>
+</ul>
+</div></div>
+
+<h2> 1. CPU 内部的并行编程
+ </h2>
+<div class="slideshow" name="what_is_cpu"><div>
+<h1 id="cpu">回顾：什么是 CPU？</h1>
+<h3 id="_1">无情的执行指令的机器</h3>
+<ul>
+<li>rv32ima_step, “顺序执行”</li>
+<li>但顺序执行只是一个精心维护的假象<ul>
+<li>“每个程序都是并行程序！”</li>
+</ul>
+</li>
+</ul>
+<h3 id="instruction-level-parallelism">现代处理器和 Instruction-level Parallelism</h3>
+<ul>
+<li>“逻辑门” 天然是并行的</li>
+<li>“逻辑门” 可以实现的功能<ul>
+<li>在一个周期中译码两条指令</li>
+<li>分析两条指令是否有数据依赖</li>
+<li>如果没有数据依赖，如果我们有 dual port register file 就能同时执行两条指令啦！</li>
+</ul>
+</li>
+<li>完全可以在 CPU 里内置动态数据流分析，实现乱序发射、按序提交<ul>
+<li>例子：BogoMips (/proc/cpuinfo)，每秒执行 <code>while (loops--) cpu_relax();</code> 的次数</li>
+<li>可以看看平时用的程序的 IPC 是多少？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/mini-rv32ima"><div><div>
+<h1 id="risc-v"><a href="/OS/demos/intro/mini-rv32ima">RISC-V 处理器模拟器</a></h1>
+<p>C 语言实现的 single-header RISC-V32IMA 系统模拟器 (项目源自<a href="https://github.com/cnlohr/mini-rv32ima">mini-rv32ima</a>)。因为有 M-Mode，这个模拟器可以运行几乎 “任意复杂” 的程序——甚至是没有 MMU 的 Linux。我们稍稍修改了这份代码，更好地体现《操作系统》课程的教学目标。</p>
+</div></div>
+</div>
+<div class="code-card" path="concurrency/cpu-ilp"><div><div>
+<h1 id="ilp"><a href="/OS/demos/concurrency/cpu-ilp">指令级并行 (ILP)</a></h1>
+<p>在树莓派 2 (Cortex-A7, 顺序双发射) 上用内联汇编构造不同数据依赖关系的指令序列（依赖链、独立整数、VFP 浮点、NEON SIMD、整数+浮点混合、独立乘法），通过 <code>perf stat</code> 测量每种模式下的 IPC (Instructions Per Cycle)，直观感受处理器如何利用指令级并行提升性能。</p>
+</div></div>
+</div>
+<div class="slideshow" name="cpu_implications"><div>
+<h1 id="instruction-level-parallelism">Instruction-level Parallelism 意味着什么？</h1>
+<h3 id="cpu">在单线程能效和性能之间，CPU 选择了后者</h3>
+<ul>
+<li>跑得越快，浪费得越多<ul>
+<li>每一个门电路的翻转都会产生<strong>热量</strong>
+</li>
+<li>CPU 里的 “编译器” (指令调度) 会消耗巨量的能量<ul>
+<li>这些能量使计算 “尽快完成”</li>
+<li>但并不等同于 “单位时间完成尽可能多的计算”</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="dark-silicon">直到进入 Dark Silicon “暗硅时代”</h3>
+<ul>
+<li>P (热功耗) = C V² f<ul>
+<li>“功耗墙”：纵使有更大的电路，热功耗限制了性能上限<ul>
+<li>~1995-2005，先进制程不断突破功耗墙，实现单核性能持续增长</li>
+</ul>
+</li>
+<li>墙 = 极限：频率墙、内存墙、I/O 墙……</li>
+<li>税 = overhead：存储税、网络税、计算税……</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="power_wall"><div>
+<h1 id="_1">面对功耗墙</h1>
+<h3 id="_2">单位面积上能反转的逻辑门是有限的！</h3>
+<ul>
+<li>如何压榨出更多的 performance/watt？</li>
+</ul>
+<h3 id="approach-i">Approach I: 让一条指令能处理更多的数据</h3>
+<ul>
+<li>SIMD (Single Instruction, Multiple Data)<ul>
+<li>“调度一条指令” 浪费的能量大致是定数<ul>
+<li>做一次加法消耗的能量甚至远不如调度 (队列操作、数据流分析、renaming、……)</li>
+<li>如果让一条指令能<strong>多做一些事</strong>，调度的代价就被分摊了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="approach-ii">Approach II: 用更多更简单的处理器</h3>
+<ul>
+<li>多处理器系统、异构多处理器<ul>
+<li>同等面积，处理器越简单，数量越多</li>
+<li>ARM big.LITTLE (2011); Intel P-cores/E-cores</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 1.1. 分摊指令调度的开销
+ </h3>
+<div class="slideshow" name="simd_intro"><div>
+<h1 id="single-instruction-multiple-data-simd">Single Instruction, Multiple Data (SIMD)</h1>
+<h2 id="_1">把一个大操作数分成几个小操作数</h2>
+<ul>
+<li>例子：把 64-bit 当成 4 个 integers，做 pairwise 乘法</li>
+<li>Intel MMX: MultiMedia eXtension (很有年代感的名字)<ul>
+<li>甚至为了展示 MMX 技术，随 CPU 附赠了<a href="https://www.bilibili.com/video/BV1sKszezEDi/">游戏</a>
+</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/mmx-cpu.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="simd_aside"><div>
+<h1 id="aside-simd">Aside: 编程中的 “SIMD”</h1>
+<h2 id="bitset">Bitset</h2>
+<ul>
+<li><code>(arr[x / 8] &gt;&gt; (x % 8)) &amp; 1</code></li>
+<li>lowbit: <code>(x &amp; -x) == (x &amp; (~x + 1))</code>
+</li>
+</ul>
+<h2 id="popcount">popcount()</h2>
+<div class="codehilite"><pre><span></span><code><span class="kr">inline</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">popcount</span><span class="p">(</span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">x</span><span class="p">){</span>
+<span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x55555555</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">((</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xaaaaaaaa</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x33333333</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">((</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xcccccccc</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x0f0f0f0f</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">((</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xf0f0f0f0</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">4</span><span class="p">);</span>
+<span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x00ff00ff</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">((</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0xff00ff00</span><span class="p">)</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span>
+<span class="w">    </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x0000ffff</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">(</span><span class="n">x</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="simd_registers"><div>
+<h1 id="packed-registers">引入 Packed Registers</h1>
+<h3 id="_1">增加一些 “超大” 的寄存器</h3>
+<ul>
+<li>64-bit “mm” 寄存器</li>
+<li>57 条指令实现 “packed register” 操作 (<a href="https://jyywiki.cn/OS/manuals/mmx.pdf">手册</a>)</li>
+</ul>
+<p><img alt="" src="static/img/mmx-registers.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="simd_evolution"><div>
+<h1 id="_1">寄存器越长，调度代价就被摊薄得越多</h1>
+<h2 id="mmx-sse-avx-avx-512">MMX → SSE → AVX → AVX-512</h2>
+<ul>
+<li>
+<code>%mm</code> (64-bit) → <code>%xmm</code> → <code>%ymm</code> → <code>%zmm</code> (512-bit, AVX-512)</li>
+<li>直到碰上内存墙/功耗墙 (AVX-512 已经达到热密度极限)</li>
+</ul>
+<h2 id="_2">支持更多的数据类型</h2>
+<ul>
+<li>int8/16/32 → float32 → float64</li>
+</ul>
+<h2 id="_3">支持更多运算 (三操作数模式)</h2>
+<ul>
+<li>Shuffle: <code>c[i] = a[b[i]]</code>
+</li>
+<li>FMA: <code>a * b + c</code>，一条指令完成</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="simd_limitation"><div>
+<h1 id="simd">SIMD: 没能完全解决问题</h1>
+<h3 id="simd-cpu">SIMD 指令依然是在 CPU 里调度的</h3>
+<ul>
+<li>参与到缓存和动态流水线中，和其他类型的指令格格不入</li>
+<li>抢缓存 (这也是动态调度)、抢功耗</li>
+</ul>
+<h3 id="_1">能让指令调度的代价近乎归零吗？</h3>
+<ul>
+<li>失败的尝试：Very Long Instruction Word (VLIW)<ul>
+<li>完全消灭动态流水线，编译器扛下所有，生成静态指令调度</li>
+<li>但 LLM 时代，它可能又要复活了</li>
+</ul>
+</li>
+<li>成功的尝试：简化指令调度，改成横向扩展<ul>
+<li>单个大 CPU → 多个并行小 CPU</li>
+<li>还可以更小吗？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 改变人类命运的另一条时间线
+ </h2>
+<div class="slideshow" name="game_console"><div>
+<h1 id="magnavox-odyssey-1972">Magnavox Odyssey (1972)</h1>
+<h2 id="_1">一次极为大胆的尝试</h2>
+<ul>
+<li>没有声音，画面都只是光点 (Ping Pong)</li>
+</ul>
+<p><img alt="" src="static/img/magnavox-odyssey.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="draw_graphics"><div>
+<h1 id="_1">游戏机遇到的性能问题</h1>
+<h2 id="cpu">CPU 无法根据 “图形场景描述” 完成图形绘制</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">H</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">W</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">x</span><span class="p">)</span>
+<span class="w">        </span><span class="n">putchar</span><span class="p">(</span><span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="sc">'*'</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="sc">' '</span><span class="p">);</span>
+<span class="w">    </span><span class="n">putchar</span><span class="p">(</span><span class="sc">'\n'</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>对 f(i, j) 的计算是 embarrassingly parallel 的 (例如 Mandelbrot Set)</li>
+</ul>
+<h2 id="1983">时间回到 1983 年</h2>
+<ul>
+<li>Nintendo Entertainment System (NES)<ul>
+<li>MOS 6502 @ 1.79Mhz; IPC ≈ 0.43</li>
+<li>屏幕共有 256 x 240 = 61K 像素 (64 色)</li>
+<li>60FPS → 10K 条指令完成 61K 像素的渲染</li>
+</ul>
+</li>
+<li>Legend of Zelda (1986)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="nes_ppu"><div>
+<h1 id="nes">NES 的图形描述</h1>
+<h2 id="_1">“场景描述”：数据结构</h2>
+<ul>
+<li>以 8 x 8 的 “贴块” (tile) 为绘制的基本单位</li>
+<li>Tile ROM + Tile Map (Name Tables) + Attribute Tables</li>
+<li>背景卷轴 + 动态前景 (sprites)，和无数的编程 tricks</li>
+</ul>
+<p><img alt="" src="static/img/nes-ppu.png"></p>
+</div></div>
+
+<div class="slideshow" name="nes_sprite"><div>
+<h1 id="nes">NES 动态前景渲染</h1>
+<h2 id="sprite-x-y-tile-attr-256-byte-sprite-ram-64">Sprite = (x, y, tile, attr), 256-byte Sprite RAM (64 个)</h2>
+<div class="codehilite"><pre><span></span><code>76543210
+||||||||
+||||||++- Palette
+|||+++--- Unimplemented
+||+------ Priority
+|+------- Flip horizontally
++-------- Flip vertically
+</code></pre></div>
+
+<p><img alt="" src="static/img/nes-sprite.png"></p>
+</div></div>
+
+<div class="slideshow" name="massive_parallelism"><div>
+<h1 id="ppu">PPU 中的静态渲染管线</h1>
+<h2 id="_1">我们对每一个像素做的事情是一样的</h2>
+<ul>
+<li>依次计算出背景像素、Sprite 像素的颜色，然后合成<ul>
+<li>这些概念一直用到今天 (z-buffer)</li>
+</ul>
+</li>
+<li>这就是早期的 “fixed-function pipeline GPU”</li>
+<li>每个 GPU “线程” 都在做完全相同的动作</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="c1">// 逐行扫描</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">lines</span><span class="p">;</span><span class="w"> </span><span class="n">row</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">    </span><span class="c1">// 我们可以作弊 😊</span>
+<span class="w">    </span><span class="cp">#pragma omp parallel for</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">64</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">struct</span><span class="w"> </span><span class="nc">sprite</span><span class="w"> </span><span class="o">*</span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">SPRAM</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">s</span><span class="o">-&gt;</span><span class="n">y</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">s</span><span class="o">-&gt;</span><span class="n">y</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">8</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// 绘制 sprite</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">display_row</span><span class="p">(</span><span class="n">row</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="rendering_pipeline"><div>
+<h1 id="ppu-2d">从 PPU 到 2D 图形渲染管线</h1>
+<h2 id="_1">扩展 “场景描述” 的数据结构</h2>
+<ul>
+<li>2D 图形：动态拼凑图片 (texture) 实现场景的绘制<ul>
+<li>依然是 “固定循环”，执行完全相同的逻辑</li>
+</ul>
+</li>
+<li>Game Boy Advance 的 <a href="https://www.bilibili.com/video/BV1bT4y1g75x/">V-Rally 3</a>
+</li>
+</ul>
+<p><img alt="" src="static/img/v-rally.png"></p>
+</div></div>
+
+<div class="slideshow" name="from_2d_to_3d"><div>
+<h1 id="2d-3d">从 2D 到 3D</h1>
+<h2 id="_1">继续扩展 “场景描述” 的数据结构</h2>
+<ul>
+<li>Vertex, Face, Texture, Material, Light, Camera<ul>
+<li>三角剖分定理，因此你看到的一切都是三角形</li>
+<li>3D 空间中的各种变换 (translation, camera projection, …)，在 4D 齐次坐标下是线性的</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/camera-projection.png"></p>
+</div></div>
+
+<div class="slideshow" name="early_3d_games"><div>
+<h1 id="3d">一些早期的 3D 游戏</h1>
+<h2 id="3d_1">只要能画线，就可以有 3D 游戏！</h2>
+<p><img alt="" src="static/img/battlezone.png"></p>
+</div></div>
+
+<div class="slideshow" name="pipeline_3d"><div>
+<h1 id="2d-3d-contd">从 2D 到 3D (cont’d)</h1>
+<h2 id="3d">引入 3D 需要修正许多问题</h2>
+<ul>
+<li>例子：2D 贴图失真<ul>
+<li>2D 引擎模拟 3D，顶点是正确的，但因为缺少深度信息，affine 贴图是 “视觉错误” 的</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/weirdtextures.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="programmable_pipeline"><div>
+<h1 id="_1">从数据结构到编程语言</h1>
+<h2 id="shader">可编程的 “着色器” (shader)</h2>
+<ul>
+<li>Vertext shader: 可以编程修改几何形状<ul>
+<li>Killer application: 实现 “扭曲”，例如水面的波纹、毛发的摆动</li>
+</ul>
+</li>
+<li>Fragment (Pixel) shader: 可以编程修改颜色<ul>
+<li>Normal mapping (法线贴图)：远距离观察时 “骗过” 光照计算</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/normal-mapping.png"></p>
+</div></div>
+
+<div class="code-card" path="concurrency/gl-shader"><div><div>
+<h1 id="opengl-shader"><a href="/OS/demos/concurrency/gl-shader">OpenGL Shader</a></h1>
+<p>我们可以用 “套娃” 的方式在程序中嵌入一个 GLSL 的 shader program。这会经历一个完整的编译流程，并最终作用到对应的像素上。</p>
+</div></div>
+</div>
+<h2> 3. GPGPU 与 CUDA
+ </h2>
+<div class="slideshow" name="gpu_hack"><div>
+<h1 id="hacking-shader">Hacking “可编程” Shader</h1>
+<ul>
+<li>“<a href="https://dl.acm.org/doi/pdf/10.1145/582034.582089">Fast matrix multiplies using graphics hardware</a>” (SC‘01)<ul>
+<li>外积分解: AB = ∑ A_{<em>,k} B_{k,</em>}</li>
+<li>试图把各种计算问题转换为 “图像” 的计算 (物理模拟、天气预报……)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/gpu-hack.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="cuda_threads"><div>
+<h1 id="shader-program">什么是 Shader Program？</h1>
+<h2 id="vertex-pixel">为一大堆东西 (vertex, pixel, …)，执行同一段代码</h2>
+<ul>
+<li>绕了一圈，又回到《操作系统》讲并发的第一课了</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">__device__</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="o">*</span><span class="n">screen</span><span class="p">;</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_kernel</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">col</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">color</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="n">col</span><span class="p">);</span><span class="w">  </span><span class="c1">// 任意 C/C++ 代码</span>
+<span class="w">    </span><span class="n">screen</span><span class="p">[</span><span class="n">row</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1920</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">col</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">color</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">row</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">1080</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">row</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">col</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">col</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">1920</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">col</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">spawn</span><span class="p">(</span><span class="n">T_kernel</span><span class="p">,</span><span class="w"> </span><span class="n">row</span><span class="p">,</span><span class="w"> </span><span class="n">col</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>在 GPU 上启动 2,073,600 个线程<ul>
+<li>并行执行，允许访问 shared memory</li>
+<li>恭喜！你发明了 CUDA (的 programming model)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="heterogeneous"><div>
+<h1 id="_1">改变人类命运的时间线：复盘</h1>
+<h2 id="_2">这个 “程序” 有什么特别的地方？</h2>
+<ul>
+<li>如果它在多处理器系统上执行<ul>
+<li>CPU = rv32ima_step 里的完整取指令、译码、执行单元</li>
+<li>这样每个 CPU 就可以执行完全不同的程序</li>
+</ul>
+</li>
+<li>但这<strong>不是我们的需求</strong>！<ul>
+<li>有没有可能为 CPU 只保留寄存器和运算器 (并行执行的必要条件)</li>
+<li>由同一个取指令/译码单元控制，总是执行相同的指令，实现<strong>极致的节省</strong>？</li>
+</ul>
+</li>
+</ul>
+<h2 id="simt">这就是 SIMT 模型</h2>
+<ul>
+<li>Single Instruction, Multiple Threads</li>
+<li>可以让一个 “CPU” 管理若干 T_kernel，并且只有一个 Program Counter</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="shared_memory_trouble"><div>
+<h1 id="_1">唯一的麻烦</h1>
+<h3 id="shared-memory-cpu">Shared-memory CPU 很难实现</h3>
+<ul>
+<li>GeForce 8800 (首个 CUDA GPU, G80 2006, 65nm)<ul>
+<li>128 cores, v.s. Intel 桌面 CPU: 2C4T</li>
+<li>The first GPU to support C</li>
+<li>The first GPU to utilize a scalar thread processor, eliminating the need for programmers to manually manage vector registers<ul>
+<li><a href="https://www.nvidia.com/content/PDF/fermi_white_papers/NVIDIA_Fermi_Compute_Architecture_Whitepaper.pdf">Fermi whitepaper</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>RTX 5080: 10,752 CUDA Cores<ul>
+<li>这是怎么做到的？</li>
+<li>它们也 (可以) 是 shared memory 啊！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="simt"><div>
+<h1 id="simt">让我们尝试 “单步执行” SIMT 程序</h1>
+<h2 id="pc-program-counter">一个 PC (program counter) 管多个线程</h2>
+<ul>
+<li>假设 (3, 0), (3, 1), … (3, 31) 都被分配到了同一个 core 上<ul>
+<li>“Thread warp” 线程束</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">screen</span><span class="p">[</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1920</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">color_0</span><span class="p">;</span>
+<span class="n">screen</span><span class="p">[</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1920</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">color_1</span><span class="p">;</span>
+<span class="n">screen</span><span class="p">[</span><span class="mi">3</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1920</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">2</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">color_2</span><span class="p">;</span>
+<span class="p">...</span>
+</code></pre></div>
+
+<ul>
+<li>row, col, color 都在独立的寄存器里</li>
+<li>Memory coalescing 就神奇地发生了！<ul>
+<li>这个 “thread warp” 好像做了一个 128-byte 的 store</li>
+<li>实际上，一个 Nvidia Stream Multiprocessor 可以保存多个 (32) warps，load/store stall 可以换另一个 😊</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="cuda_difficulty"><div>
+<h1 id="cuda">当然，这也意味着 CUDA 程序很难写</h1>
+<div class="codehilite"><pre><span></span><code><span class="n">map</span><span class="p">[</span><span class="n">row</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1920</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">col</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">;</span>
+<span class="n">map</span><span class="p">[</span><span class="n">row</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">col</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1080</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">t</span><span class="p">;</span><span class="w"> </span><span class="c1">// 等价的写法，可能导致性能大幅下降</span>
+</code></pre></div>
+
+<p><img alt="" src="static/img/simt.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="cuda_benefit"><div>
+<h1 id="_1">难写，意味着有收益</h1>
+<h3 id="25600-x-25600-mandelbrot-set">渲染 25600 x 25600 的 Mandelbrot Set</h3>
+<ul>
+<li>Ryzen 5 9600X: 25.1s @ 65Watt</li>
+<li>RTX 4060Ti (16GB): 6.1s @ 42Watt<ul>
+<li>这已经是对 CUDA “不太友好” 的程序了<ul>
+<li>不确定的 while 循环，最慢的那个会拖慢整个 thread warp</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="gpu">我们甚至可以直接阅读 GPU 上的代码</h3>
+<ul>
+<li>经过编译器优化，比大家想象得要短 😊</li>
+<li>(GPU 并不擅长执行数据中心中的业务逻辑)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/mandelbrot-cu"><div><div>
+<h1 id="cuda-mandelbrot-set"><a href="/OS/demos/concurrency/mandelbrot-cu">CUDA 实现的 Mandelbrot Set</a></h1>
+<p>和 “原版” C 代码对比，实际计算的 mandelbrot 函数完全没有任何修改，只是增加了 “<strong>kernel</strong>” 的修饰。此外，worker 线程被 mandelbrot_kernel 函数取代，这个函数在 GPU 上运行，通过 blockIdx, blockDim 和 threadIdx 计算出线程对应的像素坐标。没错，CUDA 是另一种 “启动百千万个轻量级线程” 的机制。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>人类世界的需求一直是驱动技术革新的原动力。回头看历史，波澜壮阔的旅程又是显得那么理所应当——从 CPU 到领域加速器，再变得 “通用” 一点，就是 GPGPU。也许有些出乎 Nvidia 意料的是，CUDA 没有在大家看好的科学计算领域掀起革命，却引领了人工智能的时代。回望历史、展望未来，同学们将在人类历史上找到自己的位置。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e CPU、GPU 和 SIMT 编程模型\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e计算图\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e理解并行计算的关键\u003c/li\u003e\n\u003cli\u003e(这是一个非常核心的概念)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e轻量化线程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eGenerators/coroutine\u003c/li\u003e\n\u003cli\u003eNon-blocking I/O\u003c/li\u003e\n\u003cli\u003e借助编译器的 trick 实现能并行执行的 “线程”: goroutine\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e异步编程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eEvent-based concurrency\u003c/li\u003e\n\u003cli\u003ePromise API 描述动态计算图\u003c/li\u003e\n\u003cli\u003easync/await 语法糖\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"cpu\"\u003e这些都是 CPU 上的并行/并发模型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e是时候推翻 CPU 的统治了！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. CPU 内部的并行编程\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"what_is_cpu\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"cpu\"\u003e回顾：什么是 CPU？\u003c/h1\u003e\n\u003ch3 id=\"_1\"\u003e无情的执行指令的机器\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003erv32ima_step, “顺序执行”\u003c/li\u003e\n\u003cli\u003e但顺序执行只是一个精心维护的假象\u003cul\u003e\n\u003cli\u003e“每个程序都是并行程序！”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch3 id=\"instruction-level-parallelism\"\u003e现代处理器和 Instruction-level Parallelism\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e“逻辑门” 天然是并行的\u003c/li\u003e\n\u003cli\u003e“逻辑门” 可以实现的功能\u003cul\u003e\n\u003cli\u003e在一个周期中译码两条指令\u003c/li\u003e\n\u003cli\u003e分析两条指令是否有数据依赖\u003c/li\u003e\n\u003cli\u003e如果没有数据依赖，如果我们有 dual port register file 就能同时执行两条指令啦！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e完全可以在 CPU 里内置动态数据流分析，实现乱序发射、按序提交\u003cul\u003e\n\u003cli\u003e例子：BogoMips (/proc/cpuinfo)，每秒执行 \u003ccode\u003ewhile (loops--) cpu_relax();\u003c/code\u003e 的次数\u003c/li\u003e\n\u003cli\u003e可以看看平时用的程序的 IPC 是多少？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/mini-rv32ima\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"risc-v\"\u003e\u003ca href=\"/OS/demos/intro/mini-rv32ima\"\u003eRISC-V 处理器模拟器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eC 语言实现的 single-header RISC-V32IMA 系统模拟器 (项目源自\u003ca href=\"https://github.com/cnlohr/mini-rv32ima\"\u003emini-rv32ima\u003c/a\u003e)。因为有 M-Mode，这个模拟器可以运行几乎 “任意复杂” 的程序——甚至是没有 MMU 的 Linux。我们稍稍修改了这份代码，更好地体现《操作系统》课程的教学目标。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"code-card\" path=\"concurrency/cpu-ilp\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"ilp\"\u003e\u003ca href=\"/OS/demos/concurrency/cpu-ilp\"\u003e指令级并行 (ILP)\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在树莓派 2 (Cortex-A7, 顺序双发射) 上用内联汇编构造不同数据依赖关系的指令序列（依赖链、独立整数、VFP 浮点、NEON SIMD、整数+浮点混合、独立乘法），通过 \u003ccode\u003eperf stat\u003c/code\u003e 测量每种模式下的 IPC (Instructions Per Cycle)，直观感受处理器如何利用指令级并行提升性能。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"cpu_implications\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"instruction-level-parallelism\"\u003eInstruction-level Parallelism 意味着什么？\u003c/h1\u003e\n\u003ch3 id=\"cpu\"\u003e在单线程能效和性能之间，CPU 选择了后者\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e跑得越快，浪费得越多\u003cul\u003e\n\u003cli\u003e每一个门电路的翻转都会产生\u003cstrong\u003e热量\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003eCPU 里的 “编译器” (指令调度) 会消耗巨量的能量\u003cul\u003e\n\u003cli\u003e这些能量使计算 “尽快完成”\u003c/li\u003e\n\u003cli\u003e但并不等同于 “单位时间完成尽可能多的计算”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch3 id=\"dark-silicon\"\u003e直到进入 Dark Silicon “暗硅时代”\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003eP (热功耗) = C V² f\u003cul\u003e\n\u003cli\u003e“功耗墙”：纵使有更大的电路，热功耗限制了性能上限\u003cul\u003e\n\u003cli\u003e~1995-2005，先进制程不断突破功耗墙，实现单核性能持续增长\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e墙 = 极限：频率墙、内存墙、I/O 墙……\u003c/li\u003e\n\u003cli\u003e税 = overhead：存储税、网络税、计算税……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"power_wall\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e面对功耗墙\u003c/h1\u003e\n\u003ch3 id=\"_2\"\u003e单位面积上能反转的逻辑门是有限的！\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e如何压榨出更多的 performance/watt？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch3 id=\"approach-i\"\u003eApproach I: 让一条指令能处理更多的数据\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003eSIMD (Single Instruction, Multiple Data)\u003cul\u003e\n\u003cli\u003e“调度一条指令” 浪费的能量大致是定数\u003cul\u003e\n\u003cli\u003e做一次加法消耗的能量甚至远不如调度 (队列操作、数据流分析、renaming、……)\u003c/li\u003e\n\u003cli\u003e如果让一条指令能\u003cstrong\u003e多做一些事\u003c/strong\u003e，调度的代价就被分摊了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch3 id=\"approach-ii\"\u003eApproach II: 用更多更简单的处理器\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e多处理器系统、异构多处理器\u003cul\u003e\n\u003cli\u003e同等面积，处理器越简单，数量越多\u003c/li\u003e\n\u003cli\u003eARM big.LITTLE (2011); Intel P-cores/E-cores\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. 分摊指令调度的开销\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"simd_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"single-instruction-multiple-data-simd\"\u003eSingle Instruction, Multiple Data (SIMD)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e把一个大操作数分成几个小操作数\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例子：把 64-bit 当成 4 个 integers，做 pairwise 乘法\u003c/li\u003e\n\u003cli\u003eIntel MMX: MultiMedia eXtension (很有年代感的名字)\u003cul\u003e\n\u003cli\u003e甚至为了展示 MMX 技术，随 CPU 附赠了\u003ca href=\"https://www.bilibili.com/video/BV1sKszezEDi/\"\u003e游戏\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mmx-cpu.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"simd_aside\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aside-simd\"\u003eAside: 编程中的 “SIMD”\u003c/h1\u003e\n\u003ch2 id=\"bitset\"\u003eBitset\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ccode\u003e(arr[x / 8] \u0026gt;\u0026gt; (x % 8)) \u0026amp; 1\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003elowbit: \u003ccode\u003e(x \u0026amp; -x) == (x \u0026amp; (~x + 1))\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"popcount\"\u003epopcount()\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kr\"\u003einline\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003epopcount\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e){\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x55555555\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0xaaaaaaaa\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x33333333\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0xcccccccc\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x0f0f0f0f\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0xf0f0f0f0\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e4\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x00ff00ff\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0xff00ff00\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e8\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x0000ffff\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e16\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"simd_registers\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"packed-registers\"\u003e引入 Packed Registers\u003c/h1\u003e\n\u003ch3 id=\"_1\"\u003e增加一些 “超大” 的寄存器\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e64-bit “mm” 寄存器\u003c/li\u003e\n\u003cli\u003e57 条指令实现 “packed register” 操作 (\u003ca href=\"https://jyywiki.cn/OS/manuals/mmx.pdf\"\u003e手册\u003c/a\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mmx-registers.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"simd_evolution\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e寄存器越长，调度代价就被摊薄得越多\u003c/h1\u003e\n\u003ch2 id=\"mmx-sse-avx-avx-512\"\u003eMMX → SSE → AVX → AVX-512\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003e%mm\u003c/code\u003e (64-bit) → \u003ccode\u003e%xmm\u003c/code\u003e → \u003ccode\u003e%ymm\u003c/code\u003e → \u003ccode\u003e%zmm\u003c/code\u003e (512-bit, AVX-512)\u003c/li\u003e\n\u003cli\u003e直到碰上内存墙/功耗墙 (AVX-512 已经达到热密度极限)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e支持更多的数据类型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eint8/16/32 → float32 → float64\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e支持更多运算 (三操作数模式)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eShuffle: \u003ccode\u003ec[i] = a[b[i]]\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eFMA: \u003ccode\u003ea * b + c\u003c/code\u003e，一条指令完成\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"simd_limitation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"simd\"\u003eSIMD: 没能完全解决问题\u003c/h1\u003e\n\u003ch3 id=\"simd-cpu\"\u003eSIMD 指令依然是在 CPU 里调度的\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e参与到缓存和动态流水线中，和其他类型的指令格格不入\u003c/li\u003e\n\u003cli\u003e抢缓存 (这也是动态调度)、抢功耗\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch3 id=\"_1\"\u003e能让指令调度的代价近乎归零吗？\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e失败的尝试：Very Long Instruction Word (VLIW)\u003cul\u003e\n\u003cli\u003e完全消灭动态流水线，编译器扛下所有，生成静态指令调度\u003c/li\u003e\n\u003cli\u003e但 LLM 时代，它可能又要复活了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e成功的尝试：简化指令调度，改成横向扩展\u003cul\u003e\n\u003cli\u003e单个大 CPU → 多个并行小 CPU\u003c/li\u003e\n\u003cli\u003e还可以更小吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 改变人类命运的另一条时间线\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"game_console\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"magnavox-odyssey-1972\"\u003eMagnavox Odyssey (1972)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e一次极为大胆的尝试\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e没有声音，画面都只是光点 (Ping Pong)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/magnavox-odyssey.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"draw_graphics\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e游戏机遇到的性能问题\u003c/h1\u003e\n\u003ch2 id=\"cpu\"\u003eCPU 无法根据 “图形场景描述” 完成图形绘制\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eH\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eW\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003eputchar\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e?\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sc\"\u003e'*'\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sc\"\u003e' '\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eputchar\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"sc\"\u003e'\\n'\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e对 f(i, j) 的计算是 embarrassingly parallel 的 (例如 Mandelbrot Set)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"1983\"\u003e时间回到 1983 年\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eNintendo Entertainment System (NES)\u003cul\u003e\n\u003cli\u003eMOS 6502 @ 1.79Mhz; IPC ≈ 0.43\u003c/li\u003e\n\u003cli\u003e屏幕共有 256 x 240 = 61K 像素 (64 色)\u003c/li\u003e\n\u003cli\u003e60FPS → 10K 条指令完成 61K 像素的渲染\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eLegend of Zelda (1986)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"nes_ppu\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"nes\"\u003eNES 的图形描述\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“场景描述”：数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e以 8 x 8 的 “贴块” (tile) 为绘制的基本单位\u003c/li\u003e\n\u003cli\u003eTile ROM + Tile Map (Name Tables) + Attribute Tables\u003c/li\u003e\n\u003cli\u003e背景卷轴 + 动态前景 (sprites)，和无数的编程 tricks\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/nes-ppu.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"nes_sprite\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"nes\"\u003eNES 动态前景渲染\u003c/h1\u003e\n\u003ch2 id=\"sprite-x-y-tile-attr-256-byte-sprite-ram-64\"\u003eSprite = (x, y, tile, attr), 256-byte Sprite RAM (64 个)\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e76543210\n||||||||\n||||||++- Palette\n|||+++--- Unimplemented\n||+------ Priority\n|+------- Flip horizontally\n+-------- Flip vertically\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/nes-sprite.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"massive_parallelism\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ppu\"\u003ePPU 中的静态渲染管线\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e我们对每一个像素做的事情是一样的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e依次计算出背景像素、Sprite 像素的颜色，然后合成\u003cul\u003e\n\u003cli\u003e这些概念一直用到今天 (z-buffer)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e这就是早期的 “fixed-function pipeline GPU”\u003c/li\u003e\n\u003cli\u003e每个 GPU “线程” 都在做完全相同的动作\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"c1\"\u003e// 逐行扫描\u003c/span\u003e\n\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elines\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 我们可以作弊 😊\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"cp\"\u003e#pragma omp parallel for\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e64\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003esprite\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003es\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eSPRAM\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003es\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003es\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e8\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 绘制 sprite\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edisplay_row\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"rendering_pipeline\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ppu-2d\"\u003e从 PPU 到 2D 图形渲染管线\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e扩展 “场景描述” 的数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e2D 图形：动态拼凑图片 (texture) 实现场景的绘制\u003cul\u003e\n\u003cli\u003e依然是 “固定循环”，执行完全相同的逻辑\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eGame Boy Advance 的 \u003ca href=\"https://www.bilibili.com/video/BV1bT4y1g75x/\"\u003eV-Rally 3\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/v-rally.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"from_2d_to_3d\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"2d-3d\"\u003e从 2D 到 3D\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e继续扩展 “场景描述” 的数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eVertex, Face, Texture, Material, Light, Camera\u003cul\u003e\n\u003cli\u003e三角剖分定理，因此你看到的一切都是三角形\u003c/li\u003e\n\u003cli\u003e3D 空间中的各种变换 (translation, camera projection, …)，在 4D 齐次坐标下是线性的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/camera-projection.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"early_3d_games\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"3d\"\u003e一些早期的 3D 游戏\u003c/h1\u003e\n\u003ch2 id=\"3d_1\"\u003e只要能画线，就可以有 3D 游戏！\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/battlezone.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"pipeline_3d\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"2d-3d-contd\"\u003e从 2D 到 3D (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"3d\"\u003e引入 3D 需要修正许多问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例子：2D 贴图失真\u003cul\u003e\n\u003cli\u003e2D 引擎模拟 3D，顶点是正确的，但因为缺少深度信息，affine 贴图是 “视觉错误” 的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/weirdtextures.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"programmable_pipeline\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e从数据结构到编程语言\u003c/h1\u003e\n\u003ch2 id=\"shader\"\u003e可编程的 “着色器” (shader)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eVertext shader: 可以编程修改几何形状\u003cul\u003e\n\u003cli\u003eKiller application: 实现 “扭曲”，例如水面的波纹、毛发的摆动\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eFragment (Pixel) shader: 可以编程修改颜色\u003cul\u003e\n\u003cli\u003eNormal mapping (法线贴图)：远距离观察时 “骗过” 光照计算\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/normal-mapping.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/gl-shader\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"opengl-shader\"\u003e\u003ca href=\"/OS/demos/concurrency/gl-shader\"\u003eOpenGL Shader\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以用 “套娃” 的方式在程序中嵌入一个 GLSL 的 shader program。这会经历一个完整的编译流程，并最终作用到对应的像素上。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 3. GPGPU 与 CUDA\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"gpu_hack\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hacking-shader\"\u003eHacking “可编程” Shader\u003c/h1\u003e\n\u003cul\u003e\n\u003cli\u003e“\u003ca href=\"https://dl.acm.org/doi/pdf/10.1145/582034.582089\"\u003eFast matrix multiplies using graphics hardware\u003c/a\u003e” (SC‘01)\u003cul\u003e\n\u003cli\u003e外积分解: AB = ∑ A_{\u003cem\u003e,k} B_{k,\u003c/em\u003e}\u003c/li\u003e\n\u003cli\u003e试图把各种计算问题转换为 “图像” 的计算 (物理模拟、天气预报……)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/gpu-hack.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cuda_threads\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"shader-program\"\u003e什么是 Shader Program？\u003c/h1\u003e\n\u003ch2 id=\"vertex-pixel\"\u003e为一大堆东西 (vertex, pixel, …)，执行同一段代码\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e绕了一圈，又回到《操作系统》讲并发的第一课了\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003e__device__\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003escreen\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_kernel\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecolor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 任意 C/C++ 代码\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003escreen\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1920\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecolor\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1080\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1920\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_kernel\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e在 GPU 上启动 2,073,600 个线程\u003cul\u003e\n\u003cli\u003e并行执行，允许访问 shared memory\u003c/li\u003e\n\u003cli\u003e恭喜！你发明了 CUDA (的 programming model)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"heterogeneous\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e改变人类命运的时间线：复盘\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e这个 “程序” 有什么特别的地方？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果它在多处理器系统上执行\u003cul\u003e\n\u003cli\u003eCPU = rv32ima_step 里的完整取指令、译码、执行单元\u003c/li\u003e\n\u003cli\u003e这样每个 CPU 就可以执行完全不同的程序\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e但这\u003cstrong\u003e不是我们的需求\u003c/strong\u003e！\u003cul\u003e\n\u003cli\u003e有没有可能为 CPU 只保留寄存器和运算器 (并行执行的必要条件)\u003c/li\u003e\n\u003cli\u003e由同一个取指令/译码单元控制，总是执行相同的指令，实现\u003cstrong\u003e极致的节省\u003c/strong\u003e？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"simt\"\u003e这就是 SIMT 模型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSingle Instruction, Multiple Threads\u003c/li\u003e\n\u003cli\u003e可以让一个 “CPU” 管理若干 T_kernel，并且只有一个 Program Counter\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"shared_memory_trouble\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e唯一的麻烦\u003c/h1\u003e\n\u003ch3 id=\"shared-memory-cpu\"\u003eShared-memory CPU 很难实现\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003eGeForce 8800 (首个 CUDA GPU, G80 2006, 65nm)\u003cul\u003e\n\u003cli\u003e128 cores, v.s. Intel 桌面 CPU: 2C4T\u003c/li\u003e\n\u003cli\u003eThe first GPU to support C\u003c/li\u003e\n\u003cli\u003eThe first GPU to utilize a scalar thread processor, eliminating the need for programmers to manually manage vector registers\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://www.nvidia.com/content/PDF/fermi_white_papers/NVIDIA_Fermi_Compute_Architecture_Whitepaper.pdf\"\u003eFermi whitepaper\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eRTX 5080: 10,752 CUDA Cores\u003cul\u003e\n\u003cli\u003e这是怎么做到的？\u003c/li\u003e\n\u003cli\u003e它们也 (可以) 是 shared memory 啊！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"simt\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"simt\"\u003e让我们尝试 “单步执行” SIMT 程序\u003c/h1\u003e\n\u003ch2 id=\"pc-program-counter\"\u003e一个 PC (program counter) 管多个线程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e假设 (3, 0), (3, 1), … (3, 31) 都被分配到了同一个 core 上\u003cul\u003e\n\u003cli\u003e“Thread warp” 线程束\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003escreen\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1920\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecolor_0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003escreen\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1920\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecolor_1\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003escreen\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1920\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecolor_2\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003erow, col, color 都在独立的寄存器里\u003c/li\u003e\n\u003cli\u003eMemory coalescing 就神奇地发生了！\u003cul\u003e\n\u003cli\u003e这个 “thread warp” 好像做了一个 128-byte 的 store\u003c/li\u003e\n\u003cli\u003e实际上，一个 Nvidia Stream Multiprocessor 可以保存多个 (32) warps，load/store stall 可以换另一个 😊\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cuda_difficulty\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"cuda\"\u003e当然，这也意味着 CUDA 程序很难写\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003emap\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1920\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003emap\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003erow\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecol\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1080\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 等价的写法，可能导致性能大幅下降\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/simt.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cuda_benefit\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e难写，意味着有收益\u003c/h1\u003e\n\u003ch3 id=\"25600-x-25600-mandelbrot-set\"\u003e渲染 25600 x 25600 的 Mandelbrot Set\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003eRyzen 5 9600X: 25.1s @ 65Watt\u003c/li\u003e\n\u003cli\u003eRTX 4060Ti (16GB): 6.1s @ 42Watt\u003cul\u003e\n\u003cli\u003e这已经是对 CUDA “不太友好” 的程序了\u003cul\u003e\n\u003cli\u003e不确定的 while 循环，最慢的那个会拖慢整个 thread warp\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch3 id=\"gpu\"\u003e我们甚至可以直接阅读 GPU 上的代码\u003c/h3\u003e\n\u003cul\u003e\n\u003cli\u003e经过编译器优化，比大家想象得要短 😊\u003c/li\u003e\n\u003cli\u003e(GPU 并不擅长执行数据中心中的业务逻辑)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/mandelbrot-cu\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"cuda-mandelbrot-set\"\u003e\u003ca href=\"/OS/demos/concurrency/mandelbrot-cu\"\u003eCUDA 实现的 Mandelbrot Set\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e和 “原版” C 代码对比，实际计算的 mandelbrot 函数完全没有任何修改，只是增加了 “\u003cstrong\u003ekernel\u003c/strong\u003e” 的修饰。此外，worker 线程被 mandelbrot_kernel 函数取代，这个函数在 GPU 上运行，通过 blockIdx, blockDim 和 threadIdx 计算出线程对应的像素坐标。没错，CUDA 是另一种 “启动百千万个轻量级线程” 的机制。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e人类世界的需求一直是驱动技术革新的原动力。回头看历史，波澜壮阔的旅程又是显得那么理所应当——从 CPU 到领域加速器，再变得 “通用” 一点，就是 GPGPU。也许有些出乎 Nvidia 意料的是，CUDA 没有在大家看好的科学计算领域掀起革命，却引领了人工智能的时代。回望历史、展望未来，同学们将在人类历史上找到自己的位置。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect20.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

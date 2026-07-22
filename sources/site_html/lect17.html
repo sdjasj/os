@@ -1,0 +1,480 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 并发 Bug 和应对
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="430">本周四 (4.30) 闭卷期中测验</h2>
+<ul>
+<li>五一有出游计划的同学可以 🐦</li>
+</ul>
+<h2 id="_1">并发编程</h2>
+<ul>
+<li>人和物理世界：spawn, join  // 入门到放弃</li>
+<li>桌子和钥匙：lock, unlock  // 互斥</li>
+<li>等待全局同步条件：wait, broadcast  // 同步 (1)</li>
+<li>桌子和多把钥匙：P/V (acquire/release)  // 同步 (2)</li>
+</ul>
+<h2 id="_2">并发编程很难</h2>
+<ul>
+<li>人类天生就是 “sequential creature”<ul>
+<li>我们刚开始接触的程序也是<strong>顺序执行</strong>
+</li>
+<li>并发编程时容易产生顺序执行的 “幻觉”</li>
+<li>“理解所有行为” 是 NP-Hard 的</li>
+</ul>
+</li>
+<li>让我们 “Learn from mistakes”<ul>
+<li>人类擅长归类总结</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 死锁
+ </h2>
+<div class="slideshow" name="deadlock_intro"><div>
+<h1 id="deadlock">死锁 (Deadlock)</h1>
+<h2 id="a-deadlock-is-a-state-in-which-each-member-of-a-group-is-waiting-for-another-member-including-itself-to-take-action">A deadlock is a state in which each member of a group is waiting for another member, including itself, to take action.</h2>
+<ul>
+<li>在实际中也是可能发生的！</li>
+</ul>
+<p><img alt="" src="static/img/deadlock.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="aa_deadlock"><div>
+<h1 id="aa-deadlock">AA-Deadlock</h1>
+<h2 id="pthread_mutex_lock">同一个线程，pthread_mutex_lock 同一个锁两次，会怎么样？</h2>
+<ul>
+<li>让 AI 编一个程序就行，不费吹灰之力</li>
+<li>观察、思考编程的<strong>过程</strong>很重要：AI 在向你输出信息<ul>
+<li>库函数的使用</li>
+<li>编码的 best practice</li>
+<li>使用的命令行工具……</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">看起来很傻，你觉得自己不会犯这错误？</h2>
+<ul>
+<li>不，你会犯的！</li>
+<li>真实系统的复杂性等着你<ul>
+<li>多层函数调用 (递归)</li>
+<li>隐藏的控制流 (callback、信号、中断……)</li>
+<li>我们甚至可以考考 AI 现实中有没有这种 AA 型死锁的案例 😊</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="abba_deadlock"><div>
+<h1 id="abba-deadlock">ABBA-Deadlock</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_philosopher</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">avail</span><span class="p">[</span><span class="n">lhs</span><span class="p">]);</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">avail</span><span class="p">[</span><span class="n">rhs</span><span class="p">]);</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>做过 lab 就知道了，还是很容易写出死锁的</li>
+<li>真实代码中的惨剧更是不计其数</li>
+</ul>
+<p><img alt="" src="static/img/dining-philosophers.jpg"></p>
+</div></div>
+
+<div class="code-card" path="concurrency/deadlock"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/deadlock">死锁演示</a></h1>
+<p>包含两种经典的死锁场景：AA 死锁：同一个线程对同一把互斥锁加锁两次。由于 mutex 不可重入，线程在第二次 <code>mutex_lock</code> 时永远阻塞。ABBA 死锁：哲学家就餐问题。每个哲学家先拿左手边的叉子、再拿右手边的叉子——当所有人都拿到左手边叉子时，形成循环等待，所有线程永久阻塞。</p>
+</div></div>
+</div>
+<h3> 1.1. 死锁产生的必要条件和避免
+ </h3>
+<div class="slideshow" name="deadlock_conditions"><div>
+<h1 id="_1">死锁产生的必要条件</h1>
+<h2 id="system-deadlocks-1971">
+<a href="https://dl.acm.org/doi/10.1145/356586.356588">System deadlocks (1971)</a>: 把锁理解成桌子上有一把钥匙，拿到钥匙的人可以进入</h2>
+<ol>
+<li>Mutual-exclusion - 一把钥匙只能被一个人拿到，拿到钥匙才能继续</li>
+<li>Wait-for - 拿到钥匙的人还想要更多的钥匙</li>
+<li>No-preemption - 不能抢别人的钥匙</li>
+<li>Circular-chain - 形成循环等待</li>
+</ol>
+<h2 id="_2">“必要条件”？</h2>
+<ul>
+<li>打破任何一个条件，就不会发生死锁了</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="deadlock_conditions_cont"><div>
+<h1 id="contd">死锁产生的必要条件 (cont’d)</h1>
+<h2 id="_1"><a href="https://baike.baidu.com/item/%E6%AD%BB%E9%94%81/2196938">百度百科的 “死锁” 词条</a></h2>
+<ul>
+<li>“理解了死锁的原因，尤其是产生死锁的四个必要条件，就可以最大可能地避免、预防和解除死锁。所以，在系统设计、进程调度等方面注意如何不让这四个必要条件成立，如何确定资源的合理分配算法，避免进程永久占据系统资源。此外，也要防止进程在处于等待状态的情况下占用资源。因此，对资源的分配要给予合理的规划。”</li>
+</ul>
+<h2 id="2026-ai">2026 年，依然极度混乱 (AI 都知道内容碎片化、断章取义搬运痕迹严重)</h2>
+<ul>
+<li>中文语料天崩开局 (会导致直播间立即消失)<ul>
+<li>o200k_base (10): “微信公众号天天中彩票” 和 “日本毛X免费视频观看”</li>
+<li>o200k_harmony (9): “大发展有限公司官网”、“久久免费热在线精品”、“给主人留下些什么吧” (只有这个是正常的)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="avoid_deadlock_theory"><div>
+<h1 id="_1">逐条解析</h1>
+<h2 id="mutual-exclusion-not">Mutual-exclusion - NOT(钥匙只能被一个人拿到，拿到钥匙才能继续)</h2>
+<ul>
+<li>把 “锁” 的定义整个就改掉了</li>
+<li>代码设计的彻底重构 (例如，引入 send/receive 向 T_waiter 发送消息)</li>
+</ul>
+<h2 id="wait-for-not">Wait-for - NOT(拿到钥匙的人还想要更多的钥匙)</h2>
+<ul>
+<li>一把大锁保平安 (性能低)</li>
+<li>Transaction memory (极难实现)</li>
+</ul>
+<h2 id="no-preemption-not">No-preemption - NOT(不能抢别人的钥匙)</h2>
+<ul>
+<li>要能回滚持有锁线程执行过的操作 (又是 transaction memory)</li>
+</ul>
+<h2 id="circular-chain-not">Circular-chain - NOT(形成循环等待)</h2>
+<ul>
+<li>Lock ordering: 看起来比上面的方案都要 “实用”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="avoid_deadlock_practice"><div>
+<h1 id="_1">在实际系统中避免死锁？</h1>
+<h2 id="lock-ordering">Lock ordering</h2>
+<ul>
+<li>任意时刻系统中的锁都是有限的</li>
+<li>给所有锁编号 (Lock Ordering)<ul>
+<li>严格按照从小到大的顺序获得锁</li>
+<li>(这个也容易检查)</li>
+</ul>
+</li>
+</ul>
+<h2 id="proof-sketch">Proof (sketch)</h2>
+<ul>
+<li>任意时刻，总有一个线程获得<strong>编号最大</strong>的锁，它<strong>总是可以继续运行</strong><ul>
+<li>这个证明可以扩展到 “lock group”——总是由一个线程获得 “组号最大” 的锁</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="lock_ordering_app"><div>
+<h1 id="lock-ordering">Lock Ordering: 应用</h1>
+<h2 id="linux-kernel-mmrmapc">Linux Kernel: <a href="https://elixir.bootlin.com/linux/latest/source/mm/rmap.c">mm/rmap.c</a>
+</h2>
+<p><img alt="" src="static/img/mm-lockorder.png"></p>
+</div></div>
+
+<div class="slideshow" name="unreliable_locking"><div>
+<h1 id="lock-ordering-contd">Lock Ordering: 应用 (cont’d)</h1>
+<blockquote>
+<p><a href="https://www.kernel.org/doc/html/latest/kernel-hacking/locking.html">Unreliable Guide to Locking</a>: Textbooks will tell you that if you always lock in the same order, you will never get this kind of deadlock. <strong>Practice will tell you that this approach doesn’t scale</strong>: when I create a new lock, I don’t understand enough of the kernel to figure out where in the 5000 lock hierarchy it will fit.</p>
+<p>The best locks are encapsulated: they <strong>never get exposed in headers</strong>, and are <strong>never held around calls to non-trivial functions outside the same file</strong>. You can read through this code and see that it will never deadlock, because it never tries to grab another lock while it has that one. People using your code don’t even need to know you are using a lock.</p>
+</blockquote>
+<h2 id="lockdoc-eurosys19">
+<a href="https://dl.acm.org/doi/10.1145/3302424.3303948">LockDoc</a> (EuroSys‘19)</h2>
+<ul>
+<li>“Only 53 percent of the variables with a documented locking rule are actually consistently accessed with the required locks held.” (今天不会再发生了)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="lockdep"><div>
+<h1 id="harness-engineering">软件工程的本质：Harness Engineering</h1>
+<h2 id="_1">做最坏的假设，最防御性的编程</h2>
+<ul>
+<li>例子：项目规定必须使用 RAII (C++ 和 Rust 的核心范式)</li>
+<li>例子：项目规定必须明确 lock ordering</li>
+</ul>
+<h2 id="_2">还要做更坏的假设：没有任何程序员是信得过的</h2>
+<ul>
+<li>不如每次 acquire/release 都用 printf 打一个日志<ul>
+<li>如果任何线程既有 A → B 且 B → A，直接报错</li>
+<li>理论上说可能错杀一些正确的情况，例如 A → B → spawn → B → A，但这是程序员巨大的<strong>心智负担</strong>，必须避免</li>
+</ul>
+</li>
+<li>
+<code>LD_PRELOAD=./locktrace.so ./a.out | python3 check.py</code><ul>
+<li>(我们当然也可以直接一边 trace 一边检查)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/lockdep"><div><div>
+<h1 id="lockdep"><a href="/OS/demos/concurrency/lockdep">lockdep</a></h1>
+<p>通过 <code>LD_PRELOAD</code> 拦截 <code>pthread_mutex_lock</code> / <code>pthread_mutex_unlock</code>，在运行时构建锁的依赖图（邻接矩阵）来检测潜在的 ABBA 死锁：每次加锁时记录 “已持有锁 → 新获取锁” 的有向边，加边前检查是否形成环，发现环则报告潜在死锁。</p>
+</div></div>
+</div>
+<h2> 2. 不上锁不就不会死锁了吗？
+ </h2>
+<div class="slideshow" name="data_race"><div>
+<h1 id="data-race">数据竞争 (Data Race)</h1>
+<h2 id="_1">不同的线程同时访问同一内存，且至少有一个是写</h2>
+<ul>
+<li>T_alipay: <code>if (balance &gt;= amount) { balance -= amount; }</code>
+</li>
+<li>T_sum: <code>sum++;</code>
+</li>
+<li>Peterson’s protocol (举旗子、看旗子、贴名字、看名字)……</li>
+</ul>
+<h2 id="race">Race 的快慢会导致截然不同的运行结果</h2>
+<ul>
+<li>C/C++: data race 是 <strong>undefined behavior</strong>，用就是你错</li>
+<li>Java Memory Model：试图 “定义” race 的可能行为</li>
+</ul>
+<p><img alt="" src="static/img/marathon-2h.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="data_race_cases"><div>
+<h1 id="_1">数据竞争：例子</h1>
+<h2 id="_2">以下代码概括了你们遇到数据竞争的大部分情况</h2>
+<ul>
+<li>不要笑，你们的 bug 几乎都是这两种情况的变种</li>
+</ul>
+<h2 id="case-1">Case 1: 上错了锁</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_1</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">A</span><span class="p">);</span><span class="w"> </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">A</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_2</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">B</span><span class="p">);</span><span class="w"> </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">B</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<h2 id="case-2">Case 2: 忘记上锁</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_1</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">A</span><span class="p">);</span><span class="w"> </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">A</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_2</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="why_no_laugh"><div>
+<h1 id="contd">数据竞争：例子 (cont’d)</h1>
+<h2 id="_1">不要笑？</h2>
+<ul>
+<li>实际系统面临更复杂的情况</li>
+</ul>
+<h2 id="_2">“内存” 可以是地址空间中的任何内存</h2>
+<ul>
+<li>可以是全部变量</li>
+<li>可以是堆区分配的变量</li>
+<li>可以是栈</li>
+</ul>
+<h2 id="_3">“访问” 可以是任何代码</h2>
+<ul>
+<li>可能发生在你的代码里</li>
+<li>可以发生在别人写的代码里</li>
+<li>可能是一行你没有读到过的汇编代码</li>
+<li>甚至可能是一条 ret 指令<ul>
+<li>曾经《操作系统》课埋下最高光的 bug，直接带你发明 Read-Copy-Update 机制</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="tsan"><div>
+<h1 id="harness-engineering">软件工程的本质：Harness Engineering</h1>
+<h2 id="_1">再一次，做最坏的假设，最防御性的编程</h2>
+<ul>
+<li>Data race 比 lock 要复杂很多<ul>
+<li>在两次 sum++ 离得很远的时候就可以报警了</li>
+<li>记录 lock/unlock 和所有 load/store<ul>
+<li>我们就可以检测 “happens-before” race</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="intelligence-is-cheap">Intelligence is Cheap</h2>
+<ul>
+<li>我拍脑袋了有了个想法：QEMU User trace memory<ul>
+<li>把程序当分析对象，曾经是极少数人掌握的看家本领</li>
+<li>现在家都被抄了 😭</li>
+</ul>
+</li>
+<li>曾经一砖一瓦加入到大型系统里的东西，Agent Swarm 上就行了</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/tsan"><div><div>
+<h1 id="threadsanitizer"><a href="/OS/demos/concurrency/tsan">ThreadSanitizer</a></h1>
+<p>通过寻找是否存在没有 happens-before 关系的不同线程、同一变量、至少一个是写的内存访问 (数据竞争)。这也称为 happens-before race。同时，TSAN 也不是万能的：触发 happens-before race 依然可能需要特定的线程调度。</p>
+</div></div>
+</div>
+<h3> 2.1. Aside: 伤人性命的并发 Bug
+ </h3>
+<div class="slideshow" name="killed_by_machine"><div>
+<h1 id="killed-by-a-machine">“Killed by a Machine”</h1>
+<h2 id="therac-25-incident-1985-1987">Therac-25 Incident (1985-1987)</h2>
+<ul>
+<li>事件驱动导致的并发 bug，导致至少 6 人死亡</li>
+</ul>
+<p><img alt="" src="static/img/therac-25.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="therac_25"><div>
+<h1 id="the-therac-25">The Therac-25</h1>
+<div class="codehilite"><pre><span></span><code><span class="k">assert</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="n">Electron</span><span class="p">(</span><span class="n">Low</span><span class="p">),</span> <span class="n">XRay</span><span class="p">(</span><span class="n">High</span><span class="p">)]</span>
+<span class="k">assert</span> <span class="n">beam_flattener</span> <span class="ow">in</span> <span class="p">[</span><span class="n">On</span><span class="p">,</span> <span class="n">Off</span><span class="p">]</span>
+<span class="k">assert</span> <span class="ow">not</span> <span class="p">(</span><span class="n">mode</span> <span class="o">==</span> <span class="n">XRay</span><span class="p">(</span><span class="n">High</span><span class="p">)</span> <span class="ow">and</span> <span class="n">beam_flattener</span> <span class="o">==</span> <span class="n">Off</span><span class="p">)</span>
+</code></pre></div>
+
+<p><img alt="" src="static/img/therac-25-bug.png"></p>
+</div></div>
+
+<div class="slideshow" name="killer_bug_history"><div>
+<h1 id="the-killer-software-bug-in-history">The Killer Software Bug in History</h1>
+<h2 id="_1">“支付宝” 的案例再现</h2>
+<ul>
+<li>在 Electron (Low) Mode 下选择 X-Ray (High) Mode<ul>
+<li>机器开始<strong>移动</strong> beam flattener，大约需要 8s 完成…</li>
+<li>
+<strong>切换</strong>到 Electron (Low) Mode (OK)</li>
+<li>再<strong>迅速切换</strong>到 X-Ray (High) Mode</li>
+<li>此时触发 <strong>Assertion fail</strong> (Malfunction 54)<ul>
+<li>操作员下意识地按下 Continue……</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">“软件定义” 带来的悲剧后果</h2>
+<ul>
+<li>在更早的产品 (Therac-20) 中，assert 由电路互锁 (interlock) 强制实现，直接停机 (需要手工重启)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/therac-25"><div><div>
+<h1 id="therac-25"><a href="/OS/demos/concurrency/therac-25">Therac-25 模拟器</a></h1>
+<p>完全的 vibe coding，没有任何古法编程——在 Content-as-Code 的时代，编程前所未有地简单，我们也可以随时随地生成任何辅助的工具——从教具到 3D 打印的工具。</p>
+</div></div>
+</div>
+<div class="slideshow" name="another_therac_bug"><div>
+<h1 id="therac-25-bug">这甚至不是 Therac-25 的最后一个杀人 Bug</h1>
+<h2 id="_1">问题修复后……</h2>
+<ul>
+<li>If the operator sent a command at the exact moment the counter overflowed, the machine would skip setting up some of the beam accessories</li>
+</ul>
+<h2 id="_2">最终解决方法</h2>
+<ul>
+<li>独立的硬件安全方案，检测到大计量照射时直接停机</li>
+</ul>
+<h2 id="_3">“软件定义” 时代的安全问题</h2>
+<ul>
+<li>自动驾驶、具身智能的 “底线安全” 越来越难</li>
+<li>(AI：到底该不该主动刹车呢？)</li>
+</ul>
+</div></div>
+
+<h2> 3. 都上锁不就没有数据竞争了吗？
+ </h2>
+<div class="slideshow" name="root_cause"><div>
+<h1 id="bug">伤人性命的并发 Bug：思考</h1>
+<h2 id="_1">我们编程时，太容易做 “顺序执行” 的假设了</h2>
+<ul>
+<li>人类本质上是 sequential creature<ul>
+<li>函数返回是天然<strong>同步</strong>的</li>
+<li>函数自带 “all or nothing” 的原子性</li>
+</ul>
+</li>
+<li>Therac-25: 如果模式切换瞬间完成，就没有任何问题了<ul>
+<li>但模式切换需要时间，“在未来才生效”，但我们已经形成了 “立即生效” 的肌肉记忆<ul>
+<li>没有副作用 (pure functions)，就没有并发问题</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">“后果自负” 的并发控制机制</h2>
+<ul>
+<li><a href="https://dl.acm.org/doi/10.1145/1065010.1065042">Threads cannot be implemented as a library</a></li>
+<li>互斥锁 (lock/unlock) 实现原子性<ul>
+<li>忘记上锁——原子性违反 (Atomicity Violation, AV)</li>
+</ul>
+</li>
+<li>条件变量/信号量 (wait/signal) 实现同步<ul>
+<li>忘记同步——顺序违反 (Order Violation, OV)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="empirical_study"><div>
+<h1 id="_1">那么，程序员到底用得对不对呢？</h1>
+<h2 id="empirical-study">“Empirical study” 实证研究</h2>
+<ul>
+<li>收集了 105 个真实系统的并发 bugs<ul>
+<li>MySQL (14/9), Apache (13/4), Mozilla (41/16), OpenOffice (6/2)</li>
+<li>观察是否存在有意义的结论</li>
+</ul>
+</li>
+</ul>
+<h2 id="97-bug">97% 的非死锁并发 bug 都是原子性或顺序错误</h2>
+<ul>
+<li>“人类的确是 sequential creature”</li>
+<li>
+<a href="https://dl.acm.org/doi/10.1145/1346281.1346323">Learning from mistakes - A comprehensive study on real world concurrency bug characteristics</a> (ASPLOS‘08, Most Influential Paper Award)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="atomicity_violation"><div>
+<h1 id="atomicity-violation">原子性违反 (Atomicity Violation)</h1>
+<h2 id="aba">“ABA”: 代码被别人 “强势插入”</h2>
+<ul>
+<li>即便分别上锁 (消除数据竞争)，依然是 AV<ul>
+<li>Diablo I 里复制物品的例子</li>
+<li>Therac-25 中 “移动 Mirror + 设置状态”</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/av-bug.png"></p>
+</div></div>
+
+<div class="slideshow" name="atomicity_violation_cont"><div>
+<h1 id="contd">原子性违反 (cont’d)</h1>
+<h2 id="_1">操作系统的状态也是共享状态</h2>
+<ul>
+<li>没想到吧！哈哈 (<a href="https://www.usenix.org/legacy/events/fast05/tech/full_papers/wei/wei.pdf">TOCTTOU study</a>)</li>
+</ul>
+<p><img alt="" src="static/img/tocttou.png"></p>
+</div></div>
+
+<div class="slideshow" name="order_violation"><div>
+<h1 id="order-violation">顺序违反 (Order Violation)</h1>
+<h2 id="ba">“BA”: 事件未按预定的顺序发生</h2>
+<ul>
+<li>例子：concurrent use-after-free</li>
+<li>甚至没有 UAF 的时候，speculative execution 带来的 <a href="https://www.vusec.net/projects/ghostrace/">GhostRace</a>
+</li>
+</ul>
+<p><img alt="" src="static/img/ov-bug.png"></p>
+</div></div>
+
+<div class="slideshow" name="dynamic_analysis"><div>
+<h1 id="harness-engineering">软件工程的本质：Harness Engineering</h1>
+<h2 id="lockdep">加强版的 LockDep</h2>
+<ul>
+<li>把整个程序执行对齐到时间轴上，为每个函数调用都标注 “做了什么”</li>
+<li>Query AI 寻找疑似不该被打断/顺序错误的事件</li>
+</ul>
+<h2 id="agentic-ai">Agentic AI 时代</h2>
+<ul>
+<li>让程序的 trace “可审计” 是非常重要的<ul>
+<li>每个函数在调用的时候都可以输出自己 “做什么” (可以是 embedding space)</li>
+<li>返回的时候可以审计这段时间系统做了什么</li>
+</ul>
+</li>
+<li>“Informal semantics”</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>人类本质上是 sequential creature，因此总是通过 “块的顺序执行” 这一简化模型去理解并发程序，也因此带来了数据竞争、Atomicity violation (本应原子完成不被打断的代码被打断)、Order violation (本应按某个顺序完成的未能被正确同步) 等问题。数据竞争非常危险，我们在编程时要尽力避免。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 32 章 - Concurrency Bugs</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 并发 Bug 和应对\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"430\"\u003e本周四 (4.30) 闭卷期中测验\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e五一有出游计划的同学可以 🐦\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e并发编程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e人和物理世界：spawn, join  // 入门到放弃\u003c/li\u003e\n\u003cli\u003e桌子和钥匙：lock, unlock  // 互斥\u003c/li\u003e\n\u003cli\u003e等待全局同步条件：wait, broadcast  // 同步 (1)\u003c/li\u003e\n\u003cli\u003e桌子和多把钥匙：P/V (acquire/release)  // 同步 (2)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e并发编程很难\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e人类天生就是 “sequential creature”\u003cul\u003e\n\u003cli\u003e我们刚开始接触的程序也是\u003cstrong\u003e顺序执行\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e并发编程时容易产生顺序执行的 “幻觉”\u003c/li\u003e\n\u003cli\u003e“理解所有行为” 是 NP-Hard 的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e让我们 “Learn from mistakes”\u003cul\u003e\n\u003cli\u003e人类擅长归类总结\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 死锁\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"deadlock_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"deadlock\"\u003e死锁 (Deadlock)\u003c/h1\u003e\n\u003ch2 id=\"a-deadlock-is-a-state-in-which-each-member-of-a-group-is-waiting-for-another-member-including-itself-to-take-action\"\u003eA deadlock is a state in which each member of a group is waiting for another member, including itself, to take action.\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在实际中也是可能发生的！\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/deadlock.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"aa_deadlock\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aa-deadlock\"\u003eAA-Deadlock\u003c/h1\u003e\n\u003ch2 id=\"pthread_mutex_lock\"\u003e同一个线程，pthread_mutex_lock 同一个锁两次，会怎么样？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e让 AI 编一个程序就行，不费吹灰之力\u003c/li\u003e\n\u003cli\u003e观察、思考编程的\u003cstrong\u003e过程\u003c/strong\u003e很重要：AI 在向你输出信息\u003cul\u003e\n\u003cli\u003e库函数的使用\u003c/li\u003e\n\u003cli\u003e编码的 best practice\u003c/li\u003e\n\u003cli\u003e使用的命令行工具……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e看起来很傻，你觉得自己不会犯这错误？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不，你会犯的！\u003c/li\u003e\n\u003cli\u003e真实系统的复杂性等着你\u003cul\u003e\n\u003cli\u003e多层函数调用 (递归)\u003c/li\u003e\n\u003cli\u003e隐藏的控制流 (callback、信号、中断……)\u003c/li\u003e\n\u003cli\u003e我们甚至可以考考 AI 现实中有没有这种 AA 型死锁的案例 😊\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"abba_deadlock\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"abba-deadlock\"\u003eABBA-Deadlock\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_philosopher\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eavail\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003elhs\u003c/span\u003e\u003cspan class=\"p\"\u003e]);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eavail\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003erhs\u003c/span\u003e\u003cspan class=\"p\"\u003e]);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// ...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e做过 lab 就知道了，还是很容易写出死锁的\u003c/li\u003e\n\u003cli\u003e真实代码中的惨剧更是不计其数\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/dining-philosophers.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/deadlock\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/deadlock\"\u003e死锁演示\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e包含两种经典的死锁场景：AA 死锁：同一个线程对同一把互斥锁加锁两次。由于 mutex 不可重入，线程在第二次 \u003ccode\u003emutex_lock\u003c/code\u003e 时永远阻塞。ABBA 死锁：哲学家就餐问题。每个哲学家先拿左手边的叉子、再拿右手边的叉子——当所有人都拿到左手边叉子时，形成循环等待，所有线程永久阻塞。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch3\u003e 1.1. 死锁产生的必要条件和避免\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"deadlock_conditions\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e死锁产生的必要条件\u003c/h1\u003e\n\u003ch2 id=\"system-deadlocks-1971\"\u003e\n\u003ca href=\"https://dl.acm.org/doi/10.1145/356586.356588\"\u003eSystem deadlocks (1971)\u003c/a\u003e: 把锁理解成桌子上有一把钥匙，拿到钥匙的人可以进入\u003c/h2\u003e\n\u003col\u003e\n\u003cli\u003eMutual-exclusion - 一把钥匙只能被一个人拿到，拿到钥匙才能继续\u003c/li\u003e\n\u003cli\u003eWait-for - 拿到钥匙的人还想要更多的钥匙\u003c/li\u003e\n\u003cli\u003eNo-preemption - 不能抢别人的钥匙\u003c/li\u003e\n\u003cli\u003eCircular-chain - 形成循环等待\u003c/li\u003e\n\u003c/ol\u003e\n\u003ch2 id=\"_2\"\u003e“必要条件”？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e打破任何一个条件，就不会发生死锁了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"deadlock_conditions_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e死锁产生的必要条件 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e\u003ca href=\"https://baike.baidu.com/item/%E6%AD%BB%E9%94%81/2196938\"\u003e百度百科的 “死锁” 词条\u003c/a\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“理解了死锁的原因，尤其是产生死锁的四个必要条件，就可以最大可能地避免、预防和解除死锁。所以，在系统设计、进程调度等方面注意如何不让这四个必要条件成立，如何确定资源的合理分配算法，避免进程永久占据系统资源。此外，也要防止进程在处于等待状态的情况下占用资源。因此，对资源的分配要给予合理的规划。”\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"2026-ai\"\u003e2026 年，依然极度混乱 (AI 都知道内容碎片化、断章取义搬运痕迹严重)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e中文语料天崩开局 (会导致直播间立即消失)\u003cul\u003e\n\u003cli\u003eo200k_base (10): “微信公众号天天中彩票” 和 “日本毛X免费视频观看”\u003c/li\u003e\n\u003cli\u003eo200k_harmony (9): “大发展有限公司官网”、“久久免费热在线精品”、“给主人留下些什么吧” (只有这个是正常的)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"avoid_deadlock_theory\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e逐条解析\u003c/h1\u003e\n\u003ch2 id=\"mutual-exclusion-not\"\u003eMutual-exclusion - NOT(钥匙只能被一个人拿到，拿到钥匙才能继续)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把 “锁” 的定义整个就改掉了\u003c/li\u003e\n\u003cli\u003e代码设计的彻底重构 (例如，引入 send/receive 向 T_waiter 发送消息)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"wait-for-not\"\u003eWait-for - NOT(拿到钥匙的人还想要更多的钥匙)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一把大锁保平安 (性能低)\u003c/li\u003e\n\u003cli\u003eTransaction memory (极难实现)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"no-preemption-not\"\u003eNo-preemption - NOT(不能抢别人的钥匙)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e要能回滚持有锁线程执行过的操作 (又是 transaction memory)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"circular-chain-not\"\u003eCircular-chain - NOT(形成循环等待)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLock ordering: 看起来比上面的方案都要 “实用”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"avoid_deadlock_practice\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e在实际系统中避免死锁？\u003c/h1\u003e\n\u003ch2 id=\"lock-ordering\"\u003eLock ordering\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e任意时刻系统中的锁都是有限的\u003c/li\u003e\n\u003cli\u003e给所有锁编号 (Lock Ordering)\u003cul\u003e\n\u003cli\u003e严格按照从小到大的顺序获得锁\u003c/li\u003e\n\u003cli\u003e(这个也容易检查)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"proof-sketch\"\u003eProof (sketch)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e任意时刻，总有一个线程获得\u003cstrong\u003e编号最大\u003c/strong\u003e的锁，它\u003cstrong\u003e总是可以继续运行\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e这个证明可以扩展到 “lock group”——总是由一个线程获得 “组号最大” 的锁\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"lock_ordering_app\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"lock-ordering\"\u003eLock Ordering: 应用\u003c/h1\u003e\n\u003ch2 id=\"linux-kernel-mmrmapc\"\u003eLinux Kernel: \u003ca href=\"https://elixir.bootlin.com/linux/latest/source/mm/rmap.c\"\u003emm/rmap.c\u003c/a\u003e\n\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mm-lockorder.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"unreliable_locking\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"lock-ordering-contd\"\u003eLock Ordering: 应用 (cont’d)\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e\u003ca href=\"https://www.kernel.org/doc/html/latest/kernel-hacking/locking.html\"\u003eUnreliable Guide to Locking\u003c/a\u003e: Textbooks will tell you that if you always lock in the same order, you will never get this kind of deadlock. \u003cstrong\u003ePractice will tell you that this approach doesn’t scale\u003c/strong\u003e: when I create a new lock, I don’t understand enough of the kernel to figure out where in the 5000 lock hierarchy it will fit.\u003c/p\u003e\n\u003cp\u003eThe best locks are encapsulated: they \u003cstrong\u003enever get exposed in headers\u003c/strong\u003e, and are \u003cstrong\u003enever held around calls to non-trivial functions outside the same file\u003c/strong\u003e. You can read through this code and see that it will never deadlock, because it never tries to grab another lock while it has that one. People using your code don’t even need to know you are using a lock.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"lockdoc-eurosys19\"\u003e\n\u003ca href=\"https://dl.acm.org/doi/10.1145/3302424.3303948\"\u003eLockDoc\u003c/a\u003e (EuroSys‘19)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“Only 53 percent of the variables with a documented locking rule are actually consistently accessed with the required locks held.” (今天不会再发生了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"lockdep\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"harness-engineering\"\u003e软件工程的本质：Harness Engineering\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e做最坏的假设，最防御性的编程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例子：项目规定必须使用 RAII (C++ 和 Rust 的核心范式)\u003c/li\u003e\n\u003cli\u003e例子：项目规定必须明确 lock ordering\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e还要做更坏的假设：没有任何程序员是信得过的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不如每次 acquire/release 都用 printf 打一个日志\u003cul\u003e\n\u003cli\u003e如果任何线程既有 A → B 且 B → A，直接报错\u003c/li\u003e\n\u003cli\u003e理论上说可能错杀一些正确的情况，例如 A → B → spawn → B → A，但这是程序员巨大的\u003cstrong\u003e心智负担\u003c/strong\u003e，必须避免\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003eLD_PRELOAD=./locktrace.so ./a.out | python3 check.py\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e(我们当然也可以直接一边 trace 一边检查)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/lockdep\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"lockdep\"\u003e\u003ca href=\"/OS/demos/concurrency/lockdep\"\u003elockdep\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e通过 \u003ccode\u003eLD_PRELOAD\u003c/code\u003e 拦截 \u003ccode\u003epthread_mutex_lock\u003c/code\u003e / \u003ccode\u003epthread_mutex_unlock\u003c/code\u003e，在运行时构建锁的依赖图（邻接矩阵）来检测潜在的 ABBA 死锁：每次加锁时记录 “已持有锁 → 新获取锁” 的有向边，加边前检查是否形成环，发现环则报告潜在死锁。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 2. 不上锁不就不会死锁了吗？\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"data_race\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"data-race\"\u003e数据竞争 (Data Race)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e不同的线程同时访问同一内存，且至少有一个是写\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eT_alipay: \u003ccode\u003eif (balance \u0026gt;= amount) { balance -= amount; }\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eT_sum: \u003ccode\u003esum++;\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003ePeterson’s protocol (举旗子、看旗子、贴名字、看名字)……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"race\"\u003eRace 的快慢会导致截然不同的运行结果\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eC/C++: data race 是 \u003cstrong\u003eundefined behavior\u003c/strong\u003e，用就是你错\u003c/li\u003e\n\u003cli\u003eJava Memory Model：试图 “定义” race 的可能行为\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/marathon-2h.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"data_race_cases\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e数据竞争：例子\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e以下代码概括了你们遇到数据竞争的大部分情况\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不要笑，你们的 bug 几乎都是这两种情况的变种\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"case-1\"\u003eCase 1: 上错了锁\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_1\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eA\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eA\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_2\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eB\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eB\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"case-2\"\u003eCase 2: 忘记上锁\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_1\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eA\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eA\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_2\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"why_no_laugh\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e数据竞争：例子 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e不要笑？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e实际系统面临更复杂的情况\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e“内存” 可以是地址空间中的任何内存\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e可以是全部变量\u003c/li\u003e\n\u003cli\u003e可以是堆区分配的变量\u003c/li\u003e\n\u003cli\u003e可以是栈\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e“访问” 可以是任何代码\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e可能发生在你的代码里\u003c/li\u003e\n\u003cli\u003e可以发生在别人写的代码里\u003c/li\u003e\n\u003cli\u003e可能是一行你没有读到过的汇编代码\u003c/li\u003e\n\u003cli\u003e甚至可能是一条 ret 指令\u003cul\u003e\n\u003cli\u003e曾经《操作系统》课埋下最高光的 bug，直接带你发明 Read-Copy-Update 机制\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"tsan\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"harness-engineering\"\u003e软件工程的本质：Harness Engineering\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e再一次，做最坏的假设，最防御性的编程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eData race 比 lock 要复杂很多\u003cul\u003e\n\u003cli\u003e在两次 sum++ 离得很远的时候就可以报警了\u003c/li\u003e\n\u003cli\u003e记录 lock/unlock 和所有 load/store\u003cul\u003e\n\u003cli\u003e我们就可以检测 “happens-before” race\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"intelligence-is-cheap\"\u003eIntelligence is Cheap\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我拍脑袋了有了个想法：QEMU User trace memory\u003cul\u003e\n\u003cli\u003e把程序当分析对象，曾经是极少数人掌握的看家本领\u003c/li\u003e\n\u003cli\u003e现在家都被抄了 😭\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e曾经一砖一瓦加入到大型系统里的东西，Agent Swarm 上就行了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/tsan\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"threadsanitizer\"\u003e\u003ca href=\"/OS/demos/concurrency/tsan\"\u003eThreadSanitizer\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e通过寻找是否存在没有 happens-before 关系的不同线程、同一变量、至少一个是写的内存访问 (数据竞争)。这也称为 happens-before race。同时，TSAN 也不是万能的：触发 happens-before race 依然可能需要特定的线程调度。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch3\u003e 2.1. Aside: 伤人性命的并发 Bug\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"killed_by_machine\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"killed-by-a-machine\"\u003e“Killed by a Machine”\u003c/h1\u003e\n\u003ch2 id=\"therac-25-incident-1985-1987\"\u003eTherac-25 Incident (1985-1987)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e事件驱动导致的并发 bug，导致至少 6 人死亡\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/therac-25.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"therac_25\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"the-therac-25\"\u003eThe Therac-25\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003eassert\u003c/span\u003e \u003cspan class=\"n\"\u003emode\u003c/span\u003e \u003cspan class=\"ow\"\u003ein\u003c/span\u003e \u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003eElectron\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eLow\u003c/span\u003e\u003cspan class=\"p\"\u003e),\u003c/span\u003e \u003cspan class=\"n\"\u003eXRay\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eHigh\u003c/span\u003e\u003cspan class=\"p\"\u003e)]\u003c/span\u003e\n\u003cspan class=\"k\"\u003eassert\u003c/span\u003e \u003cspan class=\"n\"\u003ebeam_flattener\u003c/span\u003e \u003cspan class=\"ow\"\u003ein\u003c/span\u003e \u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003eOn\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"n\"\u003eOff\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\n\u003cspan class=\"k\"\u003eassert\u003c/span\u003e \u003cspan class=\"ow\"\u003enot\u003c/span\u003e \u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003emode\u003c/span\u003e \u003cspan class=\"o\"\u003e==\u003c/span\u003e \u003cspan class=\"n\"\u003eXRay\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eHigh\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e \u003cspan class=\"ow\"\u003eand\u003c/span\u003e \u003cspan class=\"n\"\u003ebeam_flattener\u003c/span\u003e \u003cspan class=\"o\"\u003e==\u003c/span\u003e \u003cspan class=\"n\"\u003eOff\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/therac-25-bug.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"killer_bug_history\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"the-killer-software-bug-in-history\"\u003eThe Killer Software Bug in History\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“支付宝” 的案例再现\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在 Electron (Low) Mode 下选择 X-Ray (High) Mode\u003cul\u003e\n\u003cli\u003e机器开始\u003cstrong\u003e移动\u003c/strong\u003e beam flattener，大约需要 8s 完成…\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003e切换\u003c/strong\u003e到 Electron (Low) Mode (OK)\u003c/li\u003e\n\u003cli\u003e再\u003cstrong\u003e迅速切换\u003c/strong\u003e到 X-Ray (High) Mode\u003c/li\u003e\n\u003cli\u003e此时触发 \u003cstrong\u003eAssertion fail\u003c/strong\u003e (Malfunction 54)\u003cul\u003e\n\u003cli\u003e操作员下意识地按下 Continue……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e“软件定义” 带来的悲剧后果\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在更早的产品 (Therac-20) 中，assert 由电路互锁 (interlock) 强制实现，直接停机 (需要手工重启)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/therac-25\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"therac-25\"\u003e\u003ca href=\"/OS/demos/concurrency/therac-25\"\u003eTherac-25 模拟器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e完全的 vibe coding，没有任何古法编程——在 Content-as-Code 的时代，编程前所未有地简单，我们也可以随时随地生成任何辅助的工具——从教具到 3D 打印的工具。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"another_therac_bug\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"therac-25-bug\"\u003e这甚至不是 Therac-25 的最后一个杀人 Bug\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e问题修复后……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eIf the operator sent a command at the exact moment the counter overflowed, the machine would skip setting up some of the beam accessories\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e最终解决方法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e独立的硬件安全方案，检测到大计量照射时直接停机\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e“软件定义” 时代的安全问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e自动驾驶、具身智能的 “底线安全” 越来越难\u003c/li\u003e\n\u003cli\u003e(AI：到底该不该主动刹车呢？)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 都上锁不就没有数据竞争了吗？\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"root_cause\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"bug\"\u003e伤人性命的并发 Bug：思考\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e我们编程时，太容易做 “顺序执行” 的假设了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e人类本质上是 sequential creature\u003cul\u003e\n\u003cli\u003e函数返回是天然\u003cstrong\u003e同步\u003c/strong\u003e的\u003c/li\u003e\n\u003cli\u003e函数自带 “all or nothing” 的原子性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eTherac-25: 如果模式切换瞬间完成，就没有任何问题了\u003cul\u003e\n\u003cli\u003e但模式切换需要时间，“在未来才生效”，但我们已经形成了 “立即生效” 的肌肉记忆\u003cul\u003e\n\u003cli\u003e没有副作用 (pure functions)，就没有并发问题\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e“后果自负” 的并发控制机制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://dl.acm.org/doi/10.1145/1065010.1065042\"\u003eThreads cannot be implemented as a library\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003e互斥锁 (lock/unlock) 实现原子性\u003cul\u003e\n\u003cli\u003e忘记上锁——原子性违反 (Atomicity Violation, AV)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e条件变量/信号量 (wait/signal) 实现同步\u003cul\u003e\n\u003cli\u003e忘记同步——顺序违反 (Order Violation, OV)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"empirical_study\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e那么，程序员到底用得对不对呢？\u003c/h1\u003e\n\u003ch2 id=\"empirical-study\"\u003e“Empirical study” 实证研究\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e收集了 105 个真实系统的并发 bugs\u003cul\u003e\n\u003cli\u003eMySQL (14/9), Apache (13/4), Mozilla (41/16), OpenOffice (6/2)\u003c/li\u003e\n\u003cli\u003e观察是否存在有意义的结论\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"97-bug\"\u003e97% 的非死锁并发 bug 都是原子性或顺序错误\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“人类的确是 sequential creature”\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://dl.acm.org/doi/10.1145/1346281.1346323\"\u003eLearning from mistakes - A comprehensive study on real world concurrency bug characteristics\u003c/a\u003e (ASPLOS‘08, Most Influential Paper Award)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"atomicity_violation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"atomicity-violation\"\u003e原子性违反 (Atomicity Violation)\u003c/h1\u003e\n\u003ch2 id=\"aba\"\u003e“ABA”: 代码被别人 “强势插入”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e即便分别上锁 (消除数据竞争)，依然是 AV\u003cul\u003e\n\u003cli\u003eDiablo I 里复制物品的例子\u003c/li\u003e\n\u003cli\u003eTherac-25 中 “移动 Mirror + 设置状态”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/av-bug.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"atomicity_violation_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e原子性违反 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e操作系统的状态也是共享状态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e没想到吧！哈哈 (\u003ca href=\"https://www.usenix.org/legacy/events/fast05/tech/full_papers/wei/wei.pdf\"\u003eTOCTTOU study\u003c/a\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/tocttou.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"order_violation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"order-violation\"\u003e顺序违反 (Order Violation)\u003c/h1\u003e\n\u003ch2 id=\"ba\"\u003e“BA”: 事件未按预定的顺序发生\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例子：concurrent use-after-free\u003c/li\u003e\n\u003cli\u003e甚至没有 UAF 的时候，speculative execution 带来的 \u003ca href=\"https://www.vusec.net/projects/ghostrace/\"\u003eGhostRace\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/ov-bug.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"dynamic_analysis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"harness-engineering\"\u003e软件工程的本质：Harness Engineering\u003c/h1\u003e\n\u003ch2 id=\"lockdep\"\u003e加强版的 LockDep\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把整个程序执行对齐到时间轴上，为每个函数调用都标注 “做了什么”\u003c/li\u003e\n\u003cli\u003eQuery AI 寻找疑似不该被打断/顺序错误的事件\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"agentic-ai\"\u003eAgentic AI 时代\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e让程序的 trace “可审计” 是非常重要的\u003cul\u003e\n\u003cli\u003e每个函数在调用的时候都可以输出自己 “做什么” (可以是 embedding space)\u003c/li\u003e\n\u003cli\u003e返回的时候可以审计这段时间系统做了什么\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“Informal semantics”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e人类本质上是 sequential creature，因此总是通过 “块的顺序执行” 这一简化模型去理解并发程序，也因此带来了数据竞争、Atomicity violation (本应原子完成不被打断的代码被打断)、Order violation (本应按某个顺序完成的未能被正确同步) 等问题。数据竞争非常危险，我们在编程时要尽力避免。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 32 章 - Concurrency Bugs\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect17.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

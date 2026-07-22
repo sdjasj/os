@@ -1,0 +1,477 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 硬件视角的操作系统
+ </h1>
+<h2> 1. Aside: 上课之前
+ </h2>
+<div class="slideshow" name="how_to_learn"><div>
+<h1 id="_1">学习方法：你做对了吗？</h1>
+<h2 id="_2">大家都明白<strong>应该下载运行示例代码</strong>
+</h2>
+<ul>
+<li>但<a href="https://jyywiki.cn/OS/demos/intro/mini-rv32ima/">好麻烦啊</a>，看一眼就不想下了 😭</li>
+<li>Don’t panic! 现在已经是 “intelligence is cheap” 的时代了</li>
+</ul>
+<h2 id="prompt">一个改变世界的 prompt</h2>
+<ul>
+<li>我在做 X。如果你是一个专家，你会怎么做？<ul>
+<li>被动：学习 Coding Agent 所做的 “正确的事”</li>
+<li>主动：让 Copilot 不停地追问，并实时给出建议</li>
+<li>都可以帮助你建立正确的概念</li>
+</ul>
+</li>
+<li>不用担心，我也是新手<ul>
+<li>我也虚心请教 AI: code 绑定到 workspace #2、解决了 click url 的问题、加大了鼠标指针、默认进入 /tmp/vibe/……</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="review"><div>
+<h1 id="_1">复习：软件、硬件和操作系统</h1>
+<h2 id="c-simplec-python">软件：C (SimpleC), Python, …</h2>
+<ul>
+<li>初始状态：stack=[main(argc, argv), globals]</li>
+<li>迁移：执行一条语句</li>
+</ul>
+<h2 id="x86-risc-v-arm">硬件：x86, RISC-V, ARM…</h2>
+<ul>
+<li>初始状态：CPU Reset</li>
+<li>迁移：执行一条指令/响应中断</li>
+</ul>
+<h2 id="_2">操作系统：使软件能运行在硬件上的程序</h2>
+<ul>
+<li>系统调用 API (syscall/ecall/svc 指令)，将控制权交给操作系统</li>
+</ul>
+</div></div>
+
+<h2> 2. 什么是计算机硬件
+ </h2>
+<div class="slideshow" name="hw_perspective"><div>
+<h1 id="_1">硬件视角的操作系统</h1>
+<h2 id="_2">一句话：硬件<strong>根本不知道有没有操作系统</strong>
+</h2>
+<ul>
+<li>我就是个无情执行指令的状态机<ul>
+<li>见什么指令执行什么指令</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">这就是计算机系统中的<strong>抽象</strong>
+</h2>
+<ul>
+<li>隔离复杂性的根本手段<ul>
+<li><a href="https://github.com/cft0808/edict">三省六部制</a></li>
+</ul>
+</li>
+<li>下层不需要知道上面怎么用，只管 “无情地提供服务”<ul>
+<li>系统调用、指令集、sub-agent……</li>
+</ul>
+</li>
+<li>
+<strong>抽象层的设计将是 Agentic AI 时代的重要能力</strong><ul>
+<li>对于低年级的同学，先去广泛地了解各种设计</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="state_machine_model"><div>
+<h1 id="_1">计算机系统的状态机模型</h1>
+<blockquote>
+<p>无情执行指令的机器。</p>
+</blockquote>
+<h2 id="_2">状态</h2>
+<ul>
+<li>内存、寄存器的数值</li>
+</ul>
+<h2 id="_3">初始状态</h2>
+<ul>
+<li>由系统设计者规定 (CPU Reset)</li>
+</ul>
+<h2 id="_4">状态迁移</h2>
+<ul>
+<li>从 PC 取指令执行</li>
+</ul>
+<h2 id="_5">准确，但忽略了一些重要的细节</h2>
+<ul>
+<li>一个 “jmp .” 机器不就永远卡死了吗？<ul>
+<li>一点点细节使<strong>操作系统可以被实现出来</strong>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="system_state"><div>
+<h1 id="_1">计算机系统：状态</h1>
+<h2 id="_2">内部状态：寄存器、内存</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">CPUState</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">regs</span><span class="p">[</span><span class="mi">32</span><span class="p">],</span><span class="w"> </span><span class="n">csrs</span><span class="p">[</span><span class="n">CSR_COUNT</span><span class="p">];</span>
+<span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="o">*</span><span class="n">mem</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">mem_offset</span><span class="p">,</span><span class="w"> </span><span class="n">mem_size</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<h2 id="_3">外部状态：整个世界</h2>
+<ul>
+<li>计算机系统<strong>无法完全控制</strong>的客观存在<ul>
+<li>设备上的寄存器 (memory-mapped I/O 可以访问)<ul>
+<li>计算机对外界产生影响的主要方式</li>
+</ul>
+</li>
+<li>Interrupt/Reset Line</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="gpio_example"><div>
+<h1 id="gpio">例子: GPIO</h1>
+<div class="codehilite"><pre><span></span><code><span class="n">gpio_set_value</span><span class="p">(</span><span class="n">GPIO_23</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="c1">// in Linux kernel</span>
+</code></pre></div>
+
+<ul>
+<li>大家只要有 “GPIO” 的概念，剩下的都可以用聊天解决<ul>
+<li>扫描系统中的 GPIO，询问可以做什么</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/gpio-led.png"></p>
+</div></div>
+
+<div class="slideshow" name="initial_state"><div>
+<h1 id="_1">计算机系统：初始状态</h1>
+<h2 id="cpu-reset">CPU Reset 是<strong>明确的行为</strong>
+</h2>
+<ul>
+<li>为什么老旧电脑要配一个 Reset 按钮？<ul>
+<li>历史总是惊人的相似</li>
+<li>今天的 OpenClaw 颇有当年 PC 时代的感觉</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/reset-button.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="cpu_reset_state"><div>
+<h1 id="cpu-reset">实际的 CPU Reset</h1>
+<h2 id="x86-arm-risc-v">x86, ARM, RISC-V</h2>
+<ul>
+<li>它们的 CPU Reset 是什么？</li>
+<li>体现了怎样的设计理念？<ul>
+<li>你只需要有正确的<strong>概念</strong>，剩下的可以交给 AI</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">对比：我的预训练过程</h2>
+<ul>
+<li>去 The Friendly Manual 里大海捞针：我学习 Systems Programming 时的圣经<ul>
+<li>CPU Reset (<a href="https://software.intel.com/en-us/articles/intel-sdm">Intel® 64 and IA-32 Architectures Software Developer’s Manual</a>, Volume 3A/3B)</li>
+<li>Volume 3A: ~400 页</li>
+</ul>
+</li>
+<li>(但是这的确帮我建立了正确的概念)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/cpu-reset"><div><div>
+<h1 id="cpu-reset"><a href="/OS/demos/intro/cpu-reset">探索 CPU Reset</a></h1>
+<p>我们都知道完整的计算机系统是从 CPU Reset 开始的。这里提供了三个架构的 “最小代码” 演示，展示 CPU Reset 后立即执行 “结束” 代码的短小程序，并打印出执行的指令序列和寄存器变化。运行程序，我们可以明确地看到 CPU Reset 后的寄存器状态，以及执行指令的结果：计算机世界没有任何魔法。</p>
+</div></div>
+</div>
+<div class="slideshow" name="state_transition"><div>
+<h1 id="_1">计算机系统：状态迁移</h1>
+<h2 id="_2">执行指令</h2>
+<ul>
+<li>如果有多个处理器？<ul>
+<li>可以想象成 “每次选一个处理器执行一条指令”</li>
+<li>在并发部分会回到这个问题</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">响应中断</h2>
+<ul>
+<li>if (intr) goto vec;</li>
+</ul>
+<h2 id="_4">输入输出</h2>
+<ul>
+<li>与 “计算机系统外” 交换数据<ul>
+<li>读取电信号 (input) 或把电信号传递给设备 (output)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="hw_summary"><div>
+<h1 id="_1">小结：硬件视角的操作系统</h1>
+<h2 id="_2">一句话：硬件<strong>根本不知道有没有操作系统</strong>
+</h2>
+<ul>
+<li>我就是个无情之行指令的状态机<ul>
+<li>见什么指令执行什么指令</li>
+<li>为了操作系统能实现出来，提供了许多机制 (中断、I/O、……)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3"><strong>操作系统就是一个普通的 (二进制) 程序</strong></h2>
+<ul>
+<li>接管了中断、I/O、……<ul>
+<li>应用程序不能直接访问</li>
+</ul>
+</li>
+<li>把应用程序 “放” 到 CPU 上运行一会<ul>
+<li>中断 (系统调用) 后，操作系统又开始执行</li>
+<li>(操作系统启动后，操作系统就变成了一个中断处理程序)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 3. 固件：硬件和操作系统之间的桥梁
+ </h2>
+<div class="slideshow" name="missing_detail"><div>
+<h1 id="_1">刚才遗漏的一个细节</h1>
+<h2 id="cpu">CPU = 无情执行指令的机器</h2>
+<ul>
+<li>从 CPU Reset 开始执行<ul>
+<li>从 Mem[PC] 取指令</li>
+<li>译码、执行，如此往复</li>
+</ul>
+</li>
+<li>这里必须得是<strong>合法的代码</strong><ul>
+<li>那到底执行了什么代码呢？</li>
+<li>代码是谁放在这里的呢？</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">答案：系统厂商的代码</h2>
+<ul>
+<li>把一个特殊的存储器 memory-map 到 CPU Reset 后的代码<ul>
+<li>这段代码 “出生” 就有机器完整的控制权</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="what_is_firmware"><div>
+<h1 id="firmware">Firmware</h1>
+<h2 id="_1">“固件”</h2>
+<ul>
+<li>厂商 “固定” 在计算机系统里的代码<ul>
+<li>早期：固件是 ROM</li>
+<li>想升级？换芯片！(今天可以直接升级固件了)</li>
+</ul>
+</li>
+</ul>
+<h2 id="firmware_1">Firmware 的功能</h2>
+<ul>
+<li>完成硬件扫描、初始化和配置<ul>
+<li>(这些配置要生效可能需要重启计算机)</li>
+</ul>
+</li>
+<li>不严格地说，<strong>加载操作系统</strong><ul>
+<li>QEMU：可以绕过 Firmware 直接加载操作系统 (<a href="https://www.qemu.org/docs/master/system/invocation.html#hxtool-8">Manual</a>)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="firmware_config"><div>
+<h1 id="firmware">Firmware 功能：配置计算机系统</h1>
+<h2 id="_1">按一个特殊的组合键进入菜单</h2>
+<ul>
+<li>Del, F2, F1, ESC, F10, F12, … (品牌差异很大)</li>
+<li>你会得到一个直接 “看到” 系统硬件的机会<ul>
+<li>甚至可以配置 CPU 功能开关、风扇转速、接口功能、供电电压、内存时许……</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/bios-firmware.png"></p>
+</div></div>
+
+<div class="slideshow" name="firmware_is_code"><div>
+<h1 id="firmware">Firmware：就是一段代码</h1>
+<h2 id="_1">一个小 “操作系统”</h2>
+<ul>
+<li>CPU Reset 后初始化硬件；对接操作系统 Boot Loader</li>
+</ul>
+<h2 id="legacy-bios-basic-io-system">Legacy BIOS (Basic I/O System)</h2>
+<ul>
+<li>IBM PC 所有设备/BIOS 中断是有 specification 的<ul>
+<li>16-bit DOS 时代 BIOS 常驻内存，提供 I/O 等功能</li>
+</ul>
+</li>
+<li>成就了百花齐放的 “兼容机” 时代<ul>
+<li>
+<a href="https://www.ami.com/bios-uefi-utilities/">AMI</a> 和 <a href="https://www.phoenix.com/device-firmware/">Phoenix BIOS</a>, 等都活到了今天！</li>
+</ul>
+</li>
+</ul>
+<h2 id="uefi-unified-extensible-firmware-interface"><a href="https://www.zhihu.com/question/21672895">UEFI (Unified Extensible Firmware Interface)</a></h2>
+<ul>
+<li>提供更丰富的支持 (例如设备驱动程序)：指纹锁、山寨网卡上的 PXE 网络启动、USB 蓝牙转接器连接的蓝牙键盘……</li>
+</ul>
+</div></div>
+
+<h3> 3.1. 小插曲
+ </h3>
+<div class="slideshow" name="flashback_1998"><div>
+<h1 id="1998">梦回 1998</h1>
+<h2 id="firmware">Firmware 通常是只读的 (当然……)</h2>
+<ul>
+<li>(它可是接管了 CPU Reset，store 指令不会有任何效果)</li>
+</ul>
+<h2 id="firmware_1">但是 Firmware 也需要更新</h2>
+<ul>
+<li>Intel 430TX (Pentium) 芯片组允许<strong>写入 (更新) PROM</strong><ul>
+<li>在那个时代，大家还没意识到问题……</li>
+<li>有些主板有写保护的跳线 (但默认可写)</li>
+</ul>
+</li>
+<li>为防止 Bug 损坏 Firmware<ul>
+<li>只要向 BIOS 写入特定序列，写保护即打开</li>
+<li>但这个序列就在手册里 👽……</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="cih_virus"><div>
+<h1 id="_1">有一个和你们差不多大的青年</h1>
+<blockquote>
+<p>“……CIH (Chernobyl) 病毒完全是他一人设计的，目的是想出一家在广告上吹嘘 “百分之百防毒软件” 的洋相……”</p>
+</blockquote>
+<h2 id="_2">历史上影响最大的病毒之一：它可以<strong>破坏硬件</strong>！</h2>
+<ul>
+<li>坏了就只能拆主板，换 EEPROM 啦！(让我们看看代码吧)</li>
+<li>当年作者被捕，未被定罪 (时年 23 岁)</li>
+</ul>
+<p><img alt="center w:500" src="static/img/cih-virus.jpg"></p>
+</div></div>
+
+<div class="code-card" path="intro/cih"><div><div>
+<h1 id="cih"><a href="/OS/demos/intro/cih">CIH 病毒</a></h1>
+<p>CIH (也称为 Chernobyl 病毒) 是台湾大同大学学生陈盈豪于 1998 年创建的，能够影响早期的 Windows 9x (95、98、Me) 操作系统。在 AI 的帮助下，我们把病毒代码翻译成了 “好读” 的 C 语言，可以清晰地看到病毒感染、潜伏和破坏的过程。</p>
+</div></div>
+</div>
+<div class="slideshow" name="prevent_virus"><div>
+<h1 id="_1">如何预防病毒破坏固件？</h1>
+<h2 id="_2">只允许写入<strong>信任</strong>的固件更新</h2>
+<ul>
+<li>数字签名机制<ul>
+<li>公钥加密 (Diffie-Hellman/RSA)</li>
+<li>感谢今天的 SSL/TLS (HTTPS)！</li>
+</ul>
+</li>
+<li><a href="https://www.binarly.io/blog/leaked-intel-boot-guard-keys-what-happened-how-does-it-affect-the-software-supply-chain">Intel Boot Guard 私钥泄露</a></li>
+</ul>
+<h2 id="_3">现在的电脑病毒</h2>
+<ul>
+<li>炫技搞破坏的意义越来越小<ul>
+<li>更安全的操作系统、AppStore 机制 (软件包经过审查)、云端备份<ul>
+<li>我不小心 rm -rf 了 iCloud，也找回来了 😂</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>获取权限的意义越来越大<ul>
+<li>偷取隐私、LLM Token、移动支付……</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 4. 从固件到操作系统
+ </h2>
+<div class="slideshow" name="back_to_40_years"><div>
+<h1 id="43">回到 43 年前</h1>
+<h2 id="ibm-pcpc-dos-20-1983">IBM PC/PC-DOS 2.0 (1983)</h2>
+<ul>
+<li>Firmware (BIOS) 会加载磁盘的前 512 字节到 0x7c00<ul>
+<li>(如果这 512 字节最后是 0x55, 0xAA)</li>
+<li>为什么是 0b01010101 和 0b10101010？</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">让我们试一试</h2>
+<div class="codehilite"><pre><span></span><code><span class="o">(</span><span class="nb">printf</span><span class="w"> </span><span class="s2">"\xeb\xfe"</span><span class="p">;</span><span class="w"> </span>cat<span class="w"> </span>/dev/zero<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-c<span class="w"> </span><span class="m">508</span><span class="p">;</span><span class="w"> </span><span class="nb">printf</span><span class="w"> </span><span class="s2">"\x55\xaa"</span><span class="o">)</span><span class="w"> </span>&gt;<span class="w"> </span>a.img
+</code></pre></div>
+
+<ul>
+<li>还记得 eb 是什么吗？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="trace_firmware"><div>
+<h1 id="firmware">如果 Firmware 也是代码？</h1>
+<h2 id="cpu-reset">计算机系统从 CPU Reset 开始</h2>
+<ul>
+<li>CPU Reset 的时候，0x7c00 应该是啥也没有的</li>
+<li>Firmware 的代码扫描了磁盘、加载了它</li>
+</ul>
+<h2 id="_1">那我们是不是可以看到 “加载” 的过程？</h2>
+<ul>
+<li><strong>计算机系统公理：你想到的就一定有人做到</strong></li>
+<li>再次使用 <a href="https://www.usenix.org/legacy/publications/library/proceedings/usenix05/tech/freenix/full_papers/bellard/bellard.pdf">QEMU, A fast and portable dynamic translator</a><ul>
+<li>如果你想知道是哪条指令加载了 0x7c00 位置的 eb fe，你需要？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="first_interface"><div>
+<h1 id="firmware">Firmware 和系统程序员的第一个接口</h1>
+<h2 id="446-16-bit">我们可以写 446 字节的 16-bit 代码</h2>
+<ul>
+<li>446 = 512 - 2 (55 aa) - 64 (分区表)</li>
+</ul>
+<h2 id="grub">Grub 的例子</h2>
+<ul>
+<li>Stage 1: 扫描磁盘，找到附近的 ELF 文件头，加载到内存<ul>
+<li>根据文件系统，可能会需要 Stage 1.5</li>
+</ul>
+</li>
+<li>Stage 2: 这个 ELF 文件是 Grub; 弹出熟悉的选择系统窗口</li>
+<li>Stage 3: 加载 Linux Kernel<ul>
+<li>忽然觉得没什么难的了！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/debug-firmware"><div><div>
+<h1 id="seabios"><a href="/OS/demos/intro/debug-firmware">调试 SeaBIOS 固件</a></h1>
+<p>课程和互联网上的文档都声称是 Firmware 代码将具有 55 aa Magic Number 磁盘的前 512 字节载入内存。经过一些尝试 (例如修改 Magic Number)，我们确认了这一行为；更进一步地，我们能否调试固件的代码，看看到底是什么指令实现了磁盘到内存的搬运？这就用到了《计算机系统基础》实验中的 Watch Point。在这里，我们还用到了 init.gdb，它可以帮我们省去每次运行时的重复输入命令，也可以设置 hook (钩子)，每当程序暂停时显示一些我们关心的信息——我们<strong>定制和扩展</strong>了 gdb，使它在调试专属于我们的任务时更加强大。</p>
+</div></div>
+</div>
+<div class="slideshow" name="opensbi"><div>
+<h1 id="risc-v">RISC-V: 固件与操作系统引导</h1>
+<h2 id="opensbi">OpenSBI</h2>
+<ul>
+<li>开源的 “Supervisor Binary Interface” (就是 firmware)</li>
+</ul>
+<h2 id="agent">一年以前：我们还在 “古法阅读”，Agent 还各种不听指令</h2>
+<ul>
+<li>万万没想到：今天只要提问就行了<ul>
+<li>OpenSBI 的入口位于什么地方？如何组织……？</li>
+<li>在大型系统上，self-attention 和 “编程直觉” 强得可怕</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/cc-opensbi.jpg"></p>
+</div></div>
+
+<div class="code-card" path="intro/opensbi"><div><div>
+<h1 id="opensbi"><a href="/OS/demos/intro/opensbi">OpenSBI</a></h1>
+<p>一个开源的 RISC-V 引导固件，用于管理 RISC-V 平台的启动过程。它实现了 SBI（Supervisor Binary Interface）规范，为操作系统提供了硬件抽象层，简化了系统启动和硬件管理。OpenSBI 支持多种 RISC-V 处理器和平台，广泛用于嵌入式系统和开发板。<a href="https://github.com/riscv-software-src/opensbi">https://github.com/riscv-software-src/opensbi</a></p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>硬件是一个无情执行指令的状态机，从 CPU Reset 开始执行固件 (Firmware) 中的代码。固件负责初始化硬件并加载操作系统。操作系统本质上就是一个普通的二进制程序，它接管了中断、I/O 等资源，并把应用程序 “放” 到 CPU 上运行。从硬件的角度看，硬件根本不知道有没有操作系统的存在。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>大家可以在 AI 的帮助下，了解你感兴趣的体系结构的执行模型，例如 CPU Reset 行为、中断处理、特权级等；了解 BIOS/UEFI 的工作原理；尝试编译 OpenSBI 并理解固件的编译链接过程。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 硬件视角的操作系统\n \u003c/h1\u003e\n\u003ch2\u003e 1. Aside: 上课之前\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"how_to_learn\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e学习方法：你做对了吗？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e大家都明白\u003cstrong\u003e应该下载运行示例代码\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e但\u003ca href=\"https://jyywiki.cn/OS/demos/intro/mini-rv32ima/\"\u003e好麻烦啊\u003c/a\u003e，看一眼就不想下了 😭\u003c/li\u003e\n\u003cli\u003eDon’t panic! 现在已经是 “intelligence is cheap” 的时代了\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"prompt\"\u003e一个改变世界的 prompt\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我在做 X。如果你是一个专家，你会怎么做？\u003cul\u003e\n\u003cli\u003e被动：学习 Coding Agent 所做的 “正确的事”\u003c/li\u003e\n\u003cli\u003e主动：让 Copilot 不停地追问，并实时给出建议\u003c/li\u003e\n\u003cli\u003e都可以帮助你建立正确的概念\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e不用担心，我也是新手\u003cul\u003e\n\u003cli\u003e我也虚心请教 AI: code 绑定到 workspace #2、解决了 click url 的问题、加大了鼠标指针、默认进入 /tmp/vibe/……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e复习：软件、硬件和操作系统\u003c/h1\u003e\n\u003ch2 id=\"c-simplec-python\"\u003e软件：C (SimpleC), Python, …\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e初始状态：stack=[main(argc, argv), globals]\u003c/li\u003e\n\u003cli\u003e迁移：执行一条语句\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"x86-risc-v-arm\"\u003e硬件：x86, RISC-V, ARM…\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e初始状态：CPU Reset\u003c/li\u003e\n\u003cli\u003e迁移：执行一条指令/响应中断\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e操作系统：使软件能运行在硬件上的程序\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e系统调用 API (syscall/ecall/svc 指令)，将控制权交给操作系统\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 什么是计算机硬件\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"hw_perspective\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e硬件视角的操作系统\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e一句话：硬件\u003cstrong\u003e根本不知道有没有操作系统\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我就是个无情执行指令的状态机\u003cul\u003e\n\u003cli\u003e见什么指令执行什么指令\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e这就是计算机系统中的\u003cstrong\u003e抽象\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e隔离复杂性的根本手段\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://github.com/cft0808/edict\"\u003e三省六部制\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e下层不需要知道上面怎么用，只管 “无情地提供服务”\u003cul\u003e\n\u003cli\u003e系统调用、指令集、sub-agent……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003e抽象层的设计将是 Agentic AI 时代的重要能力\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e对于低年级的同学，先去广泛地了解各种设计\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"state_machine_model\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e计算机系统的状态机模型\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e无情执行指令的机器。\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_2\"\u003e状态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e内存、寄存器的数值\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e初始状态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e由系统设计者规定 (CPU Reset)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e状态迁移\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从 PC 取指令执行\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_5\"\u003e准确，但忽略了一些重要的细节\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一个 “jmp .” 机器不就永远卡死了吗？\u003cul\u003e\n\u003cli\u003e一点点细节使\u003cstrong\u003e操作系统可以被实现出来\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"system_state\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e计算机系统：状态\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e内部状态：寄存器、内存\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eCPUState\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eregs\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e32\u003c/span\u003e\u003cspan class=\"p\"\u003e],\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecsrs\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003eCSR_COUNT\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint8_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003emem\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emem_offset\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emem_size\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_3\"\u003e外部状态：整个世界\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机系统\u003cstrong\u003e无法完全控制\u003c/strong\u003e的客观存在\u003cul\u003e\n\u003cli\u003e设备上的寄存器 (memory-mapped I/O 可以访问)\u003cul\u003e\n\u003cli\u003e计算机对外界产生影响的主要方式\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eInterrupt/Reset Line\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"gpio_example\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"gpio\"\u003e例子: GPIO\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003egpio_set_value\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eGPIO_23\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// in Linux kernel\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e大家只要有 “GPIO” 的概念，剩下的都可以用聊天解决\u003cul\u003e\n\u003cli\u003e扫描系统中的 GPIO，询问可以做什么\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/gpio-led.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"initial_state\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e计算机系统：初始状态\u003c/h1\u003e\n\u003ch2 id=\"cpu-reset\"\u003eCPU Reset 是\u003cstrong\u003e明确的行为\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e为什么老旧电脑要配一个 Reset 按钮？\u003cul\u003e\n\u003cli\u003e历史总是惊人的相似\u003c/li\u003e\n\u003cli\u003e今天的 OpenClaw 颇有当年 PC 时代的感觉\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/reset-button.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cpu_reset_state\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"cpu-reset\"\u003e实际的 CPU Reset\u003c/h1\u003e\n\u003ch2 id=\"x86-arm-risc-v\"\u003ex86, ARM, RISC-V\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e它们的 CPU Reset 是什么？\u003c/li\u003e\n\u003cli\u003e体现了怎样的设计理念？\u003cul\u003e\n\u003cli\u003e你只需要有正确的\u003cstrong\u003e概念\u003c/strong\u003e，剩下的可以交给 AI\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e对比：我的预训练过程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e去 The Friendly Manual 里大海捞针：我学习 Systems Programming 时的圣经\u003cul\u003e\n\u003cli\u003eCPU Reset (\u003ca href=\"https://software.intel.com/en-us/articles/intel-sdm\"\u003eIntel® 64 and IA-32 Architectures Software Developer’s Manual\u003c/a\u003e, Volume 3A/3B)\u003c/li\u003e\n\u003cli\u003eVolume 3A: ~400 页\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e(但是这的确帮我建立了正确的概念)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/cpu-reset\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"cpu-reset\"\u003e\u003ca href=\"/OS/demos/intro/cpu-reset\"\u003e探索 CPU Reset\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们都知道完整的计算机系统是从 CPU Reset 开始的。这里提供了三个架构的 “最小代码” 演示，展示 CPU Reset 后立即执行 “结束” 代码的短小程序，并打印出执行的指令序列和寄存器变化。运行程序，我们可以明确地看到 CPU Reset 后的寄存器状态，以及执行指令的结果：计算机世界没有任何魔法。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"state_transition\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e计算机系统：状态迁移\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e执行指令\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果有多个处理器？\u003cul\u003e\n\u003cli\u003e可以想象成 “每次选一个处理器执行一条指令”\u003c/li\u003e\n\u003cli\u003e在并发部分会回到这个问题\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e响应中断\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eif (intr) goto vec;\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e输入输出\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e与 “计算机系统外” 交换数据\u003cul\u003e\n\u003cli\u003e读取电信号 (input) 或把电信号传递给设备 (output)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"hw_summary\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e小结：硬件视角的操作系统\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e一句话：硬件\u003cstrong\u003e根本不知道有没有操作系统\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我就是个无情之行指令的状态机\u003cul\u003e\n\u003cli\u003e见什么指令执行什么指令\u003c/li\u003e\n\u003cli\u003e为了操作系统能实现出来，提供了许多机制 (中断、I/O、……)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e\u003cstrong\u003e操作系统就是一个普通的 (二进制) 程序\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e接管了中断、I/O、……\u003cul\u003e\n\u003cli\u003e应用程序不能直接访问\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e把应用程序 “放” 到 CPU 上运行一会\u003cul\u003e\n\u003cli\u003e中断 (系统调用) 后，操作系统又开始执行\u003c/li\u003e\n\u003cli\u003e(操作系统启动后，操作系统就变成了一个中断处理程序)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 固件：硬件和操作系统之间的桥梁\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"missing_detail\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e刚才遗漏的一个细节\u003c/h1\u003e\n\u003ch2 id=\"cpu\"\u003eCPU = 无情执行指令的机器\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从 CPU Reset 开始执行\u003cul\u003e\n\u003cli\u003e从 Mem[PC] 取指令\u003c/li\u003e\n\u003cli\u003e译码、执行，如此往复\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e这里必须得是\u003cstrong\u003e合法的代码\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e那到底执行了什么代码呢？\u003c/li\u003e\n\u003cli\u003e代码是谁放在这里的呢？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e答案：系统厂商的代码\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把一个特殊的存储器 memory-map 到 CPU Reset 后的代码\u003cul\u003e\n\u003cli\u003e这段代码 “出生” 就有机器完整的控制权\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"what_is_firmware\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"firmware\"\u003eFirmware\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“固件”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e厂商 “固定” 在计算机系统里的代码\u003cul\u003e\n\u003cli\u003e早期：固件是 ROM\u003c/li\u003e\n\u003cli\u003e想升级？换芯片！(今天可以直接升级固件了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"firmware_1\"\u003eFirmware 的功能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e完成硬件扫描、初始化和配置\u003cul\u003e\n\u003cli\u003e(这些配置要生效可能需要重启计算机)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e不严格地说，\u003cstrong\u003e加载操作系统\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003eQEMU：可以绕过 Firmware 直接加载操作系统 (\u003ca href=\"https://www.qemu.org/docs/master/system/invocation.html#hxtool-8\"\u003eManual\u003c/a\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"firmware_config\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"firmware\"\u003eFirmware 功能：配置计算机系统\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e按一个特殊的组合键进入菜单\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eDel, F2, F1, ESC, F10, F12, … (品牌差异很大)\u003c/li\u003e\n\u003cli\u003e你会得到一个直接 “看到” 系统硬件的机会\u003cul\u003e\n\u003cli\u003e甚至可以配置 CPU 功能开关、风扇转速、接口功能、供电电压、内存时许……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/bios-firmware.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"firmware_is_code\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"firmware\"\u003eFirmware：就是一段代码\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e一个小 “操作系统”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCPU Reset 后初始化硬件；对接操作系统 Boot Loader\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"legacy-bios-basic-io-system\"\u003eLegacy BIOS (Basic I/O System)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eIBM PC 所有设备/BIOS 中断是有 specification 的\u003cul\u003e\n\u003cli\u003e16-bit DOS 时代 BIOS 常驻内存，提供 I/O 等功能\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e成就了百花齐放的 “兼容机” 时代\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.ami.com/bios-uefi-utilities/\"\u003eAMI\u003c/a\u003e 和 \u003ca href=\"https://www.phoenix.com/device-firmware/\"\u003ePhoenix BIOS\u003c/a\u003e, 等都活到了今天！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"uefi-unified-extensible-firmware-interface\"\u003e\u003ca href=\"https://www.zhihu.com/question/21672895\"\u003eUEFI (Unified Extensible Firmware Interface)\u003c/a\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e提供更丰富的支持 (例如设备驱动程序)：指纹锁、山寨网卡上的 PXE 网络启动、USB 蓝牙转接器连接的蓝牙键盘……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.1. 小插曲\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"flashback_1998\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1998\"\u003e梦回 1998\u003c/h1\u003e\n\u003ch2 id=\"firmware\"\u003eFirmware 通常是只读的 (当然……)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e(它可是接管了 CPU Reset，store 指令不会有任何效果)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"firmware_1\"\u003e但是 Firmware 也需要更新\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eIntel 430TX (Pentium) 芯片组允许\u003cstrong\u003e写入 (更新) PROM\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e在那个时代，大家还没意识到问题……\u003c/li\u003e\n\u003cli\u003e有些主板有写保护的跳线 (但默认可写)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e为防止 Bug 损坏 Firmware\u003cul\u003e\n\u003cli\u003e只要向 BIOS 写入特定序列，写保护即打开\u003c/li\u003e\n\u003cli\u003e但这个序列就在手册里 👽……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cih_virus\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e有一个和你们差不多大的青年\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e“……CIH (Chernobyl) 病毒完全是他一人设计的，目的是想出一家在广告上吹嘘 “百分之百防毒软件” 的洋相……”\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_2\"\u003e历史上影响最大的病毒之一：它可以\u003cstrong\u003e破坏硬件\u003c/strong\u003e！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e坏了就只能拆主板，换 EEPROM 啦！(让我们看看代码吧)\u003c/li\u003e\n\u003cli\u003e当年作者被捕，未被定罪 (时年 23 岁)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"center w:500\" src=\"static/img/cih-virus.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/cih\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"cih\"\u003e\u003ca href=\"/OS/demos/intro/cih\"\u003eCIH 病毒\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eCIH (也称为 Chernobyl 病毒) 是台湾大同大学学生陈盈豪于 1998 年创建的，能够影响早期的 Windows 9x (95、98、Me) 操作系统。在 AI 的帮助下，我们把病毒代码翻译成了 “好读” 的 C 语言，可以清晰地看到病毒感染、潜伏和破坏的过程。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"prevent_virus\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e如何预防病毒破坏固件？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e只允许写入\u003cstrong\u003e信任\u003c/strong\u003e的固件更新\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e数字签名机制\u003cul\u003e\n\u003cli\u003e公钥加密 (Diffie-Hellman/RSA)\u003c/li\u003e\n\u003cli\u003e感谢今天的 SSL/TLS (HTTPS)！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://www.binarly.io/blog/leaked-intel-boot-guard-keys-what-happened-how-does-it-affect-the-software-supply-chain\"\u003eIntel Boot Guard 私钥泄露\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e现在的电脑病毒\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e炫技搞破坏的意义越来越小\u003cul\u003e\n\u003cli\u003e更安全的操作系统、AppStore 机制 (软件包经过审查)、云端备份\u003cul\u003e\n\u003cli\u003e我不小心 rm -rf 了 iCloud，也找回来了 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e获取权限的意义越来越大\u003cul\u003e\n\u003cli\u003e偷取隐私、LLM Token、移动支付……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 4. 从固件到操作系统\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"back_to_40_years\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"43\"\u003e回到 43 年前\u003c/h1\u003e\n\u003ch2 id=\"ibm-pcpc-dos-20-1983\"\u003eIBM PC/PC-DOS 2.0 (1983)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFirmware (BIOS) 会加载磁盘的前 512 字节到 0x7c00\u003cul\u003e\n\u003cli\u003e(如果这 512 字节最后是 0x55, 0xAA)\u003c/li\u003e\n\u003cli\u003e为什么是 0b01010101 和 0b10101010？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e让我们试一试\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"o\"\u003e(\u003c/span\u003e\u003cspan class=\"nb\"\u003eprintf\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"\\xeb\\xfe\"\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003ecat\u003cspan class=\"w\"\u003e \u003c/span\u003e/dev/zero\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003ehead\u003cspan class=\"w\"\u003e \u003c/span\u003e-c\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"m\"\u003e508\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nb\"\u003eprintf\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"\\x55\\xaa\"\u003c/span\u003e\u003cspan class=\"o\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u0026gt;\u003cspan class=\"w\"\u003e \u003c/span\u003ea.img\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e还记得 eb 是什么吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"trace_firmware\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"firmware\"\u003e如果 Firmware 也是代码？\u003c/h1\u003e\n\u003ch2 id=\"cpu-reset\"\u003e计算机系统从 CPU Reset 开始\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCPU Reset 的时候，0x7c00 应该是啥也没有的\u003c/li\u003e\n\u003cli\u003eFirmware 的代码扫描了磁盘、加载了它\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e那我们是不是可以看到 “加载” 的过程？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e计算机系统公理：你想到的就一定有人做到\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003e再次使用 \u003ca href=\"https://www.usenix.org/legacy/publications/library/proceedings/usenix05/tech/freenix/full_papers/bellard/bellard.pdf\"\u003eQEMU, A fast and portable dynamic translator\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e如果你想知道是哪条指令加载了 0x7c00 位置的 eb fe，你需要？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"first_interface\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"firmware\"\u003eFirmware 和系统程序员的第一个接口\u003c/h1\u003e\n\u003ch2 id=\"446-16-bit\"\u003e我们可以写 446 字节的 16-bit 代码\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e446 = 512 - 2 (55 aa) - 64 (分区表)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"grub\"\u003eGrub 的例子\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eStage 1: 扫描磁盘，找到附近的 ELF 文件头，加载到内存\u003cul\u003e\n\u003cli\u003e根据文件系统，可能会需要 Stage 1.5\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eStage 2: 这个 ELF 文件是 Grub; 弹出熟悉的选择系统窗口\u003c/li\u003e\n\u003cli\u003eStage 3: 加载 Linux Kernel\u003cul\u003e\n\u003cli\u003e忽然觉得没什么难的了！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/debug-firmware\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"seabios\"\u003e\u003ca href=\"/OS/demos/intro/debug-firmware\"\u003e调试 SeaBIOS 固件\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e课程和互联网上的文档都声称是 Firmware 代码将具有 55 aa Magic Number 磁盘的前 512 字节载入内存。经过一些尝试 (例如修改 Magic Number)，我们确认了这一行为；更进一步地，我们能否调试固件的代码，看看到底是什么指令实现了磁盘到内存的搬运？这就用到了《计算机系统基础》实验中的 Watch Point。在这里，我们还用到了 init.gdb，它可以帮我们省去每次运行时的重复输入命令，也可以设置 hook (钩子)，每当程序暂停时显示一些我们关心的信息——我们\u003cstrong\u003e定制和扩展\u003c/strong\u003e了 gdb，使它在调试专属于我们的任务时更加强大。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"opensbi\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"risc-v\"\u003eRISC-V: 固件与操作系统引导\u003c/h1\u003e\n\u003ch2 id=\"opensbi\"\u003eOpenSBI\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e开源的 “Supervisor Binary Interface” (就是 firmware)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"agent\"\u003e一年以前：我们还在 “古法阅读”，Agent 还各种不听指令\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e万万没想到：今天只要提问就行了\u003cul\u003e\n\u003cli\u003eOpenSBI 的入口位于什么地方？如何组织……？\u003c/li\u003e\n\u003cli\u003e在大型系统上，self-attention 和 “编程直觉” 强得可怕\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/cc-opensbi.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/opensbi\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"opensbi\"\u003e\u003ca href=\"/OS/demos/intro/opensbi\"\u003eOpenSBI\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e一个开源的 RISC-V 引导固件，用于管理 RISC-V 平台的启动过程。它实现了 SBI（Supervisor Binary Interface）规范，为操作系统提供了硬件抽象层，简化了系统启动和硬件管理。OpenSBI 支持多种 RISC-V 处理器和平台，广泛用于嵌入式系统和开发板。\u003ca href=\"https://github.com/riscv-software-src/opensbi\"\u003ehttps://github.com/riscv-software-src/opensbi\u003c/a\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e硬件是一个无情执行指令的状态机，从 CPU Reset 开始执行固件 (Firmware) 中的代码。固件负责初始化硬件并加载操作系统。操作系统本质上就是一个普通的二进制程序，它接管了中断、I/O 等资源，并把应用程序 “放” 到 CPU 上运行。从硬件的角度看，硬件根本不知道有没有操作系统的存在。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e大家可以在 AI 的帮助下，了解你感兴趣的体系结构的执行模型，例如 CPU Reset 行为、中断处理、特权级等；了解 BIOS/UEFI 的工作原理；尝试编译 OpenSBI 并理解固件的编译链接过程。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect3.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

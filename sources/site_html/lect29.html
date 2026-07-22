@@ -1,0 +1,384 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 虚拟机和容器
+ </h1>
+<h2> 1. 全系统虚拟化
+ </h2>
+<div class="slideshow" name="full_system_emulation"><div>
+<h1 id="_1">一个进程，一台机器</h1>
+<h2 id="full-system-emulation">Full System Emulation</h2>
+<ul>
+<li>这个简单，就是 NEMU 啊：取指令、译码、执行<ul>
+<li>致命的是<strong>性能</strong>: 不及 native 的 10%</li>
+<li><a href="https://www.bilibili.com/video/BV1aWVN6uEoY">PA4 x86 JIT</a></li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/pal.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="qemu_dyngen"><div>
+<h1 id="qemu-dyngen">QEMU dyngen</h1>
+<h2 id="_1">来自<a href="https://www.usenix.org/conference/2005-usenix-annual-technical-conference/qemu-fast-and-portable-dynamic-translator">早期版本</a>
+</h2>
+<ul>
+<li>
+<strong>借用</strong>一个有优化能力的编译器，为每条指令生成优化后的本机代码</li>
+<li>运行时把连续的非跳转指令用 memcpy 组装起来 + relocate</li>
+</ul>
+<h2 id="addi-r1-r1-16-powerpc">例子：解释执行 <code>addi r1, r1, -16</code> (PowerPC)</h2>
+<div class="codehilite"><pre><span></span><code><span class="c1">// 手写的汇编 (T0 通常是寄存器)</span>
+<span class="c1">// op_movl_T0_r1</span>
+<span class="c1">// op_addl_T0_im</span>
+<span class="c1">// op_movl_r1_T0</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">op_addl_T0_im</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">T0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">T0</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="p">((</span><span class="kt">long</span><span class="p">)(</span><span class="o">&amp;</span><span class="n">__op_param1</span><span class="p">));</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>这是一个 “比解释执行好一些” 的方案</li>
+<li>Just-in-time: 把连续的指令代码交给编译器优化<ul>
+<li>(只适合在后台 profile-guided 慢慢做)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="golden_age_start"><div>
+<h1 id="_1">黄金时代的起点</h1>
+<h2 id="disco"><a href="https://dl.acm.org/doi/10.1145/268998.266672">Disco</a></h2>
+<ul>
+<li>SOSP‘97; Mendel Rosenblum 是 LFS 的作者</li>
+<li>Virtual machine monitors 重现江湖</li>
+</ul>
+<h2 id="com-2000">“.COM” 泡沫时代的商机 (~2000)</h2>
+<ul>
+<li>ISP (Internet Service Provider) 提供的是<strong>物理机</strong><ul>
+<li>绝大部分应用 (bbs、邮件、Web) 的 CPU 空闲率达到 90% 以上</li>
+</ul>
+</li>
+<li>虚拟机：和物理机用起来完全一样，但一台能当 n 台卖<ul>
+<li>黑心商人：我们都是 oversubscribe 的 💰💰💰</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/disco.png"></p>
+</div></div>
+
+<div class="slideshow" name="golden_age_cont"><div>
+<h1 id="contd">黄金时代的起点 (cont’d)</h1>
+<h2 id="mendel-rosenblum">Mendel Rosenblum 和他老婆：财富自由的机会来了</h2>
+<ul>
+<li>顺便把 paper 的作者也带走吧！</li>
+<li>于是有了大家熟知的 VMware (1998)<ul>
+<li>大部分做产品的投机家死了，但技术留下来了</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">硅谷的创业公司们</h2>
+<ul>
+<li>科技巨头：HP, Cisco, Yahoo, Google, Sun, … 都是这样起家的</li>
+<li>Paul Graham 的 <a href="https://www.ycombinator.com/">Y Combinator</a>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">Y</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wrapper</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">wrapper</span><span class="p">)(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">wrapper</span>
+
+<span class="n">factorial</span> <span class="o">=</span> <span class="n">Y</span><span class="p">(</span><span class="k">lambda</span> <span class="n">f</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">n</span><span class="p">:</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">n</span> <span class="o">*</span> <span class="n">f</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+</code></pre></div>
+</div></div>
+
+<h3> 1.1. Aside: 大学的使命
+ </h3>
+<div class="slideshow" name="our_era_1"><div>
+<h1 id="_1">这些 “传说” 离我们并不远</h1>
+<h2 id="_2">今天我们似乎已经 “忘记” 发论文的意义了</h2>
+<ul>
+<li>老板有个项目 → 需要一帮打手 → 凑个数，流水线论文工厂启动</li>
+<li>后果：耿同学<ul>
+<li><a href="https://gernot-heiser.org/benchmarking-crimes.html">Benchmark crime</a></li>
+<li>虚假的 SOTA 都是污染人类语料库的垃圾</li>
+<li>很明显，LLM 对垃圾的容忍比我高 (而且对垃圾的容忍比我高)</li>
+</ul>
+</li>
+</ul>
+<h2 id="disco-sosp97-brings-back-an-idea-popular-in-the-1970s">Disco (SOSP‘97): “Brings back an idea popular in the 1970s”</h2>
+<ul>
+<li>这才是发论文的真正意义所在</li>
+<li>其实世界上 “品味好” 是有传承的<ul>
+<li>Mendel Rosenblum 的 LFS 和 Disco<ul>
+<li>更早的 SimOS (Stephen A. Herrod, Emmett Witchel)</li>
+</ul>
+</li>
+<li>Tom Anderson 的 Scheduler activations, Nachos…</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="our_era_2"><div>
+<h1 id="_1">技能与品味</h1>
+<h2 id="_2">不学技能，谈不上品味</h2>
+<ul>
+<li>数字逻辑电路、计算机系统基础、操作系统……</li>
+<li>没有基本的概念，是不可能做出任何创新的</li>
+</ul>
+<h2 id="_3">但技能学习的 “执行” 是非常重要的</h2>
+<ul>
+<li>环境和见闻会影响人的判断<ul>
+<li>上一代人没有见过好东西，不代表世界上没有</li>
+</ul>
+</li>
+<li>例子：我们为古法编程时代设计的《计算机系统基础》<ul>
+<li>NEMU 实验、AbstractMachine、Differential Testing</li>
+<li>我们的品味也是在进步的</li>
+</ul>
+</li>
+<li>例子：我们为现代编程时代设计的课程联动<ul>
+<li>但应该是实现不了了</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="our_era_3"><div>
+<h1 id="_1">我们在追赶的时代</h1>
+<h2 id="20">20 年前，实验室里的几位师兄弟</h2>
+<ul>
+<li>
+<a href="https://dl.acm.org/doi/10.1145/1134760.1134767">Live updating operating systems using virtualization</a> (VEE‘06); 2007 年，VMware 在纽交所上市</li>
+<li>实验室诞生了华为操作系统首席科学家、上海交通大学 IPADS 所长</li>
+</ul>
+<h2 id="20-reward-hacking">20 年后，同学们还在 reward hacking</h2>
+<ul>
+<li>“老师，最后两个实验中的内容，考试会出现吗？”</li>
+<li>我完全可以理解，“分数就是一切” 的那种感觉<ul>
+<li>但忽然有一天分数不作为评价标准的时候，人生是否就失去动力？</li>
+<li>The Mythical Man-Month → The Mythical Agent-Month 的今天，应该怎么办？</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/haibochen.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="direct_execution"><div>
+<h1 id="_1">关键技术: 直接执行特权代码</h1>
+<h2 id="disco-emulate-the-execution-of-the-virtual-cpu-by-using-direct-execution-on-the-real-cpu">Disco: “Emulate the execution of the virtual CPU by using direct execution on the real CPU”</h2>
+<ul>
+<li>不管是操作系统还是进程，看到的都是虚拟地址空间<ul>
+<li>只不过操作系统可以修改 “VR 眼镜” (CR3、页映射)</li>
+<li>VMM: 控制住 VR 眼镜就行了</li>
+</ul>
+</li>
+</ul>
+<h2 id="vmm">VMM</h2>
+<ul>
+<li>模拟所有 “有系统级副作用” 的指令，例如关中断、I/O<ul>
+<li>包括所有对 CR3 和页表的修改</li>
+<li>“改写” 一份页表到 CR3 (Shadow Page Table)</li>
+</ul>
+</li>
+<li>这样就可以在 Ring 3 模拟执行 Ring 0!<ul>
+<li>实际：Ring 1，或者 patch 特权指令</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="virtualization_golden_age"><div>
+<h1 id="_1">虚拟化的黄金时代</h1>
+<h2 id="_2">更多的技术方案</h2>
+<ul>
+<li>
+<a href="https://dl.acm.org/doi/10.1145/1165389.945462">Xen and the art of virtualization</a> (2003)<ul>
+<li>“Paravirtualization”: 修改操作系统，主动配合虚拟化</li>
+<li>非特权代码直接执行 (Ring 1)，做分页、中断等操作 trap 到 Ring 0</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">甚至影响了硬件的设计</h2>
+<ul>
+<li>Intel: VT-x (2005) → VT-d (2006) → EPT (2008)</li>
+<li><a href="https://docs.oasis-open.org/virtio/virtio/v1.1/csprd01/virtio-v1.1-csprd01.html">Virtual I/O Device (VIRTIO)</a></li>
+</ul>
+<h2 id="_4">虚拟机也使 “操作系统状态” 可以直接管理了</h2>
+<ul>
+<li>
+<a href="https://www.usenix.org/conference/osdi-02/revirt-enabling-intrusion-analysis-through-virtual-machine-logging-and-replay">ReVirt: Enabling intrusion analysis through virtual-machine logging and replay</a> (OSDI‘02)<ul>
+<li>时间转移：“replay the long-term, instruction-by-instruction execution of a computer system.”</li>
+</ul>
+</li>
+<li>
+<a href="https://www.usenix.org/conference/osdi-02/optimizing-migration-virtual-computers">Optimizing migration of virtual computers</a> (OSDI‘02)<ul>
+<li>空间转移：“a system that moves a computer’s state over a slow (384kbps) DSL link in minutes rather than hours.”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 操作系统级虚拟化
+ </h2>
+<div class="slideshow" name="another_approach"><div>
+<h1 id="_1">虚拟化的另一个方法</h1>
+<h2 id="_2">操作系统：我自己就能虚拟化自己啊 🤔</h2>
+<ul>
+<li>整个就被 VMware 带歪了</li>
+<li>应用程序只能看到系统调用 API<ul>
+<li>操作系统：“假装” 在虚拟机里执行系统调用</li>
+<li>例子：虚拟的 pstree<ul>
+<li>pid = 1: init (systemd)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="pid">pid 可以不再是整个操作系统唯一的</h2>
+<ul>
+<li>给每个进程增加一个 “osid”，增加系统调用 vos(fs_root)<ul>
+<li>创建一个新的 osid</li>
+<li>pid 从 1 开始分配</li>
+<li>fork() 继承父进程的 osid</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="pidfs"><div>
+<h1 id="aside-pidfs">Aside: pidfs</h1>
+<h2 id="pid">pid 是会回收利用的</h2>
+<ul>
+<li><code>ps | grep SomeProcess</code></li>
+<li>
+<code>kill -9 31181</code><ul>
+<li>如果你的反射弧太长，就可能错杀其他进程</li>
+<li>pid 机制是无法避免 TOCTTOU 问题的</li>
+</ul>
+</li>
+</ul>
+<h2 id="pidfs-everything-is-a-file">pidfs: Everything is a file</h2>
+<ul>
+<li>
+<code>pidfd_open(pid)</code> → 获得 fd</li>
+<li>
+<code>pidfd_send_signal(fd, sig)</code> → 给进程发信号<ul>
+<li>fd 是稳定的引用，不受 PID 回收影响</li>
+<li>(一旦作为 fd 打开，进程就会增加一个引用计数，进程数据结构就不会回收)</li>
+</ul>
+</li>
+<li>PID 是一个 “leaky abstraction”：TOCTTOU、僵尸进程、托孤…… </li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="ancient_idea"><div>
+<h1 id="_1">这个想法其实很古老</h1>
+<h2 id="chroot-1979-version-7-unix">chroot (1979, Version 7 Unix)</h2>
+<ul>
+<li>把进程的文件系统视图限制在某个子目录下<ul>
+<li><code>chroot(“/path/to/root”)</code></li>
+<li>进程看到的 <code>/</code> 就是 “/path/to/root”</li>
+</ul>
+</li>
+<li>只虚拟化了<strong>文件系统</strong>一个命名空间<ul>
+<li>PID、网络、用户……都还是共享的</li>
+<li>逃逸也很容易……</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">如果要创建一个 “完全虚拟” 的操作系统</h2>
+<ul>
+<li>隔离 pid + 文件系统就已经完成大部分 “功能性” 任务了</li>
+<li>想一想 “操作系统里有什么对象”，就可以知道还有什么需要虚拟化的</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="linux_namespaces"><div>
+<h1 id="linux-namespaces">祝贺，你发明了 Linux Namespaces!</h1>
+<h2 id="osid">osid 需要管理的对象</h2>
+<ul>
+<li>pid: (刚才讲了)</li>
+<li>user: 用户和组 (这个很重要)</li>
+<li>mnt: 文件系统和设备</li>
+<li>ipc: 信号量、消息队列、共享内存</li>
+<li>net: 网络设备、协议栈、端口 (localhost:5000)</li>
+<li>time: 系统时间和时区</li>
+<li>uts: 主机名和域名</li>
+<li>Linux namespaces: /proc/[pid]/ns/<ul>
+<li>lsns 可以查看 (strace)</li>
+</ul>
+</li>
+</ul>
+<h2 id="namespaces-7">Namespaces (7)</h2>
+<ul>
+<li>clone: 创建进程时可以带 CLONE_NEW_xxx (PID, IPC, …) 选项</li>
+<li>setns, unshare: 改变某一个对象的 “osid”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="resource_control"><div>
+<h1 id="_1">再进一步：资源调度</h1>
+<h2 id="_2">实现资源的控制</h2>
+<ul>
+<li>“圈一些进程”，设定资源使用策略</li>
+<li>祝贺，你发明了 cgroups<ul>
+<li>
+<code>cat /proc/*/cgroup</code>; <code>/sys/fs/cgroup</code>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="namespaces">这是一个和 namespaces 正交的机制</h2>
+<ul>
+<li>共同使用，你就得到了容器<ul>
+<li>例子：只有 busybox 的 “系统中的系统”</li>
+<li>再加上我们之前讲过的 OverlayFS——分层镜像</li>
+<li>祝贺，你发明了 docker!</li>
+</ul>
+</li>
+</ul>
+<h2 id="vmware">其实 VMware 把人类 “带歪了” 😊</h2>
+<ul>
+<li>2000 年就有 <a href="https://docs.freebsd.org/en/books/handbook/jails/">FreeBSD Jails</a> 了</li>
+<li>2006 年 cgroups 和 namespaces 才引入，到 2008 年 LXC (Linux Containers)<ul>
+<li>Richard Sutton: <a href="https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf">The Bitter Lesson</a>: 这都不重要，有 meta-mechanism 就行</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="cloud_era"><div>
+<h1 id="_1">云时代的虚拟机</h1>
+<h2 id="linux">如果只需要 Linux</h2>
+<ul>
+<li>容器就和虚拟机<strong>完全一样</strong>
+</li>
+<li>开销比虚拟机低很多，安全性略低<ul>
+<li>这样不就可以在一台物理上部署更多的服务了吗<ul>
+<li>
+<strong>黑心商人</strong>: 💰💰💰 的机会来啦！</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="kubernetes-k8s">Kubernetes (K8s): “容器编排”</h2>
+<ul>
+<li>动态、透明管理的 “无状态” 容器 Pod (虚拟机)<ul>
+<li>容器出错、网络异常、节点崩溃都可以随时在另一个地方重启</li>
+</ul>
+</li>
+<li>声明式的访问和路由<ul>
+<li>配置好之后，你只要访问 Gateway API，自动路由到正确的容器</li>
+<li>自动的负载均衡、健康检查……</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">开启 “云原生” 的时代</h2>
+<ul>
+<li>机器不可靠 → 多副本、自动故障转移</li>
+<li>人工不可靠 → 声明式，运维全部交给系统</li>
+<li>环境不可靠 → 容器化确定性</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 虚拟机和容器\n \u003c/h1\u003e\n\u003ch2\u003e 1. 全系统虚拟化\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"full_system_emulation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一个进程，一台机器\u003c/h1\u003e\n\u003ch2 id=\"full-system-emulation\"\u003eFull System Emulation\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这个简单，就是 NEMU 啊：取指令、译码、执行\u003cul\u003e\n\u003cli\u003e致命的是\u003cstrong\u003e性能\u003c/strong\u003e: 不及 native 的 10%\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://www.bilibili.com/video/BV1aWVN6uEoY\"\u003ePA4 x86 JIT\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/pal.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"qemu_dyngen\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"qemu-dyngen\"\u003eQEMU dyngen\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e来自\u003ca href=\"https://www.usenix.org/conference/2005-usenix-annual-technical-conference/qemu-fast-and-portable-dynamic-translator\"\u003e早期版本\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e借用\u003c/strong\u003e一个有优化能力的编译器，为每条指令生成优化后的本机代码\u003c/li\u003e\n\u003cli\u003e运行时把连续的非跳转指令用 memcpy 组装起来 + relocate\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"addi-r1-r1-16-powerpc\"\u003e例子：解释执行 \u003ccode\u003eaddi r1, r1, -16\u003c/code\u003e (PowerPC)\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"c1\"\u003e// 手写的汇编 (T0 通常是寄存器)\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// op_movl_T0_r1\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// op_addl_T0_im\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// op_movl_r1_T0\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eop_addl_T0_im\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eT0\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eT0\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"kt\"\u003elong\u003c/span\u003e\u003cspan class=\"p\"\u003e)(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003e__op_param1\u003c/span\u003e\u003cspan class=\"p\"\u003e));\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e这是一个 “比解释执行好一些” 的方案\u003c/li\u003e\n\u003cli\u003eJust-in-time: 把连续的指令代码交给编译器优化\u003cul\u003e\n\u003cli\u003e(只适合在后台 profile-guided 慢慢做)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"golden_age_start\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e黄金时代的起点\u003c/h1\u003e\n\u003ch2 id=\"disco\"\u003e\u003ca href=\"https://dl.acm.org/doi/10.1145/268998.266672\"\u003eDisco\u003c/a\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSOSP‘97; Mendel Rosenblum 是 LFS 的作者\u003c/li\u003e\n\u003cli\u003eVirtual machine monitors 重现江湖\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"com-2000\"\u003e“.COM” 泡沫时代的商机 (~2000)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eISP (Internet Service Provider) 提供的是\u003cstrong\u003e物理机\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e绝大部分应用 (bbs、邮件、Web) 的 CPU 空闲率达到 90% 以上\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e虚拟机：和物理机用起来完全一样，但一台能当 n 台卖\u003cul\u003e\n\u003cli\u003e黑心商人：我们都是 oversubscribe 的 💰💰💰\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/disco.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"golden_age_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e黄金时代的起点 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"mendel-rosenblum\"\u003eMendel Rosenblum 和他老婆：财富自由的机会来了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e顺便把 paper 的作者也带走吧！\u003c/li\u003e\n\u003cli\u003e于是有了大家熟知的 VMware (1998)\u003cul\u003e\n\u003cli\u003e大部分做产品的投机家死了，但技术留下来了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e硅谷的创业公司们\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e科技巨头：HP, Cisco, Yahoo, Google, Sun, … 都是这样起家的\u003c/li\u003e\n\u003cli\u003ePaul Graham 的 \u003ca href=\"https://www.ycombinator.com/\"\u003eY Combinator\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003edef\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eY\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e):\u003c/span\u003e\n    \u003cspan class=\"k\"\u003edef\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ewrapper\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eargs\u003c/span\u003e\u003cspan class=\"p\"\u003e):\u003c/span\u003e\n        \u003cspan class=\"k\"\u003ereturn\u003c/span\u003e \u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ewrapper\u003c/span\u003e\u003cspan class=\"p\"\u003e)(\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eargs\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n    \u003cspan class=\"k\"\u003ereturn\u003c/span\u003e \u003cspan class=\"n\"\u003ewrapper\u003c/span\u003e\n\n\u003cspan class=\"n\"\u003efactorial\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"n\"\u003eY\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"k\"\u003elambda\u003c/span\u003e \u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e \u003cspan class=\"k\"\u003elambda\u003c/span\u003e \u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e \u003cspan class=\"mi\"\u003e1\u003c/span\u003e \u003cspan class=\"k\"\u003eif\u003c/span\u003e \u003cspan class=\"n\"\u003en\u003c/span\u003e \u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e \u003cspan class=\"mi\"\u003e2\u003c/span\u003e \u003cspan class=\"k\"\u003eelse\u003c/span\u003e \u003cspan class=\"n\"\u003en\u003c/span\u003e \u003cspan class=\"o\"\u003e*\u003c/span\u003e \u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e \u003cspan class=\"o\"\u003e-\u003c/span\u003e \u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. Aside: 大学的使命\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"our_era_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e这些 “传说” 离我们并不远\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e今天我们似乎已经 “忘记” 发论文的意义了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e老板有个项目 → 需要一帮打手 → 凑个数，流水线论文工厂启动\u003c/li\u003e\n\u003cli\u003e后果：耿同学\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://gernot-heiser.org/benchmarking-crimes.html\"\u003eBenchmark crime\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003e虚假的 SOTA 都是污染人类语料库的垃圾\u003c/li\u003e\n\u003cli\u003e很明显，LLM 对垃圾的容忍比我高 (而且对垃圾的容忍比我高)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"disco-sosp97-brings-back-an-idea-popular-in-the-1970s\"\u003eDisco (SOSP‘97): “Brings back an idea popular in the 1970s”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这才是发论文的真正意义所在\u003c/li\u003e\n\u003cli\u003e其实世界上 “品味好” 是有传承的\u003cul\u003e\n\u003cli\u003eMendel Rosenblum 的 LFS 和 Disco\u003cul\u003e\n\u003cli\u003e更早的 SimOS (Stephen A. Herrod, Emmett Witchel)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eTom Anderson 的 Scheduler activations, Nachos…\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"our_era_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e技能与品味\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e不学技能，谈不上品味\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e数字逻辑电路、计算机系统基础、操作系统……\u003c/li\u003e\n\u003cli\u003e没有基本的概念，是不可能做出任何创新的\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e但技能学习的 “执行” 是非常重要的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e环境和见闻会影响人的判断\u003cul\u003e\n\u003cli\u003e上一代人没有见过好东西，不代表世界上没有\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e例子：我们为古法编程时代设计的《计算机系统基础》\u003cul\u003e\n\u003cli\u003eNEMU 实验、AbstractMachine、Differential Testing\u003c/li\u003e\n\u003cli\u003e我们的品味也是在进步的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e例子：我们为现代编程时代设计的课程联动\u003cul\u003e\n\u003cli\u003e但应该是实现不了了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"our_era_3\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e我们在追赶的时代\u003c/h1\u003e\n\u003ch2 id=\"20\"\u003e20 年前，实验室里的几位师兄弟\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://dl.acm.org/doi/10.1145/1134760.1134767\"\u003eLive updating operating systems using virtualization\u003c/a\u003e (VEE‘06); 2007 年，VMware 在纽交所上市\u003c/li\u003e\n\u003cli\u003e实验室诞生了华为操作系统首席科学家、上海交通大学 IPADS 所长\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"20-reward-hacking\"\u003e20 年后，同学们还在 reward hacking\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“老师，最后两个实验中的内容，考试会出现吗？”\u003c/li\u003e\n\u003cli\u003e我完全可以理解，“分数就是一切” 的那种感觉\u003cul\u003e\n\u003cli\u003e但忽然有一天分数不作为评价标准的时候，人生是否就失去动力？\u003c/li\u003e\n\u003cli\u003eThe Mythical Man-Month → The Mythical Agent-Month 的今天，应该怎么办？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/haibochen.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"direct_execution\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e关键技术: 直接执行特权代码\u003c/h1\u003e\n\u003ch2 id=\"disco-emulate-the-execution-of-the-virtual-cpu-by-using-direct-execution-on-the-real-cpu\"\u003eDisco: “Emulate the execution of the virtual CPU by using direct execution on the real CPU”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不管是操作系统还是进程，看到的都是虚拟地址空间\u003cul\u003e\n\u003cli\u003e只不过操作系统可以修改 “VR 眼镜” (CR3、页映射)\u003c/li\u003e\n\u003cli\u003eVMM: 控制住 VR 眼镜就行了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"vmm\"\u003eVMM\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e模拟所有 “有系统级副作用” 的指令，例如关中断、I/O\u003cul\u003e\n\u003cli\u003e包括所有对 CR3 和页表的修改\u003c/li\u003e\n\u003cli\u003e“改写” 一份页表到 CR3 (Shadow Page Table)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e这样就可以在 Ring 3 模拟执行 Ring 0!\u003cul\u003e\n\u003cli\u003e实际：Ring 1，或者 patch 特权指令\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"virtualization_golden_age\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e虚拟化的黄金时代\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e更多的技术方案\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://dl.acm.org/doi/10.1145/1165389.945462\"\u003eXen and the art of virtualization\u003c/a\u003e (2003)\u003cul\u003e\n\u003cli\u003e“Paravirtualization”: 修改操作系统，主动配合虚拟化\u003c/li\u003e\n\u003cli\u003e非特权代码直接执行 (Ring 1)，做分页、中断等操作 trap 到 Ring 0\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e甚至影响了硬件的设计\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eIntel: VT-x (2005) → VT-d (2006) → EPT (2008)\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://docs.oasis-open.org/virtio/virtio/v1.1/csprd01/virtio-v1.1-csprd01.html\"\u003eVirtual I/O Device (VIRTIO)\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e虚拟机也使 “操作系统状态” 可以直接管理了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.usenix.org/conference/osdi-02/revirt-enabling-intrusion-analysis-through-virtual-machine-logging-and-replay\"\u003eReVirt: Enabling intrusion analysis through virtual-machine logging and replay\u003c/a\u003e (OSDI‘02)\u003cul\u003e\n\u003cli\u003e时间转移：“replay the long-term, instruction-by-instruction execution of a computer system.”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.usenix.org/conference/osdi-02/optimizing-migration-virtual-computers\"\u003eOptimizing migration of virtual computers\u003c/a\u003e (OSDI‘02)\u003cul\u003e\n\u003cli\u003e空间转移：“a system that moves a computer’s state over a slow (384kbps) DSL link in minutes rather than hours.”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 操作系统级虚拟化\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"another_approach\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e虚拟化的另一个方法\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e操作系统：我自己就能虚拟化自己啊 🤔\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e整个就被 VMware 带歪了\u003c/li\u003e\n\u003cli\u003e应用程序只能看到系统调用 API\u003cul\u003e\n\u003cli\u003e操作系统：“假装” 在虚拟机里执行系统调用\u003c/li\u003e\n\u003cli\u003e例子：虚拟的 pstree\u003cul\u003e\n\u003cli\u003epid = 1: init (systemd)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"pid\"\u003epid 可以不再是整个操作系统唯一的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e给每个进程增加一个 “osid”，增加系统调用 vos(fs_root)\u003cul\u003e\n\u003cli\u003e创建一个新的 osid\u003c/li\u003e\n\u003cli\u003epid 从 1 开始分配\u003c/li\u003e\n\u003cli\u003efork() 继承父进程的 osid\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"pidfs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aside-pidfs\"\u003eAside: pidfs\u003c/h1\u003e\n\u003ch2 id=\"pid\"\u003epid 是会回收利用的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ccode\u003eps | grep SomeProcess\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003ekill -9 31181\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e如果你的反射弧太长，就可能错杀其他进程\u003c/li\u003e\n\u003cli\u003epid 机制是无法避免 TOCTTOU 问题的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"pidfs-everything-is-a-file\"\u003epidfs: Everything is a file\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003epidfd_open(pid)\u003c/code\u003e → 获得 fd\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003epidfd_send_signal(fd, sig)\u003c/code\u003e → 给进程发信号\u003cul\u003e\n\u003cli\u003efd 是稳定的引用，不受 PID 回收影响\u003c/li\u003e\n\u003cli\u003e(一旦作为 fd 打开，进程就会增加一个引用计数，进程数据结构就不会回收)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003ePID 是一个 “leaky abstraction”：TOCTTOU、僵尸进程、托孤…… \u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ancient_idea\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e这个想法其实很古老\u003c/h1\u003e\n\u003ch2 id=\"chroot-1979-version-7-unix\"\u003echroot (1979, Version 7 Unix)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把进程的文件系统视图限制在某个子目录下\u003cul\u003e\n\u003cli\u003e\u003ccode\u003echroot(“/path/to/root”)\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e进程看到的 \u003ccode\u003e/\u003c/code\u003e 就是 “/path/to/root”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e只虚拟化了\u003cstrong\u003e文件系统\u003c/strong\u003e一个命名空间\u003cul\u003e\n\u003cli\u003ePID、网络、用户……都还是共享的\u003c/li\u003e\n\u003cli\u003e逃逸也很容易……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e如果要创建一个 “完全虚拟” 的操作系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e隔离 pid + 文件系统就已经完成大部分 “功能性” 任务了\u003c/li\u003e\n\u003cli\u003e想一想 “操作系统里有什么对象”，就可以知道还有什么需要虚拟化的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"linux_namespaces\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"linux-namespaces\"\u003e祝贺，你发明了 Linux Namespaces!\u003c/h1\u003e\n\u003ch2 id=\"osid\"\u003eosid 需要管理的对象\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003epid: (刚才讲了)\u003c/li\u003e\n\u003cli\u003euser: 用户和组 (这个很重要)\u003c/li\u003e\n\u003cli\u003emnt: 文件系统和设备\u003c/li\u003e\n\u003cli\u003eipc: 信号量、消息队列、共享内存\u003c/li\u003e\n\u003cli\u003enet: 网络设备、协议栈、端口 (localhost:5000)\u003c/li\u003e\n\u003cli\u003etime: 系统时间和时区\u003c/li\u003e\n\u003cli\u003euts: 主机名和域名\u003c/li\u003e\n\u003cli\u003eLinux namespaces: /proc/[pid]/ns/\u003cul\u003e\n\u003cli\u003elsns 可以查看 (strace)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"namespaces-7\"\u003eNamespaces (7)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eclone: 创建进程时可以带 CLONE_NEW_xxx (PID, IPC, …) 选项\u003c/li\u003e\n\u003cli\u003esetns, unshare: 改变某一个对象的 “osid”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"resource_control\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e再进一步：资源调度\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e实现资源的控制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“圈一些进程”，设定资源使用策略\u003c/li\u003e\n\u003cli\u003e祝贺，你发明了 cgroups\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003ecat /proc/*/cgroup\u003c/code\u003e; \u003ccode\u003e/sys/fs/cgroup\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"namespaces\"\u003e这是一个和 namespaces 正交的机制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e共同使用，你就得到了容器\u003cul\u003e\n\u003cli\u003e例子：只有 busybox 的 “系统中的系统”\u003c/li\u003e\n\u003cli\u003e再加上我们之前讲过的 OverlayFS——分层镜像\u003c/li\u003e\n\u003cli\u003e祝贺，你发明了 docker!\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"vmware\"\u003e其实 VMware 把人类 “带歪了” 😊\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e2000 年就有 \u003ca href=\"https://docs.freebsd.org/en/books/handbook/jails/\"\u003eFreeBSD Jails\u003c/a\u003e 了\u003c/li\u003e\n\u003cli\u003e2006 年 cgroups 和 namespaces 才引入，到 2008 年 LXC (Linux Containers)\u003cul\u003e\n\u003cli\u003eRichard Sutton: \u003ca href=\"https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf\"\u003eThe Bitter Lesson\u003c/a\u003e: 这都不重要，有 meta-mechanism 就行\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cloud_era\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e云时代的虚拟机\u003c/h1\u003e\n\u003ch2 id=\"linux\"\u003e如果只需要 Linux\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e容器就和虚拟机\u003cstrong\u003e完全一样\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e开销比虚拟机低很多，安全性略低\u003cul\u003e\n\u003cli\u003e这样不就可以在一台物理上部署更多的服务了吗\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e黑心商人\u003c/strong\u003e: 💰💰💰 的机会来啦！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"kubernetes-k8s\"\u003eKubernetes (K8s): “容器编排”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e动态、透明管理的 “无状态” 容器 Pod (虚拟机)\u003cul\u003e\n\u003cli\u003e容器出错、网络异常、节点崩溃都可以随时在另一个地方重启\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e声明式的访问和路由\u003cul\u003e\n\u003cli\u003e配置好之后，你只要访问 Gateway API，自动路由到正确的容器\u003c/li\u003e\n\u003cli\u003e自动的负载均衡、健康检查……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e开启 “云原生” 的时代\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e机器不可靠 → 多副本、自动故障转移\u003c/li\u003e\n\u003cli\u003e人工不可靠 → 声明式，运维全部交给系统\u003c/li\u003e\n\u003cli\u003e环境不可靠 → 容器化确定性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect29.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

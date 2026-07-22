@@ -1,0 +1,525 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 终端和 UNIX Shell
+ </h1>
+<h2> 1. 从键盘到终端
+ </h2>
+<div class="slideshow" name="organ"><div>
+<h1 id="_1">“键盘” 的老祖宗</h1>
+<h2 id="_2">“键盘” 的历史比大家想象的要长</h2>
+<ul>
+<li>最早可以追溯到公元前 3 世纪 (Water Organ, Hydraulis)<ul>
+<li>管风琴 (Pipe Organ)</li>
+<li>1500s：今天熟悉的 <a href="https://www.bilibili.com/video/BV1Zg411P7GQ/">“击奏弦鸣乐器” 前身</a>诞生</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/hydraulis.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="typewriter"><div>
+<h1 id="typewriter">打字机 (Typewriter)</h1>
+<h2 id="_1">类似的 “键盘”，但字模打击色带</h2>
+<ul>
+<li>擒纵机构：按键储能，松开时带着字车走一个字符的距离</li>
+<li>QWERTY 键盘 (1860s) 是为降低打字速度设计的<ul>
+<li>功能逐渐增加，例如双色带 (2000 年的时候还玩过真货)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/typewriter.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="typewriter_legacy"><div>
+<h1 id="_1">打字机时代的遗产</h1>
+<h2 id="shiftcaps-lock">Shift/Caps Lock</h2>
+<ul>
+<li>使字锤或字模向上移动一段距离，切换字符集</li>
+</ul>
+<h2 id="cr-lf">CR &amp; LF</h2>
+<ul>
+<li>\r CR (Carriage Return): 回车，将打印头移回行首<ul>
+<li>试试 print(‘Hel\rlo’)</li>
+</ul>
+</li>
+<li>\n LF (Line Feed): 换行，将纸张向上移动一行<ul>
+<li>UNIX 的 \n 同时包含 CR 和 LF</li>
+</ul>
+</li>
+</ul>
+<h2 id="space-backspace-tab">Space &amp; Backspace &amp; Tab</h2>
+<ul>
+<li>Space/Backspace: 移动 ±1 个位置 (Backspace 再打一个 “-” 杠掉 😊)</li>
+<li>Tab: 移动到下一个 “tabstop” 实现垂直对齐 (所以叫 “制表符”)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="teletypewriter"><div>
+<h1 id="_1">进入电气化时代</h1>
+<h2 id="teletypewriter">电传打字机 (Teletypewriter)</h2>
+<ul>
+<li>为了发电报设计 (收发两端同时打印)</li>
+<li>Telex (teleprinter exchange): 1920s，早于计算机<ul>
+<li>使用 Baudot Code (5-bit code)</li>
+<li>很自然地也能用在计算机上</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/baudot-code.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="teletypewriter_cont"><div>
+<h1 id="teletypewriter">电传打字机 (Teletypewriter)</h1>
+<h2 id="_1">终于实现了 “键盘打字，远端打印”</h2>
+<ul>
+<li>Teletype Model 28 (1951); <a href="http://www.samhallas.co.uk/repository/telegraph/teletype_28_tech_data.pdf">technical data sheet</a>
+</li>
+</ul>
+<p><img alt="" src="static/img/teletype-model-28.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="vt100"><div>
+<h1 id="video-teletypwriter">Video Teletypwriter</h1>
+<h2 id="vt100-dec-1978">里程碑：VT100 (DEC, 1978)</h2>
+<ul>
+<li>从 “打字机” 继承而来的功能: <strong>putchar</strong>
+</li>
+<li>成为事实上的行业标准<ul>
+<li>首个完整实现 ANSI Escape Sequence 的终端</li>
+<li>80 × 24 字符显示成为标准布局</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/vt100.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="unicode_terminal"><div>
+<h1 id="aside-unicode">(Aside) 感谢 Unicode</h1>
+<h2 id="_1">光是 “显示字符” 就可以玩很多花活了</h2>
+<ul>
+<li>例子：ANSI Escape Code 和 toybox</li>
+<li>有了 Unicode 之后<ul>
+<li>▁▂▃▄▅▆▇█▇▆▅▄▃▂▁ </li>
+<li>可以做出 fancy 的 <a href="https://github.com/powerline/powerline">Powerline status bar</a>
+</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code> ▐▛███▜▌
+▝▜█████▛▘
+  ▘▘ ▝▝
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="terminal_inputs"><div>
+<h1 id="_1">终端：作为输入设备</h1>
+<h2 id="_2">输入字节流直接送入操作系统</h2>
+<ul>
+<li>很像是 Typewriter<ul>
+<li>按下 Shift 的时候没有任何数据被送入计算机</li>
+<li>只有 Shift + 字母才真正触发</li>
+</ul>
+</li>
+<li>我们可以读到这些原始的字节流<ul>
+<li>(终端还支持很多配置，例如关闭回显 echo off)</li>
+</ul>
+</li>
+</ul>
+<h2 id="ascii-table">一切都编码在 ASCII Table 里</h2>
+<ul>
+<li>不在 ASCII Table 里的怎么办？<ul>
+<li>Escape Code!</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/ascii.gif"></p>
+</div></div>
+
+<div class="code-card" path="virtualization/tty"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/tty">理解终端</a></h1>
+<p>我们可以让 AI 实现各类终端控制的程序——包括一个在终端里的终端模拟器，去理解操作系统提供了怎样的对象和 API 来帮助我们操作终端设备。</p>
+</div></div>
+</div>
+<div class="slideshow" name="pseudo_terminal"><div>
+<h1 id="_1">伪终端和终端模拟器</h1>
+<h2 id="pseudo-terminal">Pseudo Terminal: 想要多少就有多少</h2>
+<ul>
+<li>一对 “管道” 提供双向通信通道<ul>
+<li>主设备 (PTY Master): 连接到终端模拟器</li>
+<li>从设备 (PTY Slave): 连接到 shell 或其他程序</li>
+</ul>
+</li>
+<li>(参考 minitty 的实现)<ul>
+<li>例子：如何创建一个新的 Pseudo Terminal?</li>
+<li>/dev/ptmx<ul>
+<li>大家看到的 /dev/pts/0 就是这么来的</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="ttyrecttyplay">有趣的应用：ttyrec/ttyplay</h2>
+<ul>
+<li>我们只需要记录下所有流出 pty 的字符和时间戳，就可以把 minitty 改造成 “录屏器”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="terminal_emulator"><div>
+<h1 id="contd">伪终端和终端模拟器 (cont’d)</h1>
+<h2 id="_1">如果我们不满足于字符终端？</h2>
+<ul>
+<li>DEC 早就想到了 (VT200)<ul>
+<li>Sixel (six pixel) <ul>
+<li>一个字符编码一个 6 x 1 的 Yes/No (颜色靠调色板控制)</li>
+<li>今天的终端大多支持 (Kitty, Windows Terminal, …)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="flag-webview">去年的 flag: 应该内嵌 WebView</h2>
+<ul>
+<li>2025.12: <a href="https://a2ui.org/">Google’s A2UI</a>
+</li>
+</ul>
+<p><img alt="" src="static/img/sixels.png"></p>
+</div></div>
+
+<h2> 2. 终端与操作系统
+ </h2>
+<div class="slideshow" name="tty_on_login"><div>
+<h1 id="_1">终端：人机交互的第一个设备</h1>
+<h2 id="_2">用户登录的起点</h2>
+<ul>
+<li>系统启动 (内核 → init → getty)</li>
+<li>远程登录 (sshd → fork → openpty)<ul>
+<li>stdin, stdout, stderr 都会指向分配的终端</li>
+</ul>
+</li>
+<li>getty/sshd 会创建一个 session<ul>
+<li>Session 会关联到控制终端 (controlling tty)</li>
+</ul>
+</li>
+</ul>
+<h2 id="login">调用 login 程序</h2>
+<ul>
+<li>The login program is used to establish a new <strong>session</strong> with the system.<ul>
+<li>(但 session 其实不是 login 创建的，login 只是继承)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="tui"><div>
+<h1 id="_1">终端：进入人机交互的世界</h1>
+<h2 id="_2">你熟悉的终端</h2>
+<ul>
+<li>read(STDIN_FILENO, buf, size)<ul>
+<li>并没有立即返回按键的 ASCII 码</li>
+<li>我甚至可以做行编辑</li>
+</ul>
+</li>
+<li>这<strong>完全是操作系统的行为</strong><ul>
+<li>“模拟” 出了编辑器</li>
+</ul>
+</li>
+</ul>
+<h2 id="text-terminal-user-interface-tui">Text (Terminal) User Interface (TUI)</h2>
+<ul>
+<li>试试 python3 -m textual<ul>
+<li>(感谢 Unicode)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/doge-ui.jpg"></p>
+</div></div>
+
+<h3> 2.1. Ctrl-C 到底发生了什么？
+ </h3>
+<div class="slideshow" name="process_management_problem"><div>
+<h1 id="tui">等一等！TUI 是 “多进程” 的</h1>
+<h2 id="windows">和 Windows 的窗口管理器没有本质区别</h2>
+<ul>
+<li>问题来了：Ctrl-C 到底是如何关闭程序的？</li>
+</ul>
+<h2 id="typewriter">终端：我就是个 typewriter，我不管</h2>
+<ul>
+<li>它只管传输<strong>字符</strong><ul>
+<li>Ctrl-C: End of Text (ETX), 03</li>
+<li>Ctrl-D: End of Transmission (EOT), 04</li>
+<li>stty -a: 你可以看到按键绑定 (奇怪的知识增加了)</li>
+</ul>
+</li>
+<li>但<strong>操作系统</strong>收到了这个字符<ul>
+<li>就可以对 “当前” 的进程采取行动</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="ctrl_c_kill"><div>
+<h1 id="tui">多进程的 TUI……</h1>
+<blockquote>
+<p>作为操作系统的设计者，需要在收到 Ctrl-C 的时候找到一个 “当前进程”</p>
+</blockquote>
+<h2 id="_1">信号机制</h2>
+<ul>
+<li>signal: 注册一个信号处理程序</li>
+<li>kill: 中断程序执行，强行跳转到信号处理程序<ul>
+<li>于是我们就可以实现 Ctrl-C 不能退出的程序了 (Demo)</li>
+</ul>
+</li>
+<li>今天：sigaction</li>
+</ul>
+<h2 id="_2">更麻烦的问题：<strong>信号发给谁</strong>？</h2>
+<ul>
+<li>完整的进程树，有的在前台，有的在后台，进程可以同时打开多个终端，到底给谁发信号？</li>
+<li>fork() 会产生树状结构<ul>
+<li>(还有托孤行为)</li>
+</ul>
+</li>
+<li>Ctrl-C 应该终止所有前台的 “进程们”<ul>
+<li>但不能误伤后台的 “进程们”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/signal"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/signal">信号处理</a></h1>
+<p>我们可以通过 signal (sigaction) 注册信号处理程序——这也解释了为什么有些程序不能用 Ctrl-C 退出。即便是终止信号，我们也可以执行清理代码退出。</p>
+</div></div>
+</div>
+<div class="slideshow" name="session_process_groups"><div>
+<h1 id="unix-session-process-group">UNIX 会话 (Session) 和进程组 (Process Group)</h1>
+<p><img alt="" src="static/img/session.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="session_process_groups_mechanism"><div>
+<h1 id="_1">会话和进程组：机制</h1>
+<h2 id="session-id">给进程引入一个额外编号 (Session ID，大分组)</h2>
+<ul>
+<li>子进程会继承父进程的 Session ID<ul>
+<li>一个 Session 关联一个控制终端 (controlling terminal)</li>
+<li>Leader 退出时，全体进程收到 Hang Up (SIGHUP)</li>
+</ul>
+</li>
+</ul>
+<h2 id="process-group-id">再引入另一个编号 (Process Group ID，小分组)</h2>
+<ul>
+<li>只能有一个前台进程组</li>
+<li>操作系统收到 Ctrl-C，向前台进程组<strong>所有进程</strong>发送<ul>
+<li>(真累……但你也想不到更好的设计了)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="session_process_groups_api"><div>
+<h1 id="api">会话和进程组：API</h1>
+<h2 id="_1">太不优雅了</h2>
+<ul>
+<li>setsid/getsid<ul>
+<li>setsid 会脱离 controlling terminal</li>
+</ul>
+</li>
+<li>setpgid/getpgid</li>
+<li>tcsetpgrp/tcgetpgrp<ul>
+<li>迷惑 API</li>
+</ul>
+</li>
+</ul>
+<h2 id="uid-effective-uid-saved-uid">以及……uid, effective uid (?), saved uid (???)</h2>
+<ul>
+<li>
+<a href="https://www.usenix.org/conference/11th-usenix-security-symposium/setuid-demystified">Setuid Demystified</a><ul>
+<li>任何软件都很难逃脱千疮百孔的设计</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 2.2. Job Control
+ </h3>
+<div class="slideshow" name="job_control"><div>
+<h1 id="job-control">实现类似窗口管理器的 Job Control</h1>
+<h2 id="_1">窗口和多任务：终端可以有 “一个前台进程组”</h2>
+<ul>
+<li>“最小化” = Ctrl-Z (SIGTSTP)<ul>
+<li>SIGTSTP 默认行为暂停进程，收到 SIGCONT 后恢复</li>
+</ul>
+</li>
+<li>“切换” = fg/bg (tcsetpgrp)</li>
+</ul>
+<h2 id="_2">为了实现 “窗口栏上的按钮”，还很是大费周章</h2>
+<ul>
+<li>还不如 Sway/tmux 管理多个 pty 呢 (选择性 “绘制” 在终端上)<ul>
+<li>那是因为发明 session/pg 的时候还没有 pty 呢……</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="historical_baggage"><div>
+<h1 id="_1">是的，历史的糟粕</h1>
+<h2 id="posix">但是，这是 POSIX 的一部分……</h2>
+<ul>
+<li>😂 几乎任何人都无法预知 “软件” 的未来</li>
+</ul>
+<h2 id="_2">回头看这个问题</h2>
+<ul>
+<li>我们不需要 “绑定进程到设备”</li>
+<li>管理程序 (tmux, gnome, …) 去模拟就行<ul>
+<li>Window Manager: 只需要 “进程组” 就行了<ul>
+<li>关窗口，全部 ❌ 一个不留</li>
+</ul>
+</li>
+<li>Android: 每个 app 都是不同的用户<ul>
+<li>强行终止 = 杀掉属于这个用户的所有进程</li>
+</ul>
+</li>
+<li>Snap: 程序在隔离的沙箱运行<ul>
+<li>AppArmor + seccomp + namespaces (真狠)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 3. UNIX Shell: 一门编程语言
+ </h2>
+<div class="slideshow" name="unix_philosophy"><div>
+<h1 id="unix">UNIX 哲学背后的编程语言</h1>
+<h2 id="keep-it-simple-stupid">Keep It Simple, Stupid</h2>
+<ul>
+<li>Do one thing and do it well; Work together; Handle text streams as a universal interface.</li>
+</ul>
+<h2 id="unix-shell">背后是 UNIX Shell <strong>编程语言</strong>支撑的</h2>
+<ul>
+<li>
+<strong>基于文本替换的极简编程语言</strong> (只有字符串类型)<ul>
+<li>算术运算？对不起，我们不支持 😂 (但可以 expr 1 + 2)</li>
+</ul>
+</li>
+<li>“把<strong>命令</strong>被翻译成<strong>系统调用</strong>” (open, dup, pipe, fork, execve, waitpid, …)<ul>
+<li>预处理: $(), &lt;()</li>
+<li>重定向: cmd &gt; file &lt; file 2&gt; /dev/null</li>
+<li>顺序结构: cmd1; cmd2, cmd1 &amp;&amp; cmd2, cmd1 || cmd2</li>
+<li>管道: cmd1 | cmd2</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="redirect_example"><div>
+<h1 id="_1">例子：实现重定向</h1>
+<h2 id="_2">利用子进程继承文件描述符的特性</h2>
+<ul>
+<li>在父进程打开好文件，到子进程里腾挪<ul>
+<li>发现还是 Windows API 更 “优雅”</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">fd_in</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">open</span><span class="p">(...,</span><span class="w"> </span><span class="n">O_RDONLY</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">O_CLOEXEC</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">fd_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">open</span><span class="p">(...,</span><span class="w"> </span><span class="n">O_WRONLY</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">O_CLOEXEC</span><span class="p">);</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fork</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">dup2</span><span class="p">(</span><span class="n">fd_in</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="w">    </span><span class="n">dup2</span><span class="p">(</span><span class="n">fd_out</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="w">    </span><span class="n">execve</span><span class="p">(...);</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">close</span><span class="p">(</span><span class="n">fd_in</span><span class="p">);</span>
+<span class="w">    </span><span class="n">close</span><span class="p">(</span><span class="n">fd_out</span><span class="p">);</span>
+<span class="w">    </span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="read_man"><div>
+<h1 id="_1">读一下手册吧</h1>
+<h2 id="man-sh-dash-command-interpreter-shell">man sh: dash — command interpreter (shell)</h2>
+<ul>
+<li>
+<strong>dash</strong> is the standard command interpreter for the system.  The current version of dash is in the process of being changed to conform with the POSIX 1003.2 and 1003.2a specifications for the shell.</li>
+<li>The shell is a command that reads lines from either a file or the terminal, interprets them, and generally executes other commands. It is the program that is running when a user logs into the system (although a user can select a different shell with the chsh(1) command).<ul>
+<li>一个高效、简洁、精确的 “自然” 编程语言</li>
+</ul>
+</li>
+</ul>
+<h2 id="ai">AI 时代：遍历手册的意义</h2>
+<ul>
+<li><strong>建立正确的概念</strong></li>
+<li>AI 时代的 UNIX Philosophy<ul>
+<li>man -P cat ls | claude ‘Make a comprehensive summary’</li>
+<li>Read the friendly manual!</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="shell_disadvantages"><div>
+<h1 id="unix-shell">UNIX Shell: 有优点就有缺点</h1>
+<h2 id="_1">无奈的取舍</h2>
+<ul>
+<li>Shell 的设计被 “1970s 的算力、算法和工程能力” 束缚了<ul>
+<li>后人只好将错就错 (PowerShell: 我好用，但没人用 😭)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">例子：操作的 “优先级”？</h2>
+<ul>
+<li>ls &gt; a.txt | cat<ul>
+<li>我已经重定向给 a.txt 了，cat 是不是就收不到输入了？</li>
+</ul>
+</li>
+<li>bash/zsh 的行为是不同的<ul>
+<li>所以脚本用 #!/bin/bash 甚至 #!/bin/sh 保持兼容</li>
+</ul>
+</li>
+<li>文本数据 “责任自负”<ul>
+<li>空格 = 灾难</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="interesting_example"><div>
+<h1 id="_1">另一个有趣的例子</h1>
+<div class="codehilite"><pre><span></span><code>$ echo hello &gt; /etc/a.txt
+bash: /etc/a.txt: Permission denied
+
+$ sudo echo hello &gt; /etc/a.txt
+bash: /etc/a.txt: Permission denied
+</code></pre></div>
+
+<p><img alt="" src="static/img/sudo-sandwich.png"></p>
+</div></div>
+
+<div class="slideshow" name="zero_dependency_shell"><div>
+<h1 id="a-zero-dependency-unix-shell">A Zero-dependency UNIX Shell</h1>
+<h2 id="shell-kernel">真正体现 “Shell 是 Kernel 之外的 壳”</h2>
+<ul>
+<li>来自 xv6</li>
+<li>完全基于系统调用 API，零库函数依赖<ul>
+<li>-ffreestanding 编译、ld 链接</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">支持的功能</h2>
+<ul>
+<li>重定向/管道 ls &gt; a.txt, ls | wc -l</li>
+<li>后台执行 ls &amp;</li>
+<li>命令组合 (echo a ; echo b) | wc -l</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/shebang"><div><div>
+<h1 id="shebang"><a href="/OS/demos/virtualization/shebang">Shebang</a></h1>
+<p>在 UNIX 的早期，为了能更方便地将脚本作为可执行文件，实现了 <code>#!</code> 开头的 “可执行文件”，并沿用至今。Shebang 会调用第一行中执行的命令和参数，并把这个脚本文件作为命令行参数传入。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>通过 freestanding 的 shell，我们阐释了 “可以在系统调用上创建整个操作系统应用世界” 的真正含义：操作系统的 API 和应用程序是互相成就、螺旋生长的：有了新的应用需求，就有了新的操作系统功能。而 UNIX 为我们提供了一个非常精简、稳定的接口 (fork, execve, exit, pipe ,…)，纵然有沉重的历史负担，它在今天依然工作得很好。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 终端和 UNIX Shell\n \u003c/h1\u003e\n\u003ch2\u003e 1. 从键盘到终端\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"organ\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e“键盘” 的老祖宗\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e“键盘” 的历史比大家想象的要长\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e最早可以追溯到公元前 3 世纪 (Water Organ, Hydraulis)\u003cul\u003e\n\u003cli\u003e管风琴 (Pipe Organ)\u003c/li\u003e\n\u003cli\u003e1500s：今天熟悉的 \u003ca href=\"https://www.bilibili.com/video/BV1Zg411P7GQ/\"\u003e“击奏弦鸣乐器” 前身\u003c/a\u003e诞生\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/hydraulis.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"typewriter\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"typewriter\"\u003e打字机 (Typewriter)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e类似的 “键盘”，但字模打击色带\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e擒纵机构：按键储能，松开时带着字车走一个字符的距离\u003c/li\u003e\n\u003cli\u003eQWERTY 键盘 (1860s) 是为降低打字速度设计的\u003cul\u003e\n\u003cli\u003e功能逐渐增加，例如双色带 (2000 年的时候还玩过真货)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/typewriter.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"typewriter_legacy\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e打字机时代的遗产\u003c/h1\u003e\n\u003ch2 id=\"shiftcaps-lock\"\u003eShift/Caps Lock\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e使字锤或字模向上移动一段距离，切换字符集\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"cr-lf\"\u003eCR \u0026amp; LF\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\\r CR (Carriage Return): 回车，将打印头移回行首\u003cul\u003e\n\u003cli\u003e试试 print(‘Hel\\rlo’)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\\n LF (Line Feed): 换行，将纸张向上移动一行\u003cul\u003e\n\u003cli\u003eUNIX 的 \\n 同时包含 CR 和 LF\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"space-backspace-tab\"\u003eSpace \u0026amp; Backspace \u0026amp; Tab\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSpace/Backspace: 移动 ±1 个位置 (Backspace 再打一个 “-” 杠掉 😊)\u003c/li\u003e\n\u003cli\u003eTab: 移动到下一个 “tabstop” 实现垂直对齐 (所以叫 “制表符”)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"teletypewriter\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e进入电气化时代\u003c/h1\u003e\n\u003ch2 id=\"teletypewriter\"\u003e电传打字机 (Teletypewriter)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e为了发电报设计 (收发两端同时打印)\u003c/li\u003e\n\u003cli\u003eTelex (teleprinter exchange): 1920s，早于计算机\u003cul\u003e\n\u003cli\u003e使用 Baudot Code (5-bit code)\u003c/li\u003e\n\u003cli\u003e很自然地也能用在计算机上\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/baudot-code.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"teletypewriter_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"teletypewriter\"\u003e电传打字机 (Teletypewriter)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e终于实现了 “键盘打字，远端打印”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eTeletype Model 28 (1951); \u003ca href=\"http://www.samhallas.co.uk/repository/telegraph/teletype_28_tech_data.pdf\"\u003etechnical data sheet\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/teletype-model-28.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"vt100\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"video-teletypwriter\"\u003eVideo Teletypwriter\u003c/h1\u003e\n\u003ch2 id=\"vt100-dec-1978\"\u003e里程碑：VT100 (DEC, 1978)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从 “打字机” 继承而来的功能: \u003cstrong\u003eputchar\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e成为事实上的行业标准\u003cul\u003e\n\u003cli\u003e首个完整实现 ANSI Escape Sequence 的终端\u003c/li\u003e\n\u003cli\u003e80 × 24 字符显示成为标准布局\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/vt100.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"unicode_terminal\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aside-unicode\"\u003e(Aside) 感谢 Unicode\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e光是 “显示字符” 就可以玩很多花活了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例子：ANSI Escape Code 和 toybox\u003c/li\u003e\n\u003cli\u003e有了 Unicode 之后\u003cul\u003e\n\u003cli\u003e▁▂▃▄▅▆▇█▇▆▅▄▃▂▁ \u003c/li\u003e\n\u003cli\u003e可以做出 fancy 的 \u003ca href=\"https://github.com/powerline/powerline\"\u003ePowerline status bar\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e ▐▛███▜▌\n▝▜█████▛▘\n  ▘▘ ▝▝\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"terminal_inputs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e终端：作为输入设备\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e输入字节流直接送入操作系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e很像是 Typewriter\u003cul\u003e\n\u003cli\u003e按下 Shift 的时候没有任何数据被送入计算机\u003c/li\u003e\n\u003cli\u003e只有 Shift + 字母才真正触发\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们可以读到这些原始的字节流\u003cul\u003e\n\u003cli\u003e(终端还支持很多配置，例如关闭回显 echo off)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ascii-table\"\u003e一切都编码在 ASCII Table 里\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不在 ASCII Table 里的怎么办？\u003cul\u003e\n\u003cli\u003eEscape Code!\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/ascii.gif\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/tty\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/tty\"\u003e理解终端\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以让 AI 实现各类终端控制的程序——包括一个在终端里的终端模拟器，去理解操作系统提供了怎样的对象和 API 来帮助我们操作终端设备。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"pseudo_terminal\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e伪终端和终端模拟器\u003c/h1\u003e\n\u003ch2 id=\"pseudo-terminal\"\u003ePseudo Terminal: 想要多少就有多少\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一对 “管道” 提供双向通信通道\u003cul\u003e\n\u003cli\u003e主设备 (PTY Master): 连接到终端模拟器\u003c/li\u003e\n\u003cli\u003e从设备 (PTY Slave): 连接到 shell 或其他程序\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e(参考 minitty 的实现)\u003cul\u003e\n\u003cli\u003e例子：如何创建一个新的 Pseudo Terminal?\u003c/li\u003e\n\u003cli\u003e/dev/ptmx\u003cul\u003e\n\u003cli\u003e大家看到的 /dev/pts/0 就是这么来的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ttyrecttyplay\"\u003e有趣的应用：ttyrec/ttyplay\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们只需要记录下所有流出 pty 的字符和时间戳，就可以把 minitty 改造成 “录屏器”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"terminal_emulator\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e伪终端和终端模拟器 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e如果我们不满足于字符终端？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eDEC 早就想到了 (VT200)\u003cul\u003e\n\u003cli\u003eSixel (six pixel) \u003cul\u003e\n\u003cli\u003e一个字符编码一个 6 x 1 的 Yes/No (颜色靠调色板控制)\u003c/li\u003e\n\u003cli\u003e今天的终端大多支持 (Kitty, Windows Terminal, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"flag-webview\"\u003e去年的 flag: 应该内嵌 WebView\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e2025.12: \u003ca href=\"https://a2ui.org/\"\u003eGoogle’s A2UI\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sixels.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 终端与操作系统\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"tty_on_login\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e终端：人机交互的第一个设备\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e用户登录的起点\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e系统启动 (内核 → init → getty)\u003c/li\u003e\n\u003cli\u003e远程登录 (sshd → fork → openpty)\u003cul\u003e\n\u003cli\u003estdin, stdout, stderr 都会指向分配的终端\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003egetty/sshd 会创建一个 session\u003cul\u003e\n\u003cli\u003eSession 会关联到控制终端 (controlling tty)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"login\"\u003e调用 login 程序\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eThe login program is used to establish a new \u003cstrong\u003esession\u003c/strong\u003e with the system.\u003cul\u003e\n\u003cli\u003e(但 session 其实不是 login 创建的，login 只是继承)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"tui\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e终端：进入人机交互的世界\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e你熟悉的终端\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eread(STDIN_FILENO, buf, size)\u003cul\u003e\n\u003cli\u003e并没有立即返回按键的 ASCII 码\u003c/li\u003e\n\u003cli\u003e我甚至可以做行编辑\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e这\u003cstrong\u003e完全是操作系统的行为\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e“模拟” 出了编辑器\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"text-terminal-user-interface-tui\"\u003eText (Terminal) User Interface (TUI)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e试试 python3 -m textual\u003cul\u003e\n\u003cli\u003e(感谢 Unicode)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/doge-ui.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 2.1. Ctrl-C 到底发生了什么？\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"process_management_problem\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"tui\"\u003e等一等！TUI 是 “多进程” 的\u003c/h1\u003e\n\u003ch2 id=\"windows\"\u003e和 Windows 的窗口管理器没有本质区别\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e问题来了：Ctrl-C 到底是如何关闭程序的？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"typewriter\"\u003e终端：我就是个 typewriter，我不管\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e它只管传输\u003cstrong\u003e字符\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003eCtrl-C: End of Text (ETX), 03\u003c/li\u003e\n\u003cli\u003eCtrl-D: End of Transmission (EOT), 04\u003c/li\u003e\n\u003cli\u003estty -a: 你可以看到按键绑定 (奇怪的知识增加了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e但\u003cstrong\u003e操作系统\u003c/strong\u003e收到了这个字符\u003cul\u003e\n\u003cli\u003e就可以对 “当前” 的进程采取行动\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ctrl_c_kill\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"tui\"\u003e多进程的 TUI……\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e作为操作系统的设计者，需要在收到 Ctrl-C 的时候找到一个 “当前进程”\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e信号机制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003esignal: 注册一个信号处理程序\u003c/li\u003e\n\u003cli\u003ekill: 中断程序执行，强行跳转到信号处理程序\u003cul\u003e\n\u003cli\u003e于是我们就可以实现 Ctrl-C 不能退出的程序了 (Demo)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e今天：sigaction\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e更麻烦的问题：\u003cstrong\u003e信号发给谁\u003c/strong\u003e？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e完整的进程树，有的在前台，有的在后台，进程可以同时打开多个终端，到底给谁发信号？\u003c/li\u003e\n\u003cli\u003efork() 会产生树状结构\u003cul\u003e\n\u003cli\u003e(还有托孤行为)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eCtrl-C 应该终止所有前台的 “进程们”\u003cul\u003e\n\u003cli\u003e但不能误伤后台的 “进程们”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/signal\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/signal\"\u003e信号处理\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以通过 signal (sigaction) 注册信号处理程序——这也解释了为什么有些程序不能用 Ctrl-C 退出。即便是终止信号，我们也可以执行清理代码退出。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"session_process_groups\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix-session-process-group\"\u003eUNIX 会话 (Session) 和进程组 (Process Group)\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/session.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"session_process_groups_mechanism\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e会话和进程组：机制\u003c/h1\u003e\n\u003ch2 id=\"session-id\"\u003e给进程引入一个额外编号 (Session ID，大分组)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e子进程会继承父进程的 Session ID\u003cul\u003e\n\u003cli\u003e一个 Session 关联一个控制终端 (controlling terminal)\u003c/li\u003e\n\u003cli\u003eLeader 退出时，全体进程收到 Hang Up (SIGHUP)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"process-group-id\"\u003e再引入另一个编号 (Process Group ID，小分组)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e只能有一个前台进程组\u003c/li\u003e\n\u003cli\u003e操作系统收到 Ctrl-C，向前台进程组\u003cstrong\u003e所有进程\u003c/strong\u003e发送\u003cul\u003e\n\u003cli\u003e(真累……但你也想不到更好的设计了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"session_process_groups_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"api\"\u003e会话和进程组：API\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e太不优雅了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003esetsid/getsid\u003cul\u003e\n\u003cli\u003esetsid 会脱离 controlling terminal\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003esetpgid/getpgid\u003c/li\u003e\n\u003cli\u003etcsetpgrp/tcgetpgrp\u003cul\u003e\n\u003cli\u003e迷惑 API\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"uid-effective-uid-saved-uid\"\u003e以及……uid, effective uid (?), saved uid (???)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.usenix.org/conference/11th-usenix-security-symposium/setuid-demystified\"\u003eSetuid Demystified\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e任何软件都很难逃脱千疮百孔的设计\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 2.2. Job Control\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"job_control\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"job-control\"\u003e实现类似窗口管理器的 Job Control\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e窗口和多任务：终端可以有 “一个前台进程组”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“最小化” = Ctrl-Z (SIGTSTP)\u003cul\u003e\n\u003cli\u003eSIGTSTP 默认行为暂停进程，收到 SIGCONT 后恢复\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“切换” = fg/bg (tcsetpgrp)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e为了实现 “窗口栏上的按钮”，还很是大费周章\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e还不如 Sway/tmux 管理多个 pty 呢 (选择性 “绘制” 在终端上)\u003cul\u003e\n\u003cli\u003e那是因为发明 session/pg 的时候还没有 pty 呢……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"historical_baggage\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e是的，历史的糟粕\u003c/h1\u003e\n\u003ch2 id=\"posix\"\u003e但是，这是 POSIX 的一部分……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e😂 几乎任何人都无法预知 “软件” 的未来\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e回头看这个问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们不需要 “绑定进程到设备”\u003c/li\u003e\n\u003cli\u003e管理程序 (tmux, gnome, …) 去模拟就行\u003cul\u003e\n\u003cli\u003eWindow Manager: 只需要 “进程组” 就行了\u003cul\u003e\n\u003cli\u003e关窗口，全部 ❌ 一个不留\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eAndroid: 每个 app 都是不同的用户\u003cul\u003e\n\u003cli\u003e强行终止 = 杀掉属于这个用户的所有进程\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eSnap: 程序在隔离的沙箱运行\u003cul\u003e\n\u003cli\u003eAppArmor + seccomp + namespaces (真狠)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. UNIX Shell: 一门编程语言\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"unix_philosophy\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix\"\u003eUNIX 哲学背后的编程语言\u003c/h1\u003e\n\u003ch2 id=\"keep-it-simple-stupid\"\u003eKeep It Simple, Stupid\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eDo one thing and do it well; Work together; Handle text streams as a universal interface.\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"unix-shell\"\u003e背后是 UNIX Shell \u003cstrong\u003e编程语言\u003c/strong\u003e支撑的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e基于文本替换的极简编程语言\u003c/strong\u003e (只有字符串类型)\u003cul\u003e\n\u003cli\u003e算术运算？对不起，我们不支持 😂 (但可以 expr 1 + 2)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“把\u003cstrong\u003e命令\u003c/strong\u003e被翻译成\u003cstrong\u003e系统调用\u003c/strong\u003e” (open, dup, pipe, fork, execve, waitpid, …)\u003cul\u003e\n\u003cli\u003e预处理: $(), \u0026lt;()\u003c/li\u003e\n\u003cli\u003e重定向: cmd \u0026gt; file \u0026lt; file 2\u0026gt; /dev/null\u003c/li\u003e\n\u003cli\u003e顺序结构: cmd1; cmd2, cmd1 \u0026amp;\u0026amp; cmd2, cmd1 || cmd2\u003c/li\u003e\n\u003cli\u003e管道: cmd1 | cmd2\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"redirect_example\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e例子：实现重定向\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e利用子进程继承文件描述符的特性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在父进程打开好文件，到子进程里腾挪\u003cul\u003e\n\u003cli\u003e发现还是 Windows API 更 “优雅”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd_in\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eopen\u003c/span\u003e\u003cspan class=\"p\"\u003e(...,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eO_RDONLY\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eO_CLOEXEC\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd_out\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eopen\u003c/span\u003e\u003cspan class=\"p\"\u003e(...,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eO_WRONLY\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eO_CLOEXEC\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efork\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edup2\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd_in\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edup2\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd_out\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eexecve\u003c/span\u003e\u003cspan class=\"p\"\u003e(...);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eclose\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd_in\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eclose\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd_out\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ewaitpid\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003estatus\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"read_man\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e读一下手册吧\u003c/h1\u003e\n\u003ch2 id=\"man-sh-dash-command-interpreter-shell\"\u003eman sh: dash — command interpreter (shell)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003edash\u003c/strong\u003e is the standard command interpreter for the system.  The current version of dash is in the process of being changed to conform with the POSIX 1003.2 and 1003.2a specifications for the shell.\u003c/li\u003e\n\u003cli\u003eThe shell is a command that reads lines from either a file or the terminal, interprets them, and generally executes other commands. It is the program that is running when a user logs into the system (although a user can select a different shell with the chsh(1) command).\u003cul\u003e\n\u003cli\u003e一个高效、简洁、精确的 “自然” 编程语言\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai\"\u003eAI 时代：遍历手册的意义\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e建立正确的概念\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003eAI 时代的 UNIX Philosophy\u003cul\u003e\n\u003cli\u003eman -P cat ls | claude ‘Make a comprehensive summary’\u003c/li\u003e\n\u003cli\u003eRead the friendly manual!\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"shell_disadvantages\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix-shell\"\u003eUNIX Shell: 有优点就有缺点\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e无奈的取舍\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eShell 的设计被 “1970s 的算力、算法和工程能力” 束缚了\u003cul\u003e\n\u003cli\u003e后人只好将错就错 (PowerShell: 我好用，但没人用 😭)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e例子：操作的 “优先级”？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003els \u0026gt; a.txt | cat\u003cul\u003e\n\u003cli\u003e我已经重定向给 a.txt 了，cat 是不是就收不到输入了？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003ebash/zsh 的行为是不同的\u003cul\u003e\n\u003cli\u003e所以脚本用 #!/bin/bash 甚至 #!/bin/sh 保持兼容\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e文本数据 “责任自负”\u003cul\u003e\n\u003cli\u003e空格 = 灾难\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"interesting_example\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e另一个有趣的例子\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e$ echo hello \u0026gt; /etc/a.txt\nbash: /etc/a.txt: Permission denied\n\n$ sudo echo hello \u0026gt; /etc/a.txt\nbash: /etc/a.txt: Permission denied\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sudo-sandwich.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"zero_dependency_shell\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"a-zero-dependency-unix-shell\"\u003eA Zero-dependency UNIX Shell\u003c/h1\u003e\n\u003ch2 id=\"shell-kernel\"\u003e真正体现 “Shell 是 Kernel 之外的 壳”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e来自 xv6\u003c/li\u003e\n\u003cli\u003e完全基于系统调用 API，零库函数依赖\u003cul\u003e\n\u003cli\u003e-ffreestanding 编译、ld 链接\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e支持的功能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e重定向/管道 ls \u0026gt; a.txt, ls | wc -l\u003c/li\u003e\n\u003cli\u003e后台执行 ls \u0026amp;\u003c/li\u003e\n\u003cli\u003e命令组合 (echo a ; echo b) | wc -l\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/shebang\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"shebang\"\u003e\u003ca href=\"/OS/demos/virtualization/shebang\"\u003eShebang\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在 UNIX 的早期，为了能更方便地将脚本作为可执行文件，实现了 \u003ccode\u003e#!\u003c/code\u003e 开头的 “可执行文件”，并沿用至今。Shebang 会调用第一行中执行的命令和参数，并把这个脚本文件作为命令行参数传入。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e通过 freestanding 的 shell，我们阐释了 “可以在系统调用上创建整个操作系统应用世界” 的真正含义：操作系统的 API 和应用程序是互相成就、螺旋生长的：有了新的应用需求，就有了新的操作系统功能。而 UNIX 为我们提供了一个非常精简、稳定的接口 (fork, execve, exit, pipe ,…)，纵然有沉重的历史负担，它在今天依然工作得很好。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect8.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

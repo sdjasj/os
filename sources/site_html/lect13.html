@@ -1,0 +1,558 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 多处理器编程：从入门到放弃
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review">Review: 从系统调用到应用生态</h1>
+<h2 id="cpu-reset">初始状态：CPU Reset</h2>
+<ul>
+<li>Firmware 加载操作系统</li>
+<li>操作系统加载 initramfs 里的 init 程序<ul>
+<li>(我们讲了链接和加载)</li>
+</ul>
+</li>
+<li>init 程序加载真正的文件系统，pivot_root 到新的 init 程序 (systemd pid=1)<ul>
+<li>(OS 持续提供 syscalls: fork, execve, mount, mmap, open, …)</li>
+</ul>
+</li>
+</ul>
+<h2 id="api">基于操作系统 API 的应用生态</h2>
+<ul>
+<li>libc: 一个有 ISO 标准、可移植的基座</li>
+<li>底层库函数 (curses, readline, …)、编程语言供应链 (PyPI, npm、……)</li>
+<li>海量的应用程序</li>
+</ul>
+<h2 id="api_1">“系统调用” API 很好地隔离了应用和指令集</h2>
+<ul>
+<li>x86, Aarch64, RISC-V 都共享一份应用生态<ul>
+<li>体系结构相关代码只占很小一部分</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 并发编程入门
+ </h2>
+<div class="slideshow" name="http_server_motivation"><div>
+<h1 id="_1">共享内存的并发编程：动机</h1>
+<h2 id="1syscall">动机 1：syscall 可能执行很长时间</h2>
+<ul>
+<li>在执行系统调用时，程序也许可以 “不闲着”<ul>
+<li>也许我们可以同时执行若干个 handle_request</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">http_server</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">alloc_buf</span><span class="p">();</span>
+<span class="w">        </span><span class="n">nread</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="mi">1024</span><span class="p">);</span><span class="w">  </span><span class="c1">// syscall</span>
+<span class="w">        </span><span class="n">handle_request</span><span class="p">(</span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">nread</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="2">动机 2：多处理器系统是共享内存的，不用白不用</h2>
+<ul>
+<li>一旦分叉 (fork)，就 “形同陌路” 了，无法直接用内存通信</li>
+<li>这里有一个先有鸡还是先有蛋的问题<ul>
+<li>一开始设计了 Symmetric Multiprocessing，就下不了车了 😂 即便是 Non-uniform Memory Access (NUMA)，也要维持共享内存的模型</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="spawn_solution"><div>
+<h1 id="_1">实现共享内存的 “进程”？</h1>
+<h2 id="api">加一个操作系统 API 就搞定</h2>
+<ul>
+<li>C 程序的状态机模型<ul>
+<li>初始状态：main(argc, argv, envp)</li>
+<li>状态迁移：执行一条语句 (指令)</li>
+</ul>
+</li>
+<li>扩展这个模型就行</li>
+</ul>
+<h2 id="_2">
+<strong>多线程程序</strong>的状态机模型</h2>
+<ul>
+<li>增加一个特殊的系统调用：spawn()<ul>
+<li>增加一个 “状态机” (<strong>线程</strong>, thread)，有独立的栈，但共享全局变量</li>
+</ul>
+</li>
+<li>状态迁移：选择一个状态机执行一条语句 (指令)</li>
+</ul>
+<h2 id="_3">恭喜你，你已经了解了并发的全部</h2>
+<ul>
+<li>吗……？</li>
+<li>不，你打开了魔鬼的盒子<ul>
+<li>AI 让我 “顺着补几刀，把魔鬼具体化”，完美预言了我后面要讲什么 😭</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 1.1. 概念：并发 v.s. 并行
+ </h3>
+<div class="slideshow" name="concurrency_vs_parallelism"><div>
+<h1 id="vs">并发 v.s. 并行</h1>
+<h2 id="_1">并发</h2>
+<ul>
+<li>逻辑上的 “同时执行”<ul>
+<li>可以由操作系统/运行库模拟出的 “轮流执行”</li>
+<li>（也可以是真正同时执行）</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">并行</h2>
+<ul>
+<li>真正意义上的 “同时执行”</li>
+<li>有 (共享内存的) 多个处理器<ul>
+<li>同时执行指令 (load/store 访问共享内存)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">对应到概念模型</h2>
+<ul>
+<li>SimpleC 选一个线程执行一条语句 (并发模型)</li>
+<li>SimpleC 的每个线程同时执行一条语句 (并行模型)<ul>
+<li>实际处理器每条指令执行的速度不同，更准确地说，当前 “在处理器上的线程” 执行指令的一部分 (这里有一个魔鬼的伏笔)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 1.2. 迷你线程库
+ </h3>
+<div class="slideshow" name="thread_api"><div>
+<h1 id="spawn-join">Spawn &amp; Join</h1>
+<h2 id="api-threadh">简化的线程 API (thread.h)</h2>
+<ul>
+<li>给操作系统 pthreads (7) 线程库做了一点减法</li>
+<li>只适合最简单的程序，仅供理解原理使用，完全不具有任何实用性</li>
+</ul>
+<h2 id="spawnfn">spawn(fn)</h2>
+<ul>
+<li>创建一个入口函数是 fn 的线程，并立即开始执行<ul>
+<li>void fn(int tid) { … }</li>
+<li>参数 tid 从 1 开始编号</li>
+</ul>
+</li>
+</ul>
+<h2 id="join">join()</h2>
+<ul>
+<li>等待所有运行线程的返回<ul>
+<li>main 返回默认会 join 所有线程</li>
+</ul>
+</li>
+<li>行为：while (num_done != num_threads) ;</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/thread-lib"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/thread-lib">迷你线程库</a></h1>
+<p>在这个 “最简” 的线程库中，我们封装了 POSIX 线程库，提供了线程管理的 API：<code>spawn(fn)</code> 创建一个新线程，执行函数 <code>fn</code>；<code>join()</code> 等待当前运行的线程结束。使用这两个 API，我们就可以利用系统中的多处理器资源了：线程可以被同时调度到不同的处理器上并行执行。</p>
+</div></div>
+</div>
+<div class="slideshow" name="thread_example"><div>
+<h1 id="_1">证明 “共享内存并发”</h1>
+<div class="codehilite"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;thread.h&gt;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">inc_x</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">x</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">inc_y</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">y</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="n">sleep</span><span class="p">(</span><span class="mi">2</span><span class="p">);</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">spawn</span><span class="p">(</span><span class="n">inc_x</span><span class="p">);</span>
+<span class="w">    </span><span class="n">spawn</span><span class="p">(</span><span class="n">inc_y</span><span class="p">);</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"</span><span class="se">\\</span><span class="s">033[2J</span><span class="se">\\</span><span class="s">033[H"</span><span class="p">);</span>
+<span class="w">        </span><span class="n">printf</span><span class="p">(</span><span class="s">"x = %d, y = %d"</span><span class="p">,</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="p">);</span>
+<span class="w">        </span><span class="n">fflush</span><span class="p">(</span><span class="n">stdout</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>这个程序 “证明” 了全局变量确实是共享的</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="more_questions"><div>
+<h1 id="_1">更多的问题</h1>
+<h2 id="_2">多线程程序真的利用了多处理器吗？</h2>
+<ul>
+<li>并发确定了，那是不是真并行？</li>
+</ul>
+<h2 id="_3">线程是否具有独立堆栈？</h2>
+<ul>
+<li>如果是，栈的范围？</li>
+</ul>
+<h2 id="gdb">如何用 gdb 单步调试多线程程序？</h2>
+<ul>
+<li>LLM 帮你读过 <a href="https://sourceware.org/gdb/onlinedocs/gdb/Threads.html">The Friendly Manual</a> 了<ul>
+<li>2025 年的讨论：System 人最擅长的就是底层工具的使用，曾经是 “做 system” 的壁垒；但现在有 LLM 了，这都不算什么了</li>
+<li>(那时候甚至 agents 还不那么好用，现在 agent 都可以直接替你用工具了)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/thread-examples"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/thread-examples">通过线程库理解线程行为</a></h1>
+<p>我们可以不必 “直接接受” 老师或书本上的知识，而是亲手验证它们，例如线程的确是共享内存的，再比如验证每个线程都有独立的栈——我们可以把 “访问过” 的栈空间标记出来，从而得到每个线程栈的大概范围。</p>
+</div></div>
+</div>
+<h2> 2. 放弃 (1)：状态迁移的确定性
+ </h2>
+<div class="slideshow" name="determinism"><div>
+<h1 id="non-determinism">不确定性 (Non-determinism) 的魔鬼</h1>
+<h2 id="determinism">数学的确定性 (determinism)</h2>
+<ul>
+<li>函数 f: X ↦ Y 同样的输入，产生<strong>唯一</strong>的输出</li>
+</ul>
+<h2 id="determinism_1">程序的确定性 (determinism)</h2>
+<ul>
+<li>SimpleC；计算机 (NEMU) 的迁移都是函数<ul>
+<li>s’ = f(s); f 是确定性的</li>
+<li>给定相同的初始状态，程序总是执行相同的指令序列</li>
+</ul>
+</li>
+<li>“Everything is a state machine”<ul>
+<li>虽然把数学视角砍掉了，但在理解并发程序的时候，这个视角还是很有用</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">确定性给我们 “可控” 的感觉</h2>
+<ul>
+<li>同一件事总是 <strong>reproducible</strong> 的<ul>
+<li>这就是我们喜欢 functional programming 的原因</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="determinism_loss"><div>
+<h1 id="non-determinism-contd">不确定性 (Non-determinism) 的魔鬼 (cont’d)</h1>
+<h2 id="_1">程序 “自身” 是完全确定的</h2>
+<ul>
+<li>初始状态不确定 (argv, envp, auxv)</li>
+<li>系统调用不确定 (getpid, read, …)</li>
+<li>所有内存和计算指令是确定的<ul>
+<li>有一些例外 (rdrand, rdtsc)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">
+<strong>共享内存</strong>的并发打破了这一点</h2>
+<ul>
+<li>线程执行的<strong>速度</strong>是没有保证的<ul>
+<li>这意味着 load 可能读到其他线程的 store (也可能不)</li>
+</ul>
+</li>
+<li>非确定性的程序理解起来相当困难</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="balance_example"><div>
+<h1 id="_1">确定性的丧失：例子</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">unsigned</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">balance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">T_alipay_withdraw</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">amount</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">balance</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">amount</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">balance</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="n">amount</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">SUCCESS</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">FAIL</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="100">猜到两个线程并发支付 ¥100 会发生什么吗？</h2>
+<ul>
+<li>Bug/漏洞不跟你开玩笑：Mt. Gox Hack 损失 650,000 BTC<ul>
+<li>时值 ~$28,000,000,000</li>
+</ul>
+</li>
+<li><a href="https://jyywiki.cn/OS/img/diablo-item-clone.mp4">Diablo I 的 “物品复制” bug</a></li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/alipay"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/alipay">山寨支付宝</a></h1>
+<p>由于线程调度可能随时随地发生，人类并不擅长理解它们的行为。与其他的编程语言特性联系在一起，就可能产生糟糕的后果——尤其是在有 undefined behavior 的编程语言 (例如 C/C++) 中，可能导致诸多安全漏洞。</p>
+</div></div>
+</div>
+<h3> 2.1. 非确定性带来的并发控制难题
+ </h3>
+<div class="slideshow" name="sum_problem"><div>
+<h1 id="1-1">于是，你发现 1 + 1 都不会求了……</h1>
+<h2 id="1-1-1">你还会计算 1 + 1 + … + 1 吗？</h2>
+<div class="codehilite"><pre><span></span><code><span class="cp">#define N 100000000</span>
+<span class="kt">long</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_sum</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">N</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">create</span><span class="p">(</span><span class="n">T_sum</span><span class="p">);</span>
+<span class="w">    </span><span class="n">create</span><span class="p">(</span><span class="n">T_sum</span><span class="p">);</span>
+<span class="w">    </span><span class="n">join</span><span class="p">();</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"sum = %ld</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">sum</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>sum++ 包含一个 load，一个 store</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/sum-mutexapi"><div><div>
+<h1 id="mutex-api"><a href="/OS/demos/concurrency/sum-mutexapi">使用 mutex API 实现互斥</a></h1>
+<p>我们的线程库提供了 mutex_lock, mutex_unlock 的 API 实现互斥。</p>
+</div></div>
+</div>
+<div class="slideshow" name="min_sum"><div>
+<h1 id="_1">失去确定性的后果</h1>
+<h2 id="t_sumsum">并发执行三个 T_sum，sum 的最小值是多少？</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_sum</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">3</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">load</span><span class="p">(</span><span class="n">sum</span><span class="p">);</span><span class="w">  </span><span class="c1">// 假设单行语句的执行是原子的</span>
+<span class="w">        </span><span class="n">t</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">        </span><span class="n">store</span><span class="p">(</span><span class="n">sum</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="trace-recovery-is-np-complete-vibe-code">这个问题本质上就很难：<a href="https://epubs.siam.org/doi/10.1137/S0097539794279614">Trace recovery is NP-Complete</a>; <a href="https://jyywiki.cn/OS/2026/vsc.html">vibe code 的游戏</a>
+</h2>
+<div class="codehilite"><pre><span></span><code>- 2025: deepseek-r1, o3-mini 全军覆没
+- 2026: Deepseek Expert, Qwen-3.5-max, GLM-5.1 ✔︎
+- Deepseek Instant, Qwen-3.6-plus ❌
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="determinism_consequences"><div>
+<h1 id="_1">确定性的丧失：后果</h1>
+<h2 id="1-1">正确实现并发 1 + 1 比想象中困难得多</h2>
+<ul>
+<li>1960s，大家争先在共享内存上实现原子性 (互斥)</li>
+<li>但几乎所有的实现都是<strong>错的</strong><ul>
+<li>直到 <a href="https://en.wikipedia.org/wiki/Dekker%27s_algorithm">Dekker’s Algorithm</a>，还只能保证两个线程的互斥</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">并发影响了计算机系统世界中的一切</h2>
+<ul>
+<li>libc 里的函数还能在多线程程序里调用吗？</li>
+<li>我们都知道 printf 是有缓冲区的 (fork 的例子)<ul>
+<li>两个线程同时执行 buf[pos++] = ch 很危险；看看 printf (3) 吧</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/peterson.jpg"></p>
+</div></div>
+
+<h2> 3. 放弃 (2)：顺序执行的幻想
+ </h2>
+<div class="slideshow" name="compiler_optimization"><div>
+<h1 id="simplec-vs">SimpleC：幻想 v.s. 现实</h1>
+<h2 id="vibe-code-simplec">可以 vibe code 一个 SimpleC 的解释器</h2>
+<ul>
+<li>Fully functional，支持 FFI，<strong>任何</strong> C 程序都可以<ul>
+<li>(招募一个同学做毕业设计)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">但是，我们还想要<strong>极致的性能</strong>
+</h2>
+<ul>
+<li>Frances Allen 2006 年获得了图灵奖，PL 领域的图灵奖就更多了</li>
+<li>毕竟性能 = 金钱 (AI 时代更是了)<ul>
+<li>编译器：除了 FFI (系统调用) 不能动，<strong>语句完全不需要按 SimpleC 写的来</strong>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="rewriting-based-optimization">Rewriting-based optimization</h2>
+<ul>
+<li>语义等价的 Inline, Constant Propagation, Dead Coded Elimination, …<ul>
+<li>等一等，<strong>语义等价</strong>是针对 deterministic 程序假设的！</li>
+<li>如果读到来自其他线程写入的值……<ul>
+<li>如果依赖这个假设编程，编译器会教你做人的 😊</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="clever_flag"><div>
+<h1 id="_1">一个聪明的例子</h1>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">flag</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>“等另一个线程举起旗子，我就能继续了”？</li>
+</ul>
+<h2 id="_2">聪明，但编译器更聪明 😭</h2>
+<ul>
+<li>如果这是个顺序程序，编译器可以做什么优化？<ul>
+<li>(这甚至也是一个常见的并发 bug 模式)</li>
+<li><a href="https://www.usenix.org/conference/osdi10/ad-hoc-synchronization-considered-harmful">“Ad hoc synchronization considered harmful”</a></li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="sum_with_optimization"><div>
+<h1 id="_1">求和 (再次出现)</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_sum</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">N</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">create</span><span class="p">(</span><span class="n">T_sum</span><span class="p">);</span>
+<span class="w">    </span><span class="n">create</span><span class="p">(</span><span class="n">T_sum</span><span class="p">);</span>
+<span class="w">    </span><span class="n">join</span><span class="p">();</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"sum = %ld</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="n">sum</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="_2">如果添加编译优化？</h2>
+<ul>
+<li>-O1: 100000000 (n) 😱😱</li>
+<li>-O2: 200000000 (2n) 😱😱😱<ul>
+<li>让 AI 读一下汇编来解释吧</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="control_optimization"><div>
+<h1 id="_1">控制编译器优化的行为</h1>
+<h2 id="1">方法 1：插入 “不可优化” 的代码块</h2>
+<p>while (!flag) {
+    asm volatile (“” ::: “memory”);
+}</p>
+<h2 id="2-loadstore">方法 2：标记变量 load/store 为不可优化</h2>
+<p>int volatile flag;
+while (!flag);</p>
+<h2 id="_2">以上都<strong>不是</strong>《操作系统》课推荐的方法</h2>
+<ul>
+<li><strong>Don’t play with shared memory.</strong></li>
+</ul>
+</div></div>
+
+<h2> 4. 放弃 (3)：指令顺序执行
+ </h2>
+<div class="slideshow" name="state_machine_concurrent"><div>
+<h1 id="_1">两层 “编译”</h1>
+<h2 id="c-s">.c → .s</h2>
+<ul>
+<li>编译器 “大杀四方”</li>
+<li>调换语句的顺序；删除死代码；……</li>
+</ul>
+<h2 id="s-cpu">.s → CPU 的内部状态</h2>
+<ul>
+<li>没想到吧，<strong>处理器也是个编译器</strong>！<ul>
+<li>处理器内有不止一条 on-the-fly 的指令</li>
+<li>会做动态的数据流分析，“擅自调整” 指令执行的顺序<ul>
+<li>依然是 deterministic 的假设</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="simplec">SimpleC 并发模型只是一个幻想</h2>
+<ul>
+<li>
+<a href="https://research.swtch.com/mm">Memory Models</a> by Russ Cox</li>
+</ul>
+<p><img alt="" src="static/img/sc.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="relaxed_memory"><div>
+<h1 id="relaxed-memory-model">宽松内存模型 (Relaxed Memory Model)</h1>
+<h2 id="_1">一切为了性能</h2>
+<ul>
+<li>Store 写入 local memory (cache)，再慢慢同步给其他处理器</li>
+<li>允许 load 读到 local memory (cache) 的旧值</li>
+</ul>
+<p><img alt="center w:400" src="static/img/wmo.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="store_load_reorder"><div>
+<h1 id="_1">观测 “无序” 带来的后果</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_1</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="c1">// Store(x);</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">y</span><span class="p">;</span><span class="w"> </span><span class="c1">// Load(y);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_2</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w">  </span><span class="c1">// Store(y);</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">x</span><span class="p">;</span><span class="w"> </span><span class="c1">// Load(x)</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>我们可以试着排列一下可能的运行结果<ul>
+<li>Intel 做了一个错误的决定：让 x86 有一个 “很强” 的内存模型</li>
+<li>既没有强到 “好编程”，又给性能拖了后腿 (还让给 ARM 模拟 x86 增加了很大的麻烦)<ul>
+<li>Rosetta 2: <a href="https://github.com/saagarjha/TSOEnabler">Apple cheated</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>这样的 “litmus tests” 可以用来 “逆向” memory model 类型</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/mem-model"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/mem-model">宽松内存模型</a></h1>
+<p>我们简化理解多处理器的状态机模型时假设了每次选择一个处理器执行一条指令。然而，由于动态指令调度和缓存的共同作用，实际程序的运行结果更可能超出我们的预期。</p>
+</div></div>
+</div>
+<div class="slideshow" name="take_a_step_back"><div>
+<h1 id="_1">总结：“图方便，把刀直接递给程序员” 的过度开放机制</h1>
+<h2 id="_2">用到刀子的时候还挺方便的……</h2>
+<ul>
+<li>共享内存多线程：1 + 1 都不会写了</li>
+<li>宽松内存模型：1, 2, 3 都数不对了</li>
+<li>malloc/free：今天你是你是不是又 Use After Free 了？</li>
+<li>open/close：你是不是又忘了 close 了？<ul>
+<li>算了，做新的编程语言/框架，把刀子没收吧</li>
+</ul>
+</li>
+</ul>
+<h2 id="ai">AI 时代的思考</h2>
+<ul>
+<li>AI 是真正的 “核动力牛马”，不需要 “图方便”<ul>
+<li>只要给他 critical path 上极限性能的<strong>能力</strong>，让他麻烦一点没问题</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>我们可以很容易地把状态机模型扩展为共享内存上的多线程模型——只是每次选择一个状态机执行一步，通过提供 spawn 和 join 两个 API 来利用现有多处理器系统的共享内存能力。</p>
+<p>然而，我们 “单步语义” 的直觉只是一个不切实际的假设。由于编译优化的 “无处不在” (处理器也是编译器)，共享内存并发的行为十分复杂。与此同时，人类又恰好是物理世界 (宏观时间) 中的 “sequential creature”，编程语言的直觉 (顺序/选择/循环结构) 也是围绕顺序程序设计，因此共享内存上的并发编程是非常具有挑战性的 “底层技术”。在《操作系统》课中，我们不建议大家 “玩火”——我们之后会介绍多种并发控制技术，使得我们可以在需要的时候避免并发的发生，使并发程序退回到顺序程序，从而使我们能够理解和控制并发。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 25 章 - Dialogue on Concurrency</li>
+<li>第 26 章 - Concurrency and Threads</li>
+<li>第 27 章 - Thread API</li>
+<li>延伸阅读: Russ Cox, <a href="https://research.swtch.com/mm">Memory Models</a>
+</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 多处理器编程：从入门到放弃\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review\"\u003eReview: 从系统调用到应用生态\u003c/h1\u003e\n\u003ch2 id=\"cpu-reset\"\u003e初始状态：CPU Reset\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFirmware 加载操作系统\u003c/li\u003e\n\u003cli\u003e操作系统加载 initramfs 里的 init 程序\u003cul\u003e\n\u003cli\u003e(我们讲了链接和加载)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003einit 程序加载真正的文件系统，pivot_root 到新的 init 程序 (systemd pid=1)\u003cul\u003e\n\u003cli\u003e(OS 持续提供 syscalls: fork, execve, mount, mmap, open, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"api\"\u003e基于操作系统 API 的应用生态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003elibc: 一个有 ISO 标准、可移植的基座\u003c/li\u003e\n\u003cli\u003e底层库函数 (curses, readline, …)、编程语言供应链 (PyPI, npm、……)\u003c/li\u003e\n\u003cli\u003e海量的应用程序\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"api_1\"\u003e“系统调用” API 很好地隔离了应用和指令集\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ex86, Aarch64, RISC-V 都共享一份应用生态\u003cul\u003e\n\u003cli\u003e体系结构相关代码只占很小一部分\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 并发编程入门\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"http_server_motivation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e共享内存的并发编程：动机\u003c/h1\u003e\n\u003ch2 id=\"1syscall\"\u003e动机 1：syscall 可能执行很长时间\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在执行系统调用时，程序也许可以 “不闲着”\u003cul\u003e\n\u003cli\u003e也许我们可以同时执行若干个 handle_request\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ehttp_server\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ealloc_buf\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003enread\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eread\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1024\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// syscall\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003ehandle_request\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003enread\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"2\"\u003e动机 2：多处理器系统是共享内存的，不用白不用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一旦分叉 (fork)，就 “形同陌路” 了，无法直接用内存通信\u003c/li\u003e\n\u003cli\u003e这里有一个先有鸡还是先有蛋的问题\u003cul\u003e\n\u003cli\u003e一开始设计了 Symmetric Multiprocessing，就下不了车了 😂 即便是 Non-uniform Memory Access (NUMA)，也要维持共享内存的模型\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"spawn_solution\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现共享内存的 “进程”？\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e加一个操作系统 API 就搞定\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eC 程序的状态机模型\u003cul\u003e\n\u003cli\u003e初始状态：main(argc, argv, envp)\u003c/li\u003e\n\u003cli\u003e状态迁移：执行一条语句 (指令)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e扩展这个模型就行\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e\n\u003cstrong\u003e多线程程序\u003c/strong\u003e的状态机模型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e增加一个特殊的系统调用：spawn()\u003cul\u003e\n\u003cli\u003e增加一个 “状态机” (\u003cstrong\u003e线程\u003c/strong\u003e, thread)，有独立的栈，但共享全局变量\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e状态迁移：选择一个状态机执行一条语句 (指令)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e恭喜你，你已经了解了并发的全部\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e吗……？\u003c/li\u003e\n\u003cli\u003e不，你打开了魔鬼的盒子\u003cul\u003e\n\u003cli\u003eAI 让我 “顺着补几刀，把魔鬼具体化”，完美预言了我后面要讲什么 😭\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. 概念：并发 v.s. 并行\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"concurrency_vs_parallelism\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"vs\"\u003e并发 v.s. 并行\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e并发\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e逻辑上的 “同时执行”\u003cul\u003e\n\u003cli\u003e可以由操作系统/运行库模拟出的 “轮流执行”\u003c/li\u003e\n\u003cli\u003e（也可以是真正同时执行）\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e并行\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e真正意义上的 “同时执行”\u003c/li\u003e\n\u003cli\u003e有 (共享内存的) 多个处理器\u003cul\u003e\n\u003cli\u003e同时执行指令 (load/store 访问共享内存)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e对应到概念模型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSimpleC 选一个线程执行一条语句 (并发模型)\u003c/li\u003e\n\u003cli\u003eSimpleC 的每个线程同时执行一条语句 (并行模型)\u003cul\u003e\n\u003cli\u003e实际处理器每条指令执行的速度不同，更准确地说，当前 “在处理器上的线程” 执行指令的一部分 (这里有一个魔鬼的伏笔)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.2. 迷你线程库\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"thread_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"spawn-join\"\u003eSpawn \u0026amp; Join\u003c/h1\u003e\n\u003ch2 id=\"api-threadh\"\u003e简化的线程 API (thread.h)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e给操作系统 pthreads (7) 线程库做了一点减法\u003c/li\u003e\n\u003cli\u003e只适合最简单的程序，仅供理解原理使用，完全不具有任何实用性\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"spawnfn\"\u003espawn(fn)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e创建一个入口函数是 fn 的线程，并立即开始执行\u003cul\u003e\n\u003cli\u003evoid fn(int tid) { … }\u003c/li\u003e\n\u003cli\u003e参数 tid 从 1 开始编号\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"join\"\u003ejoin()\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e等待所有运行线程的返回\u003cul\u003e\n\u003cli\u003emain 返回默认会 join 所有线程\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e行为：while (num_done != num_threads) ;\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/thread-lib\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/thread-lib\"\u003e迷你线程库\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在这个 “最简” 的线程库中，我们封装了 POSIX 线程库，提供了线程管理的 API：\u003ccode\u003espawn(fn)\u003c/code\u003e 创建一个新线程，执行函数 \u003ccode\u003efn\u003c/code\u003e；\u003ccode\u003ejoin()\u003c/code\u003e 等待当前运行的线程结束。使用这两个 API，我们就可以利用系统中的多处理器资源了：线程可以被同时调度到不同的处理器上并行执行。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"thread_example\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e证明 “共享内存并发”\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#include\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"cpf\"\u003e\u0026lt;thread.h\u0026gt;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003einc_x\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esleep\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003einc_y\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esleep\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emain\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003einc_x\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003einc_y\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"se\"\u003e\\\\\u003c/span\u003e\u003cspan class=\"s\"\u003e033[2J\u003c/span\u003e\u003cspan class=\"se\"\u003e\\\\\u003c/span\u003e\u003cspan class=\"s\"\u003e033[H\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"x = %d, y = %d\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003efflush\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003estdout\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e这个程序 “证明” 了全局变量确实是共享的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"more_questions\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e更多的问题\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e多线程程序真的利用了多处理器吗？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e并发确定了，那是不是真并行？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e线程是否具有独立堆栈？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果是，栈的范围？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"gdb\"\u003e如何用 gdb 单步调试多线程程序？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLLM 帮你读过 \u003ca href=\"https://sourceware.org/gdb/onlinedocs/gdb/Threads.html\"\u003eThe Friendly Manual\u003c/a\u003e 了\u003cul\u003e\n\u003cli\u003e2025 年的讨论：System 人最擅长的就是底层工具的使用，曾经是 “做 system” 的壁垒；但现在有 LLM 了，这都不算什么了\u003c/li\u003e\n\u003cli\u003e(那时候甚至 agents 还不那么好用，现在 agent 都可以直接替你用工具了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/thread-examples\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/thread-examples\"\u003e通过线程库理解线程行为\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以不必 “直接接受” 老师或书本上的知识，而是亲手验证它们，例如线程的确是共享内存的，再比如验证每个线程都有独立的栈——我们可以把 “访问过” 的栈空间标记出来，从而得到每个线程栈的大概范围。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 2. 放弃 (1)：状态迁移的确定性\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"determinism\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"non-determinism\"\u003e不确定性 (Non-determinism) 的魔鬼\u003c/h1\u003e\n\u003ch2 id=\"determinism\"\u003e数学的确定性 (determinism)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e函数 f: X ↦ Y 同样的输入，产生\u003cstrong\u003e唯一\u003c/strong\u003e的输出\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"determinism_1\"\u003e程序的确定性 (determinism)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSimpleC；计算机 (NEMU) 的迁移都是函数\u003cul\u003e\n\u003cli\u003es’ = f(s); f 是确定性的\u003c/li\u003e\n\u003cli\u003e给定相同的初始状态，程序总是执行相同的指令序列\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“Everything is a state machine”\u003cul\u003e\n\u003cli\u003e虽然把数学视角砍掉了，但在理解并发程序的时候，这个视角还是很有用\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e确定性给我们 “可控” 的感觉\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e同一件事总是 \u003cstrong\u003ereproducible\u003c/strong\u003e 的\u003cul\u003e\n\u003cli\u003e这就是我们喜欢 functional programming 的原因\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"determinism_loss\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"non-determinism-contd\"\u003e不确定性 (Non-determinism) 的魔鬼 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e程序 “自身” 是完全确定的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e初始状态不确定 (argv, envp, auxv)\u003c/li\u003e\n\u003cli\u003e系统调用不确定 (getpid, read, …)\u003c/li\u003e\n\u003cli\u003e所有内存和计算指令是确定的\u003cul\u003e\n\u003cli\u003e有一些例外 (rdrand, rdtsc)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e\n\u003cstrong\u003e共享内存\u003c/strong\u003e的并发打破了这一点\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e线程执行的\u003cstrong\u003e速度\u003c/strong\u003e是没有保证的\u003cul\u003e\n\u003cli\u003e这意味着 load 可能读到其他线程的 store (也可能不)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e非确定性的程序理解起来相当困难\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"balance_example\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e确定性的丧失：例子\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eunsigned\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ebalance\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e100\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_alipay_withdraw\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eamount\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ebalance\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eamount\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003ebalance\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eamount\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eSUCCESS\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eFAIL\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"100\"\u003e猜到两个线程并发支付 ¥100 会发生什么吗？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eBug/漏洞不跟你开玩笑：Mt. Gox Hack 损失 650,000 BTC\u003cul\u003e\n\u003cli\u003e时值 ~$28,000,000,000\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://jyywiki.cn/OS/img/diablo-item-clone.mp4\"\u003eDiablo I 的 “物品复制” bug\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/alipay\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/alipay\"\u003e山寨支付宝\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e由于线程调度可能随时随地发生，人类并不擅长理解它们的行为。与其他的编程语言特性联系在一起，就可能产生糟糕的后果——尤其是在有 undefined behavior 的编程语言 (例如 C/C++) 中，可能导致诸多安全漏洞。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch3\u003e 2.1. 非确定性带来的并发控制难题\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"sum_problem\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1-1\"\u003e于是，你发现 1 + 1 都不会求了……\u003c/h1\u003e\n\u003ch2 id=\"1-1-1\"\u003e你还会计算 1 + 1 + … + 1 吗？\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#define N 100000000\u003c/span\u003e\n\u003cspan class=\"kt\"\u003elong\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eN\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emain\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecreate\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecreate\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ejoin\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"sum = %ld\u003c/span\u003e\u003cspan class=\"se\"\u003e\\n\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003esum++ 包含一个 load，一个 store\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/sum-mutexapi\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"mutex-api\"\u003e\u003ca href=\"/OS/demos/concurrency/sum-mutexapi\"\u003e使用 mutex API 实现互斥\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们的线程库提供了 mutex_lock, mutex_unlock 的 API 实现互斥。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"min_sum\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e失去确定性的后果\u003c/h1\u003e\n\u003ch2 id=\"t_sumsum\"\u003e并发执行三个 T_sum，sum 的最小值是多少？\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e3\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eload\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 假设单行语句的执行是原子的\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003estore\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"trace-recovery-is-np-complete-vibe-code\"\u003e这个问题本质上就很难：\u003ca href=\"https://epubs.siam.org/doi/10.1137/S0097539794279614\"\u003eTrace recovery is NP-Complete\u003c/a\u003e; \u003ca href=\"https://jyywiki.cn/OS/2026/vsc.html\"\u003evibe code 的游戏\u003c/a\u003e\n\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e- 2025: deepseek-r1, o3-mini 全军覆没\n- 2026: Deepseek Expert, Qwen-3.5-max, GLM-5.1 ✔︎\n- Deepseek Instant, Qwen-3.6-plus ❌\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"determinism_consequences\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e确定性的丧失：后果\u003c/h1\u003e\n\u003ch2 id=\"1-1\"\u003e正确实现并发 1 + 1 比想象中困难得多\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e1960s，大家争先在共享内存上实现原子性 (互斥)\u003c/li\u003e\n\u003cli\u003e但几乎所有的实现都是\u003cstrong\u003e错的\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e直到 \u003ca href=\"https://en.wikipedia.org/wiki/Dekker%27s_algorithm\"\u003eDekker’s Algorithm\u003c/a\u003e，还只能保证两个线程的互斥\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e并发影响了计算机系统世界中的一切\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003elibc 里的函数还能在多线程程序里调用吗？\u003c/li\u003e\n\u003cli\u003e我们都知道 printf 是有缓冲区的 (fork 的例子)\u003cul\u003e\n\u003cli\u003e两个线程同时执行 buf[pos++] = ch 很危险；看看 printf (3) 吧\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/peterson.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 放弃 (2)：顺序执行的幻想\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"compiler_optimization\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"simplec-vs\"\u003eSimpleC：幻想 v.s. 现实\u003c/h1\u003e\n\u003ch2 id=\"vibe-code-simplec\"\u003e可以 vibe code 一个 SimpleC 的解释器\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFully functional，支持 FFI，\u003cstrong\u003e任何\u003c/strong\u003e C 程序都可以\u003cul\u003e\n\u003cli\u003e(招募一个同学做毕业设计)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e但是，我们还想要\u003cstrong\u003e极致的性能\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFrances Allen 2006 年获得了图灵奖，PL 领域的图灵奖就更多了\u003c/li\u003e\n\u003cli\u003e毕竟性能 = 金钱 (AI 时代更是了)\u003cul\u003e\n\u003cli\u003e编译器：除了 FFI (系统调用) 不能动，\u003cstrong\u003e语句完全不需要按 SimpleC 写的来\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"rewriting-based-optimization\"\u003eRewriting-based optimization\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e语义等价的 Inline, Constant Propagation, Dead Coded Elimination, …\u003cul\u003e\n\u003cli\u003e等一等，\u003cstrong\u003e语义等价\u003c/strong\u003e是针对 deterministic 程序假设的！\u003c/li\u003e\n\u003cli\u003e如果读到来自其他线程写入的值……\u003cul\u003e\n\u003cli\u003e如果依赖这个假设编程，编译器会教你做人的 😊\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"clever_flag\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一个聪明的例子\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003eflag\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e“等另一个线程举起旗子，我就能继续了”？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e聪明，但编译器更聪明 😭\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果这是个顺序程序，编译器可以做什么优化？\u003cul\u003e\n\u003cli\u003e(这甚至也是一个常见的并发 bug 模式)\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://www.usenix.org/conference/osdi10/ad-hoc-synchronization-considered-harmful\"\u003e“Ad hoc synchronization considered harmful”\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sum_with_optimization\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e求和 (再次出现)\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eN\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emain\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecreate\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecreate\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ejoin\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"sum = %ld\u003c/span\u003e\u003cspan class=\"se\"\u003e\\n\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_2\"\u003e如果添加编译优化？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e-O1: 100000000 (n) 😱😱\u003c/li\u003e\n\u003cli\u003e-O2: 200000000 (2n) 😱😱😱\u003cul\u003e\n\u003cli\u003e让 AI 读一下汇编来解释吧\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"control_optimization\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e控制编译器优化的行为\u003c/h1\u003e\n\u003ch2 id=\"1\"\u003e方法 1：插入 “不可优化” 的代码块\u003c/h2\u003e\n\u003cp\u003ewhile (!flag) {\n    asm volatile (“” ::: “memory”);\n}\u003c/p\u003e\n\u003ch2 id=\"2-loadstore\"\u003e方法 2：标记变量 load/store 为不可优化\u003c/h2\u003e\n\u003cp\u003eint volatile flag;\nwhile (!flag);\u003c/p\u003e\n\u003ch2 id=\"_2\"\u003e以上都\u003cstrong\u003e不是\u003c/strong\u003e《操作系统》课推荐的方法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003eDon’t play with shared memory.\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 4. 放弃 (3)：指令顺序执行\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"state_machine_concurrent\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e两层 “编译”\u003c/h1\u003e\n\u003ch2 id=\"c-s\"\u003e.c → .s\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e编译器 “大杀四方”\u003c/li\u003e\n\u003cli\u003e调换语句的顺序；删除死代码；……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"s-cpu\"\u003e.s → CPU 的内部状态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e没想到吧，\u003cstrong\u003e处理器也是个编译器\u003c/strong\u003e！\u003cul\u003e\n\u003cli\u003e处理器内有不止一条 on-the-fly 的指令\u003c/li\u003e\n\u003cli\u003e会做动态的数据流分析，“擅自调整” 指令执行的顺序\u003cul\u003e\n\u003cli\u003e依然是 deterministic 的假设\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"simplec\"\u003eSimpleC 并发模型只是一个幻想\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://research.swtch.com/mm\"\u003eMemory Models\u003c/a\u003e by Russ Cox\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sc.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"relaxed_memory\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"relaxed-memory-model\"\u003e宽松内存模型 (Relaxed Memory Model)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e一切为了性能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eStore 写入 local memory (cache)，再慢慢同步给其他处理器\u003c/li\u003e\n\u003cli\u003e允许 load 读到 local memory (cache) 的旧值\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"center w:400\" src=\"static/img/wmo.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"store_load_reorder\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e观测 “无序” 带来的后果\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_1\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Store(x);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Load(y);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_2\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Store(y);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Load(x)\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e我们可以试着排列一下可能的运行结果\u003cul\u003e\n\u003cli\u003eIntel 做了一个错误的决定：让 x86 有一个 “很强” 的内存模型\u003c/li\u003e\n\u003cli\u003e既没有强到 “好编程”，又给性能拖了后腿 (还让给 ARM 模拟 x86 增加了很大的麻烦)\u003cul\u003e\n\u003cli\u003eRosetta 2: \u003ca href=\"https://github.com/saagarjha/TSOEnabler\"\u003eApple cheated\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e这样的 “litmus tests” 可以用来 “逆向” memory model 类型\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/mem-model\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/mem-model\"\u003e宽松内存模型\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们简化理解多处理器的状态机模型时假设了每次选择一个处理器执行一条指令。然而，由于动态指令调度和缓存的共同作用，实际程序的运行结果更可能超出我们的预期。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"take_a_step_back\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e总结：“图方便，把刀直接递给程序员” 的过度开放机制\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e用到刀子的时候还挺方便的……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e共享内存多线程：1 + 1 都不会写了\u003c/li\u003e\n\u003cli\u003e宽松内存模型：1, 2, 3 都数不对了\u003c/li\u003e\n\u003cli\u003emalloc/free：今天你是你是不是又 Use After Free 了？\u003c/li\u003e\n\u003cli\u003eopen/close：你是不是又忘了 close 了？\u003cul\u003e\n\u003cli\u003e算了，做新的编程语言/框架，把刀子没收吧\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai\"\u003eAI 时代的思考\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAI 是真正的 “核动力牛马”，不需要 “图方便”\u003cul\u003e\n\u003cli\u003e只要给他 critical path 上极限性能的\u003cstrong\u003e能力\u003c/strong\u003e，让他麻烦一点没问题\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e我们可以很容易地把状态机模型扩展为共享内存上的多线程模型——只是每次选择一个状态机执行一步，通过提供 spawn 和 join 两个 API 来利用现有多处理器系统的共享内存能力。\u003c/p\u003e\n\u003cp\u003e然而，我们 “单步语义” 的直觉只是一个不切实际的假设。由于编译优化的 “无处不在” (处理器也是编译器)，共享内存并发的行为十分复杂。与此同时，人类又恰好是物理世界 (宏观时间) 中的 “sequential creature”，编程语言的直觉 (顺序/选择/循环结构) 也是围绕顺序程序设计，因此共享内存上的并发编程是非常具有挑战性的 “底层技术”。在《操作系统》课中，我们不建议大家 “玩火”——我们之后会介绍多种并发控制技术，使得我们可以在需要的时候避免并发的发生，使并发程序退回到顺序程序，从而使我们能够理解和控制并发。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 25 章 - Dialogue on Concurrency\u003c/li\u003e\n\u003cli\u003e第 26 章 - Concurrency and Threads\u003c/li\u003e\n\u003cli\u003e第 27 章 - Thread API\u003c/li\u003e\n\u003cli\u003e延伸阅读: Russ Cox, \u003ca href=\"https://research.swtch.com/mm\"\u003eMemory Models\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect13.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

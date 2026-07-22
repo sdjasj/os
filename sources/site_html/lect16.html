@@ -1,0 +1,450 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 并发控制：同步与信号量
+ </h1>
+<div class="slideshow" name="review_sync"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">同步：达到一个全局 “确定状态” 的瞬间 (同步点)</h2>
+<ul>
+<li>同步条件被达成，但等待同步条件的线程还未继续</li>
+<li>促成了一对 happens-before 关系；“条件达成前” → “条件达成后”<ul>
+<li><code>while (!posedge(clk)) ;</code></li>
+<li><code>while (!all_threads_done()) ;</code></li>
+<li><code>while (!freak_guy_arrived()) ;</code></li>
+<li><code>while (!CAN_PRODUCE) ;</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">于是有了 “条件变量”</h2>
+<ul>
+<li>等待条件满足：<code>lock(lk); while (!cond) wait(cv, lk); unlock(lk);</code>
+</li>
+<li>条件可能满足：<code>broadcast(cv);</code>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 信号量
+ </h2>
+<div class="slideshow" name="mutex_sync"><div>
+<h1 id="_1">计算图和一个奇妙的想法</h1>
+<h2 id="_2">任意一个有向无环图</h2>
+<ul>
+<li>u → v 代表 u 的计算 happen-before v 的计算<ul>
+<li>v: <code>foreach (u → v) while (!u_done) ;</code>
+</li>
+<li>v: <code>while (pred_done != n_pred) ;</code>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">一个奇妙的想法：用互斥锁实现同步</h2>
+<ul>
+<li>Dependency e: u → v 对应一把锁 (但 🔑 被管理员收走)<ul>
+<li>T_main: <code>lock(e); spawn_threads();</code>
+</li>
+<li>T_u: <code>work(u); unlock(e);</code> (做完任务放回 🔑)</li>
+<li>T_v: <code>lock(e); work(v);</code> (需要 🔑 才能开始)</li>
+</ul>
+</li>
+<li>Release-Acquire 天然实现了 happens-before<ul>
+<li>(代码实现；注意这是一个 Undefined Behavior hack)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/cgraph-mutex"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/cgraph-mutex">使用互斥锁实现计算图</a></h1>
+<p>为每一条边分配一把互斥锁——对于 u-&gt;v 的一条边，通过在 main 函数 acquire(lock of u -&gt; v)，u release -&gt; v acquire 来实现 happens-before。注意虽然这个程序可以正常运行，但这是 pthread mutex 不允许的 undefined behavior。</p>
+</div></div>
+</div>
+<div class="slideshow" name="release_as_sync"><div>
+<h1 id="_1">奇妙想法的扩展</h1>
+<h2 id="release-acquire-happens-before">Release-Acquire 天然实现了 happens-before 同步</h2>
+<ul>
+<li>Acquire = 等待信号 (拿走桌上的 🔑) <code>while (!(k == 1)) ; k = 0;</code>
+</li>
+<li>Release = 发出信号 (在桌上放 🔑) <code>k = 1;</code><ul>
+<li>信号/🔑 可以理解为现实生活中的 “进入凭证”</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">那为什么不能允许桌上同时有多个钥匙存在呢？</h2>
+<ul>
+<li>Acquire: <code>while (!(c &gt; 0)) ; c--;</code>
+</li>
+<li>Release: <code>c++;</code><ul>
+<li>停车场：有空车位可以直接进场，否则排队</li>
+<li>游泳馆：有空位获得手环进入更衣室，否则排队</li>
+<li>餐厅：有空桌可以直接进入，否则排队</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="counting_resource"><div>
+<h1 id="semaphore">祝贺，你发明了信号量 (Semaphore)</h1>
+<h2 id="count">带一个计数器 count (初始化时指定) 的互斥锁</h2>
+<ul>
+<li>Acquire (Prolaag - try + decrease/down/wait)<ul>
+<li><code>while (!(count &gt; 0)) ; count--;</code></li>
+<li>“拿走一把 🔑”、“吃掉一个车位”</li>
+</ul>
+</li>
+<li>Release (Verhoog - increase/up/post/signal):<ul>
+<li><code>count++;</code></li>
+<li>“放回一把 🔑”、“变出一个车位”</li>
+</ul>
+</li>
+<li>Caveat: 信号量只管出入口，停车位还需要其他机制管理</li>
+</ul>
+<p><img alt="" src="static/img/parking.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="semaphore_idea"><div>
+<h1 id="api">信号量 API</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">P</span><span class="p">(</span><span class="n">sem_t</span><span class="w"> </span><span class="o">*</span><span class="n">sem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// Acquire</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">count</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">count</span><span class="o">--</span><span class="p">;</span><span class="w">  </span><span class="c1">// 消耗一个 token (信号)</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">V</span><span class="p">(</span><span class="n">sem_t</span><span class="w"> </span><span class="o">*</span><span class="n">sem</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// Release</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">count</span><span class="o">++</span><span class="p">;</span><span class="w">  </span><span class="c1">// 创建一个 token (信号)</span>
+<span class="w">    </span><span class="n">cond_broadcast</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">cv</span><span class="p">);</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="o">-&gt;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>初始时的 <code>count</code> 相当于执行了 <code>count</code> 次 release<ul>
+<li>桌上 🔑 的数量、停车场车位的数量……</li>
+</ul>
+</li>
+<li>每个 <code>P</code> (Acquire) 都能找到一个和它配对 (happens-before) 的 <code>V</code> (Release)<ul>
+<li>每个 <code>P</code> 返回 (“拿走 🔑”、“吃掉车位”) 时，总能保证 🔑/车位的存在</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 信号量实现同步
+ </h2>
+<div class="slideshow" name="semaphore_as_mutex"><div>
+<h1 id="_1">热身：用信号量实现互斥锁</h1>
+<div class="codehilite"><pre><span></span><code><span class="n">sem_t</span><span class="w"> </span><span class="n">sem</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SEM_INIT</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="c1">// 只有一个车位的停车场</span>
+<span class="c1">// 只有 🔑 x 1 的桌子</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">lock</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">P</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="p">);</span><span class="w">  </span><span class="c1">// acquire: get 🔑</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">unlock</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">V</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sem</span><span class="p">);</span><span class="w">  </span><span class="c1">// release: put 🔑</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>“互斥锁是信号量的特例”</li>
+<li>“信号量是互斥锁的扩展”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="semaphore_applications"><div>
+<h1 id="_1">信号量的两种典型应用</h1>
+<h2 id="1-happens-before-a-b">(1) 实现一次临时的 happens-before: A → B</h2>
+<ul>
+<li>s = 0</li>
+<li>A → release: V(s) → acquire: P(s) →  B<ul>
+<li>这就是最开始的 “用互斥锁实现同步”</li>
+</ul>
+</li>
+</ul>
+<h2 id="2-n">(2) 控制并发数 &lt;= n (管理计数型资源)</h2>
+<ul>
+<li>游泳池里的人不能超过 n 个</li>
+<li>停车场只有 n 个车位</li>
+<li>餐厅只有 n 桌<ul>
+<li>“计数” 是个很有用的特性</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="example_cgraph"><div>
+<h1 id="_1">实现计算图的两种方式</h1>
+<h2 id="join">考虑线程 join</h2>
+<ul>
+<li>为每条边计数<ul>
+<li>worker_t: V(done_t)</li>
+<li>main: P(done_1); P(done_2); … P(done_n)</li>
+</ul>
+</li>
+<li>为每个节点计数<ul>
+<li>worker_t: V(done)  // 释放一个手环</li>
+<li>main: P(done); P(done); … P(done)  // 收齐手环，关闭游泳馆</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">推广到任意计算图</h2>
+<ul>
+<li>为每条边 e: u → v 计数<ul>
+<li>T_u: work(u); V(e); (做完任务放回 🔑)</li>
+<li>T_v: P(e); work(v); (需要 🔑 才能开始)</li>
+</ul>
+</li>
+<li>为每个节点计数<ul>
+<li>T_u: P(u); P(u); … work(u)</li>
+<li>T_v: P(v); P(v); … work(v)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/join-sem"><div><div>
+<h1 id="join"><a href="/OS/demos/concurrency/join-sem">使用信号量实现线程 join</a></h1>
+<p>我们既可以用一个信号量实现一次临时的 happens-before，也可以用一个计数型信号量等待数量正确的线程结束。</p>
+</div></div>
+</div>
+<div class="code-card" path="concurrency/cgraph-sem"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/cgraph-sem">使用信号量实现计算图</a></h1>
+<p>使用信号量 “计数” 的特征，我们可以为每个节点分配信号量，当获得和入边数量相同的钥匙时，就可以进入该节点并开始计算。</p>
+</div></div>
+</div>
+<div class="slideshow" name="example_producer_consumer"><div>
+<h1 id="-">例子：优雅地实现生产者-消费者</h1>
+<div class="codehilite"><pre><span></span><code><span class="n">sem_t</span><span class="w"> </span><span class="n">empty</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SEM_INIT</span><span class="p">(</span><span class="n">depth</span><span class="p">);</span>
+<span class="n">sem_t</span><span class="w"> </span><span class="n">fill</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">SEM_INIT</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_produce</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">P</span><span class="p">(</span><span class="o">&amp;</span><span class="n">empty</span><span class="p">);</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"("</span><span class="p">);</span><span class="w"> </span><span class="n">V</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fill</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_consume</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">P</span><span class="p">(</span><span class="o">&amp;</span><span class="n">fill</span><span class="p">);</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">")"</span><span class="p">);</span><span class="w"> </span><span class="n">V</span><span class="p">(</span><span class="o">&amp;</span><span class="n">empty</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<h2 id="_1">这次 “停车场” 的比方就不太好了</h2>
+<ul>
+<li>从 empty 桌子上拿 🔑 → produce → 往 fill 桌子上放 🔑</li>
+<li>从 fill 桌子上拿 🔑 → consume → 往 empty 桌子上放 🔑</li>
+<li>Caveat: produce/consume 是并行的<ul>
+<li>printf 是线程安全的，但你自己实现的数据结构还需要互斥</li>
+</ul>
+</li>
+</ul>
+<h2 id="invariant">全局的 invariant</h2>
+<ul>
+<li>empty + fill + P_hold + C_hold = depth</li>
+<li>通过 V → P 实现拿/放的配对</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/pc-sem"><div><div>
+<h1 id="-"><a href="/OS/demos/concurrency/pc-sem">使用信号量实现生产者-消费者问题</a></h1>
+<p>信号量给了生产者-消费者问题一个非常精巧的实验，生产者把球从 empty 口袋取走，push 之后把球放入 filled 口袋；消费者则恰好相反。整个系统满足 empty + filled + 正在打印的线程 = 缓冲区大小的全局约束。</p>
+</div></div>
+</div>
+<h2> 3. 信号量、条件变量与同步
+ </h2>
+<div class="slideshow" name="semaphore_vs_condvar"><div>
+<h1 id="vs">信号量 v.s. 条件变量</h1>
+<h2 id="_1">信号量</h2>
+<ul>
+<li>干净、优雅，完美地解决了生产者-消费者问题</li>
+<li>但 “count” 不总是能很好地代表同步条件</li>
+</ul>
+<h2 id="_2">条件变量</h2>
+<ul>
+<li>万能：适用于任何同步条件</li>
+<li>丑陋：代码总感里有什么脏东西 (spin loop)</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">cond</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">):</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="harder_fish"><div>
+<h1 id="_1">实现更复杂的同步问题</h1>
+<h2 id="_2">上次课的同步问题</h2>
+<ul>
+<li>三类线程分别死循环打印 <code>&lt;</code>, <code>&gt;</code> 和 <code>_</code>
+</li>
+<li>同步这些线程，使得屏幕打印出 <code>&lt;&gt;&lt;_</code> 和 <code>&gt;&lt;&gt;_</code> 的组合<ul>
+<li>同步的条件：“现在可以打印这个字符”</li>
+<li>例如：打印了 <code>_</code> 之后，就可以打印 <code>&lt;</code> <strong>或</strong> <code>&gt;</code>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">“或” 这个条件是单个信号量无法表达的</h2>
+<ul>
+<li>当然也不是不行<ul>
+<li>每个线程等待字符可以打印的信号量</li>
+<li>打印完 <code>_</code> 之后，抛一个硬币，然后唤醒 <code>&lt;</code> 还是 <code>&gt;</code>
+</li>
+</ul>
+</li>
+<li>信号量必须等待 “一个计数器”</li>
+<li>条件变量可以是 “任意全局状态的条件”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="dining_philosophers"><div>
+<h1 id="_1">哲 ♂ 学家吃饭问题</h1>
+<h2 id="e-w-dijkstra-1960">E. W. Dijkstra, 1960</h2>
+<ul>
+<li>哲学家 (线程) 有时思考，有时吃饭</li>
+<li>吃饭需要同时得到左手和右手的叉子</li>
+</ul>
+<p><img alt="" src="static/img/dining-philosophers.jpg"></p>
+</div></div>
+
+<div class="code-card" path="concurrency/philosophers"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/philosophers">哲学家吃饭问题</a></h1>
+<p>通过一个额外的信号量，我们限制上桌吃饭的人数不超过 4 人。上桌的 4 人之中至少有一人可以获得左右手的叉子，然后释放后退出临界区。这个协议的正确性并不是显然的：我们必须非常小心地对待任何并发问题。</p>
+</div></div>
+</div>
+<div class="slideshow" name="attempt"><div>
+<h1 id="_1">尝试</h1>
+<h2 id="_2">条件变量</h2>
+<ul>
+<li>同步条件：<code>avail[lhs] &amp;&amp; avail[rhs]</code>
+</li>
+<li>背模板即可<ul>
+<li>(期末考试 100% 会考，这就是通关密码)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">信号量</h2>
+<ul>
+<li><code>P(&amp;sem[lhs]) &amp;&amp; P(&amp;sem[rhs])</code></li>
+<li>看起来没什么问题？<ul>
+<li>当互斥锁用就行了</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="successful_attempt"><div>
+<h1 id="_1">成功的尝试：信号量</h1>
+<h2 id="5">如果 5 个哲学家同时举起左手的叉子……</h2>
+<ul>
+<li>我们需要禁止这件事发生</li>
+</ul>
+<h2 id="workaround-1">Workaround 1: 从桌子上赶走一个人</h2>
+<ul>
+<li>直观理解：大家先从桌上退出<ul>
+<li>想吃饭，先得拿到桌上的 🔑</li>
+<li>吃完饭，把 🔑 还回去</li>
+<li>实现最多只有 4 个人可以上桌，就不会循环等待了</li>
+</ul>
+</li>
+</ul>
+<h2 id="workaround-2-lock-ordering">Workaround 2: Lock Ordering</h2>
+<ul>
+<li>给叉子编号，总是先拿编号小的</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="not_successful"><div>
+<h1 id="_1">不！这不 “成功”</h1>
+<h2 id="_2">信号量不总是 “优雅”</h2>
+<ul>
+<li>Systems 要的是 absolutely correct 的方案</li>
+<li>数值型资源不总是能很好地代表同步条件</li>
+</ul>
+<p><img alt="" src="static/img/cv-generalize.png"></p>
+</div></div>
+
+<div class="slideshow" name="pc_extension"><div>
+<h1 id="_1">加强版生产者/消费者问题</h1>
+<h2 id="_2">同步四类线程</h2>
+<ul>
+<li>put(x) - P(&amp;empty) → put(x) → V(&amp;fill)</li>
+<li>get() - P(&amp;fill) → get() → V(&amp;empty)</li>
+<li>close() - ???</li>
+<li>open() - ???</li>
+</ul>
+<h2 id="_3">条件变量就容易了</h2>
+<ul>
+<li>broadcast → all_closed → can_reopen = 1<ul>
+<li>无论 “条件” 多复杂，总是一个 “全局状态的计算结果”</li>
+<li>put/get 时可以根据是否有 pending close 做出不同判断</li>
+</ul>
+</li>
+<li>但信号量实现起来就很麻烦了</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="implement_condvar_sem"><div>
+<h1 id="_1">用信号量实现条件变量</h1>
+<blockquote>
+<p>Implementing condition variables out of a simple primitive like semaphores is surprisingly tricky. (from a <a href="http://birrell.org/andrew/papers/ImplementingCVs.pdf">2003 report</a>)</p>
+</blockquote>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">wait</span><span class="p">(</span><span class="n">cond_t</span><span class="w"> </span><span class="o">*</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="n">mutex_t</span><span class="w"> </span><span class="o">*</span><span class="n">mutex</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">cv</span><span class="o">-&gt;</span><span class="n">nwait</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="n">mutex</span><span class="p">);</span>
+<span class="w">    </span><span class="n">P</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="o">-&gt;</span><span class="n">sleep</span><span class="p">);</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="n">mutex</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">broadcast</span><span class="p">(</span><span class="n">cond_t</span><span class="w"> </span><span class="o">*</span><span class="n">cv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">);</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">cv</span><span class="o">-&gt;</span><span class="n">nwait</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="w">        </span><span class="n">V</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="o">-&gt;</span><span class="n">sleep</span><span class="p">);</span>
+<span class="w">    </span><span class="n">cv</span><span class="o">-&gt;</span><span class="n">nwait</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>
+<strong>唤醒丢失</strong>: 一个 “早就 wait 但没有 P” 的线程会抢走唤醒</li>
+<li>Release-wait 必须实现成 “不可分割的原子操作”<ul>
+<li>解决不了，就问操作系统吧 (实际实现靠得是 futex)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="difficulty_essence"><div>
+<h1 id="contd">用信号量实现条件变量 (cont’d)</h1>
+<h2 id="_1">引入一个 “调度线程”</h2>
+<ul>
+<li>就像在哲学家吃饭问题里引入一个<strong>发叉子的服务员</strong><ul>
+<li>根据全局状态，决定谁可以继续</li>
+<li>最好的方式：把条件一起送给 T_waiter，由 T_waiter 决定谁可以继续</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_philosopher</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">tid</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">send_message_to_waiter</span><span class="p">();</span>
+<span class="w">        </span><span class="n">P</span><span class="p">(</span><span class="o">&amp;</span><span class="n">can_proceed</span><span class="p">[</span><span class="n">tid</span><span class="p">]);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>看起来性能低，但 “调度” 的时间几乎是 O(1) 的</li>
+<li>只要任务分解得当，对性能的损失就可以忽略不计</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>信号量可以看做是互斥锁的一个 “推广”，可以理解成游泳馆的手环、停车场的车位、餐厅的桌子和袋子里的球，通过计数的方式实现同步——在符合这个抽象时，使用信号量能够带来优雅的代码。但信号量不是万能的——理解线程同步的条件才是真正至关重要的。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 31 章 - Semaphores</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 并发控制：同步与信号量\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review_sync\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e同步：达到一个全局 “确定状态” 的瞬间 (同步点)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e同步条件被达成，但等待同步条件的线程还未继续\u003c/li\u003e\n\u003cli\u003e促成了一对 happens-before 关系；“条件达成前” → “条件达成后”\u003cul\u003e\n\u003cli\u003e\u003ccode\u003ewhile (!posedge(clk)) ;\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003ewhile (!all_threads_done()) ;\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003ewhile (!freak_guy_arrived()) ;\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003ewhile (!CAN_PRODUCE) ;\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e于是有了 “条件变量”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e等待条件满足：\u003ccode\u003elock(lk); while (!cond) wait(cv, lk); unlock(lk);\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e条件可能满足：\u003ccode\u003ebroadcast(cv);\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 信号量\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"mutex_sync\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e计算图和一个奇妙的想法\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e任意一个有向无环图\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eu → v 代表 u 的计算 happen-before v 的计算\u003cul\u003e\n\u003cli\u003ev: \u003ccode\u003eforeach (u → v) while (!u_done) ;\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003ev: \u003ccode\u003ewhile (pred_done != n_pred) ;\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e一个奇妙的想法：用互斥锁实现同步\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eDependency e: u → v 对应一把锁 (但 🔑 被管理员收走)\u003cul\u003e\n\u003cli\u003eT_main: \u003ccode\u003elock(e); spawn_threads();\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eT_u: \u003ccode\u003ework(u); unlock(e);\u003c/code\u003e (做完任务放回 🔑)\u003c/li\u003e\n\u003cli\u003eT_v: \u003ccode\u003elock(e); work(v);\u003c/code\u003e (需要 🔑 才能开始)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eRelease-Acquire 天然实现了 happens-before\u003cul\u003e\n\u003cli\u003e(代码实现；注意这是一个 Undefined Behavior hack)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/cgraph-mutex\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/cgraph-mutex\"\u003e使用互斥锁实现计算图\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e为每一条边分配一把互斥锁——对于 u-\u0026gt;v 的一条边，通过在 main 函数 acquire(lock of u -\u0026gt; v)，u release -\u0026gt; v acquire 来实现 happens-before。注意虽然这个程序可以正常运行，但这是 pthread mutex 不允许的 undefined behavior。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"release_as_sync\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e奇妙想法的扩展\u003c/h1\u003e\n\u003ch2 id=\"release-acquire-happens-before\"\u003eRelease-Acquire 天然实现了 happens-before 同步\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAcquire = 等待信号 (拿走桌上的 🔑) \u003ccode\u003ewhile (!(k == 1)) ; k = 0;\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eRelease = 发出信号 (在桌上放 🔑) \u003ccode\u003ek = 1;\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e信号/🔑 可以理解为现实生活中的 “进入凭证”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e那为什么不能允许桌上同时有多个钥匙存在呢？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAcquire: \u003ccode\u003ewhile (!(c \u0026gt; 0)) ; c--;\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eRelease: \u003ccode\u003ec++;\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e停车场：有空车位可以直接进场，否则排队\u003c/li\u003e\n\u003cli\u003e游泳馆：有空位获得手环进入更衣室，否则排队\u003c/li\u003e\n\u003cli\u003e餐厅：有空桌可以直接进入，否则排队\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"counting_resource\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"semaphore\"\u003e祝贺，你发明了信号量 (Semaphore)\u003c/h1\u003e\n\u003ch2 id=\"count\"\u003e带一个计数器 count (初始化时指定) 的互斥锁\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAcquire (Prolaag - try + decrease/down/wait)\u003cul\u003e\n\u003cli\u003e\u003ccode\u003ewhile (!(count \u0026gt; 0)) ; count--;\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e“拿走一把 🔑”、“吃掉一个车位”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eRelease (Verhoog - increase/up/post/signal):\u003cul\u003e\n\u003cli\u003e\u003ccode\u003ecount++;\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e“放回一把 🔑”、“变出一个车位”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eCaveat: 信号量只管出入口，停车位还需要其他机制管理\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/parking.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"semaphore_idea\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"api\"\u003e信号量 API\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eP\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esem_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Acquire\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecount\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecount\u003c/span\u003e\u003cspan class=\"o\"\u003e--\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 消耗一个 token (信号)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eV\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esem_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Release\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecount\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 创建一个 token (信号)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_broadcast\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e初始时的 \u003ccode\u003ecount\u003c/code\u003e 相当于执行了 \u003ccode\u003ecount\u003c/code\u003e 次 release\u003cul\u003e\n\u003cli\u003e桌上 🔑 的数量、停车场车位的数量……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e每个 \u003ccode\u003eP\u003c/code\u003e (Acquire) 都能找到一个和它配对 (happens-before) 的 \u003ccode\u003eV\u003c/code\u003e (Release)\u003cul\u003e\n\u003cli\u003e每个 \u003ccode\u003eP\u003c/code\u003e 返回 (“拿走 🔑”、“吃掉车位”) 时，总能保证 🔑/车位的存在\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 信号量实现同步\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"semaphore_as_mutex\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e热身：用信号量实现互斥锁\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003esem_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eSEM_INIT\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 只有一个车位的停车场\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 只有 🔑 x 1 的桌子\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eP\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// acquire: get 🔑\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eunlock\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eV\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esem\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// release: put 🔑\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e“互斥锁是信号量的特例”\u003c/li\u003e\n\u003cli\u003e“信号量是互斥锁的扩展”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"semaphore_applications\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e信号量的两种典型应用\u003c/h1\u003e\n\u003ch2 id=\"1-happens-before-a-b\"\u003e(1) 实现一次临时的 happens-before: A → B\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003es = 0\u003c/li\u003e\n\u003cli\u003eA → release: V(s) → acquire: P(s) →  B\u003cul\u003e\n\u003cli\u003e这就是最开始的 “用互斥锁实现同步”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"2-n\"\u003e(2) 控制并发数 \u0026lt;= n (管理计数型资源)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e游泳池里的人不能超过 n 个\u003c/li\u003e\n\u003cli\u003e停车场只有 n 个车位\u003c/li\u003e\n\u003cli\u003e餐厅只有 n 桌\u003cul\u003e\n\u003cli\u003e“计数” 是个很有用的特性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"example_cgraph\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现计算图的两种方式\u003c/h1\u003e\n\u003ch2 id=\"join\"\u003e考虑线程 join\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e为每条边计数\u003cul\u003e\n\u003cli\u003eworker_t: V(done_t)\u003c/li\u003e\n\u003cli\u003emain: P(done_1); P(done_2); … P(done_n)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e为每个节点计数\u003cul\u003e\n\u003cli\u003eworker_t: V(done)  // 释放一个手环\u003c/li\u003e\n\u003cli\u003emain: P(done); P(done); … P(done)  // 收齐手环，关闭游泳馆\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e推广到任意计算图\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e为每条边 e: u → v 计数\u003cul\u003e\n\u003cli\u003eT_u: work(u); V(e); (做完任务放回 🔑)\u003c/li\u003e\n\u003cli\u003eT_v: P(e); work(v); (需要 🔑 才能开始)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e为每个节点计数\u003cul\u003e\n\u003cli\u003eT_u: P(u); P(u); … work(u)\u003c/li\u003e\n\u003cli\u003eT_v: P(v); P(v); … work(v)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/join-sem\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"join\"\u003e\u003ca href=\"/OS/demos/concurrency/join-sem\"\u003e使用信号量实现线程 join\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们既可以用一个信号量实现一次临时的 happens-before，也可以用一个计数型信号量等待数量正确的线程结束。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"code-card\" path=\"concurrency/cgraph-sem\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/cgraph-sem\"\u003e使用信号量实现计算图\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e使用信号量 “计数” 的特征，我们可以为每个节点分配信号量，当获得和入边数量相同的钥匙时，就可以进入该节点并开始计算。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"example_producer_consumer\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"-\"\u003e例子：优雅地实现生产者-消费者\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003esem_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eempty\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eSEM_INIT\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003esem_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efill\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eSEM_INIT\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_produce\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eP\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eempty\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"(\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eV\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003efill\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_consume\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eP\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003efill\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\")\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eV\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eempty\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_1\"\u003e这次 “停车场” 的比方就不太好了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从 empty 桌子上拿 🔑 → produce → 往 fill 桌子上放 🔑\u003c/li\u003e\n\u003cli\u003e从 fill 桌子上拿 🔑 → consume → 往 empty 桌子上放 🔑\u003c/li\u003e\n\u003cli\u003eCaveat: produce/consume 是并行的\u003cul\u003e\n\u003cli\u003eprintf 是线程安全的，但你自己实现的数据结构还需要互斥\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"invariant\"\u003e全局的 invariant\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eempty + fill + P_hold + C_hold = depth\u003c/li\u003e\n\u003cli\u003e通过 V → P 实现拿/放的配对\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/pc-sem\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"-\"\u003e\u003ca href=\"/OS/demos/concurrency/pc-sem\"\u003e使用信号量实现生产者-消费者问题\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e信号量给了生产者-消费者问题一个非常精巧的实验，生产者把球从 empty 口袋取走，push 之后把球放入 filled 口袋；消费者则恰好相反。整个系统满足 empty + filled + 正在打印的线程 = 缓冲区大小的全局约束。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 3. 信号量、条件变量与同步\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"semaphore_vs_condvar\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"vs\"\u003e信号量 v.s. 条件变量\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e信号量\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e干净、优雅，完美地解决了生产者-消费者问题\u003c/li\u003e\n\u003cli\u003e但 “count” 不总是能很好地代表同步条件\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e条件变量\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e万能：适用于任何同步条件\u003c/li\u003e\n\u003cli\u003e丑陋：代码总感里有什么脏东西 (spin loop)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003econd\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ewait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"n\"\u003eunlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e):\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"harder_fish\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现更复杂的同步问题\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e上次课的同步问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e三类线程分别死循环打印 \u003ccode\u003e\u0026lt;\u003c/code\u003e, \u003ccode\u003e\u0026gt;\u003c/code\u003e 和 \u003ccode\u003e_\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e同步这些线程，使得屏幕打印出 \u003ccode\u003e\u0026lt;\u0026gt;\u0026lt;_\u003c/code\u003e 和 \u003ccode\u003e\u0026gt;\u0026lt;\u0026gt;_\u003c/code\u003e 的组合\u003cul\u003e\n\u003cli\u003e同步的条件：“现在可以打印这个字符”\u003c/li\u003e\n\u003cli\u003e例如：打印了 \u003ccode\u003e_\u003c/code\u003e 之后，就可以打印 \u003ccode\u003e\u0026lt;\u003c/code\u003e \u003cstrong\u003e或\u003c/strong\u003e \u003ccode\u003e\u0026gt;\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e“或” 这个条件是单个信号量无法表达的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e当然也不是不行\u003cul\u003e\n\u003cli\u003e每个线程等待字符可以打印的信号量\u003c/li\u003e\n\u003cli\u003e打印完 \u003ccode\u003e_\u003c/code\u003e 之后，抛一个硬币，然后唤醒 \u003ccode\u003e\u0026lt;\u003c/code\u003e 还是 \u003ccode\u003e\u0026gt;\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e信号量必须等待 “一个计数器”\u003c/li\u003e\n\u003cli\u003e条件变量可以是 “任意全局状态的条件”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"dining_philosophers\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e哲 ♂ 学家吃饭问题\u003c/h1\u003e\n\u003ch2 id=\"e-w-dijkstra-1960\"\u003eE. W. Dijkstra, 1960\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e哲学家 (线程) 有时思考，有时吃饭\u003c/li\u003e\n\u003cli\u003e吃饭需要同时得到左手和右手的叉子\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/dining-philosophers.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/philosophers\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/philosophers\"\u003e哲学家吃饭问题\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e通过一个额外的信号量，我们限制上桌吃饭的人数不超过 4 人。上桌的 4 人之中至少有一人可以获得左右手的叉子，然后释放后退出临界区。这个协议的正确性并不是显然的：我们必须非常小心地对待任何并发问题。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"attempt\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e尝试\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e条件变量\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e同步条件：\u003ccode\u003eavail[lhs] \u0026amp;\u0026amp; avail[rhs]\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e背模板即可\u003cul\u003e\n\u003cli\u003e(期末考试 100% 会考，这就是通关密码)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e信号量\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ccode\u003eP(\u0026amp;sem[lhs]) \u0026amp;\u0026amp; P(\u0026amp;sem[rhs])\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e看起来没什么问题？\u003cul\u003e\n\u003cli\u003e当互斥锁用就行了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"successful_attempt\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e成功的尝试：信号量\u003c/h1\u003e\n\u003ch2 id=\"5\"\u003e如果 5 个哲学家同时举起左手的叉子……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们需要禁止这件事发生\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"workaround-1\"\u003eWorkaround 1: 从桌子上赶走一个人\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e直观理解：大家先从桌上退出\u003cul\u003e\n\u003cli\u003e想吃饭，先得拿到桌上的 🔑\u003c/li\u003e\n\u003cli\u003e吃完饭，把 🔑 还回去\u003c/li\u003e\n\u003cli\u003e实现最多只有 4 个人可以上桌，就不会循环等待了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"workaround-2-lock-ordering\"\u003eWorkaround 2: Lock Ordering\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e给叉子编号，总是先拿编号小的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"not_successful\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e不！这不 “成功”\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e信号量不总是 “优雅”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSystems 要的是 absolutely correct 的方案\u003c/li\u003e\n\u003cli\u003e数值型资源不总是能很好地代表同步条件\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/cv-generalize.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"pc_extension\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e加强版生产者/消费者问题\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e同步四类线程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eput(x) - P(\u0026amp;empty) → put(x) → V(\u0026amp;fill)\u003c/li\u003e\n\u003cli\u003eget() - P(\u0026amp;fill) → get() → V(\u0026amp;empty)\u003c/li\u003e\n\u003cli\u003eclose() - ???\u003c/li\u003e\n\u003cli\u003eopen() - ???\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e条件变量就容易了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ebroadcast → all_closed → can_reopen = 1\u003cul\u003e\n\u003cli\u003e无论 “条件” 多复杂，总是一个 “全局状态的计算结果”\u003c/li\u003e\n\u003cli\u003eput/get 时可以根据是否有 pending close 做出不同判断\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e但信号量实现起来就很麻烦了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"implement_condvar_sem\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e用信号量实现条件变量\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eImplementing condition variables out of a simple primitive like semaphores is surprisingly tricky. (from a \u003ca href=\"http://birrell.org/andrew/papers/ImplementingCVs.pdf\"\u003e2003 report\u003c/a\u003e)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ewait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003econd_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003emutex\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003enwait\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003emutex\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eP\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003esleep\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003emutex\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ebroadcast\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003econd_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003enwait\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003eV\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003esleep\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003enwait\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e唤醒丢失\u003c/strong\u003e: 一个 “早就 wait 但没有 P” 的线程会抢走唤醒\u003c/li\u003e\n\u003cli\u003eRelease-wait 必须实现成 “不可分割的原子操作”\u003cul\u003e\n\u003cli\u003e解决不了，就问操作系统吧 (实际实现靠得是 futex)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"difficulty_essence\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e用信号量实现条件变量 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e引入一个 “调度线程”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e就像在哲学家吃饭问题里引入一个\u003cstrong\u003e发叉子的服务员\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e根据全局状态，决定谁可以继续\u003c/li\u003e\n\u003cli\u003e最好的方式：把条件一起送给 T_waiter，由 T_waiter 决定谁可以继续\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_philosopher\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003esend_message_to_waiter\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003eP\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecan_proceed\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e]);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e看起来性能低，但 “调度” 的时间几乎是 O(1) 的\u003c/li\u003e\n\u003cli\u003e只要任务分解得当，对性能的损失就可以忽略不计\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e信号量可以看做是互斥锁的一个 “推广”，可以理解成游泳馆的手环、停车场的车位、餐厅的桌子和袋子里的球，通过计数的方式实现同步——在符合这个抽象时，使用信号量能够带来优雅的代码。但信号量不是万能的——理解线程同步的条件才是真正至关重要的。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 31 章 - Semaphores\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect16.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

@@ -1,0 +1,267 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> Scaling Law 和 Agentic AI (Hacking Day)
+ </h1>
+<div class="note" name="note"><div>
+<h1 id="hacking-day">Hacking Day</h1>
+<p>应对课程向 3 学时调整，将会有 1/4 的课程内容为补充选讲内容，讲授本课程相关的扩展知识，不作为考试内容。</p>
+</div></div>
+
+<h2> 1. 大语言模型和 Agents
+ </h2>
+<div class="slideshow" name="first_chatgpt"><div>
+<h1 id="chatgpt">在课堂上第一次感受 ChatGPT 的威力</h1>
+<h2 id="chatgpt_1">问 ChatGPT: 编译器会对这段代码做出怎样的优化？</h2>
+<ul>
+<li>2023.2.16 (ChatGPT 发布 2 个月 17 天)<ul>
+<li>GPT-3.5 给出了完美的回答</li>
+<li>在大家还在各种微调 BERT 的时候，忽然感觉世界变了</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">return_1</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">100</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// Compiler will assign [%0] an assembly operand</span>
+<span class="w">    </span><span class="k">asm</span><span class="p">(</span><span class="s">"movl $1, %0"</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="s">"=g"</span><span class="p">(</span><span class="n">x</span><span class="p">));</span><span class="w">  </span><span class="c1">// "x = 1;"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="llm_concept"><div>
+<h1 id="_1">大; 语言; 模型</h1>
+<h2 id="_2">大</h2>
+<ul>
+<li>Schrödinger: 《生命是什么》中的灵魂拷问：原子为什么这么小，我们为什么这么大？</li>
+<li>原子本身不可能带有太多的<strong>信息</strong><ul>
+<li>“大” 是应对宏观复杂性的必要条件</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">语言</h2>
+<ul>
+<li>人类沉淀千年的世界模型</li>
+<li>一个非常棒的，在人类之间对齐的 “物理世界模型” (你无法和外星人对齐)</li>
+</ul>
+<h2 id="_4">模型</h2>
+<ul>
+<li>然后，我们就只要一个模型就行了</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="llm_today"><div>
+<h1 id="_1">大语言模型的进化</h1>
+<h2 id="_2">“眼睛”</h2>
+<ul>
+<li>
+<a href="https://arxiv.org/abs/2010.11929">ViT</a><ul>
+<li>一切 “感官” 都可以对齐到语言系统上</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">“草稿纸”</h2>
+<ul>
+<li>Chain-of-thought<ul>
+<li>GPT-4 时代的宝藏 prompt: “think step by step”</li>
+<li>有时候还需要我们帮他想一个 plan</li>
+<li>(谁说 AI 自己不能想到呢)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_4">“计算器”</h2>
+<ul>
+<li>
+<a href="https://arxiv.org/abs/2210.03629">ReAct</a> 和 <a href="https://arxiv.org/abs/2302.04761">Toolformer</a>，<ul>
+<li>知道 123 * 456 算不对，那就 “结果是 &lt;| python3 -c “123 * 456” |&gt;”</li>
+<li>这就是 AI 的手和脚</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="llm_today_2"><div>
+<h1 id="llm-agents">LLM Agents</h1>
+<h2 id="_1">既然有眼睛、草稿纸、计算器 (等工具) 了</h2>
+<ul>
+<li>LLM 根本就是一个<strong>活生生的人</strong>
+</li>
+<li>能犯错、能尝试，但最终能把事情做对<ul>
+<li>ChatGPT 之前，我们都用 <a href="https://github.com/nvbn/thefuck">thef**k</a> (我还带一个同学做增强这个的毕业设计)</li>
+</ul>
+</li>
+</ul>
+<h2 id="agentic-loop">Agentic Loop</h2>
+<ul>
+<li>记忆：完整的工作区<ul>
+<li>Context + Git repository</li>
+<li>有时候觉得 LLM 像是在一个<a href="https://store.steampowered.com/app/1252330/DEATHLOOP/">死亡循环</a>中</li>
+</ul>
+</li>
+<li>想出一个计划 (分解任务)</li>
+<li>逐个执行、调用工具、检查结果<ul>
+<li>复用：tools, sub-agents, skills</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 量变和质变
+ </h2>
+<div class="slideshow" name="bitter_lesson"><div>
+<h1 id="the-bitter-lesson">The Bitter Lesson</h1>
+<h2 id="by-richard-sutton-2024-turing-award-winner">By Richard Sutton (2024 Turing Award Winner)</h2>
+<blockquote>
+<p>The actual contents of minds are tremendously, irredeemably complex; we should stop trying to find simple ways to think about the contents of minds, such as simple ways to think about space, objects, multiple agents, or symmetries. All these are part of the arbitrary, intrinsically-complex, outside world. They are not what should be built in, as their complexity is endless; instead we should build in only the meta-methods that can find and capture this arbitrary complexity.</p>
+</blockquote>
+<ul>
+<li>全文在<a href="https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf">这里</a>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="about_research"><div>
+<h1 id="_1">“量变引起质变”</h1>
+<h2 id="_2">一个我很喜欢的故事</h2>
+<ul>
+<li>1980s, 网页的增长速度慢于存储系统的增长速度<ul>
+<li>我们有朝一日可以存下互联网上所有的数据</li>
+<li>(所以我们有了 Google)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/storage-density.jpg"></p>
+<h2 id="_3">还有一个励志故事</h2>
+<ul>
+<li>Loongson GS132 的 “烂代码”<ul>
+<li>它竟然可以运行，后来竟然越来越快了</li>
+<li>(要从零开始做)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="story_time"><div>
+<h1 id="_1">再讲一个我经历过的故事</h1>
+<h2 id="deepblue-scaling-law">DeepBlue 的 “Scaling Law”</h2>
+<ul>
+<li><a href="https://www.attackingchess.com/understanding-the-elo-rating-system-in-chess/">Elo ranking system</a></li>
+</ul>
+<p><img alt="" src="static/img/garry.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="alphago"><div>
+<h1 id="_1">和大家经历过的故事</h1>
+<h2 id="alphago-scaling-law">AlphaGo 的 “Scaling Law”</h2>
+<ul>
+<li>2016 年，在美国熬夜看直播</li>
+</ul>
+<p><img alt="" src="static/img/lee.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="todays_scaling_law"><div>
+<h1 id="scaling-law">今天的 Scaling Law</h1>
+<h2 id="openai">为什么 OpenAI 敢训练更大的模型？</h2>
+<ul>
+<li>实验科学：“<a href="https://arxiv.org/pdf/2001.08361">Kaplan’s Scaling Law Paper</a>”; <a href="https://arxiv.org/abs/2203.15556">Chinchilla Paper</a><ul>
+<li>我们甚至不知道 optimal 在哪里，人类就造出智能机器了</li>
+<li>和 “生物进化” 很像：人类也是 highly suboptimal 的</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/llm-scale.png"></p>
+</div></div>
+
+<div class="slideshow" name="world_changed"><div>
+<h1 id="_1">世界变了</h1>
+<blockquote>
+<p>Heuristics is dead, Policy is Heuristics, LLM is Policy, Mechanism is King.</p>
+<p>原文：“Tape is Dead, Disk is Tape, Flash is Disk, RAM Locality is King.” (Jim Gray, 2006)</p>
+</blockquote>
+<h2 id="_2">对 “量变引起质变” 的理解</h2>
+<ul>
+<li>❌ 沉溺在低水平陷阱里，认为 “做什么都是有意义的”</li>
+<li>✅ 要找到 “能走量” 的途径 (Agentic AI, OpenClaw, Agent Skills, …)</li>
+</ul>
+<h2 id="code-is-cheap">Code is cheap 的时代</h2>
+<ul>
+<li>以往不具有 scalability 的高级智能，现在 scale 了<ul>
+<li>可以血洗一切了：“这篇学位论文是否有显著的逻辑错误，致使结论完全不能成立？如果没有，尝试复现实验结果，如果严重不吻合，指出论文可能存在潜在造假的地方。”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 3. 打开 Agentic AI
+ </h2>
+<div class="slideshow" name="using_llm"><div>
+<h1 id="_1">如何用好大模型的能力？</h1>
+<h2 id="transformer">大模型是 <strong>Transformer</strong>
+</h2>
+<ul>
+<li>Attention is all you need<ul>
+<li>Prompt engineering 实际上是 <strong>attention engineering</strong>
+</li>
+<li>(这就是为什么 GPT 刚开始出来的时候会有非常长的提示词)</li>
+</ul>
+</li>
+<li>没有合适的提示词，LLM 会倾向于 “车轱辘话”<ul>
+<li>(一部分是因为 instruct fine-tuning/RLHF)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">提示词的方法</h2>
+<ul>
+<li>帮他<strong>分解问题</strong><ul>
+<li>曾经的 “Think step by step” prompt，以及 o1/deepseek-r1</li>
+<li>Agent 实现了分解和复用 (而不是 single-context 推理)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="human_crisis"><div>
+<h1 id="_1">软件工程中的复杂性分解</h1>
+<h2 id="_2">“构建合适的抽象”</h2>
+<ul>
+<li>软件生态 - 系统调用 - 操作系统实现</li>
+<li>操作系统/软件生态 - 指令集 - 硬件实现</li>
+</ul>
+<h2 id="_3">一个软件中也可以有复杂性分解</h2>
+<ul>
+<li>函数调用 (封装)：自由组合、无限复用<ul>
+<li>register_user(name=…, gender=…)</li>
+</ul>
+</li>
+<li>但一旦<strong>接口改变</strong>，就涉及软件的多处修改<ul>
+<li>LLM 可以维护，但容易造成失控</li>
+</ul>
+</li>
+<li>实现 sub-systems 和 protocols (类似 syscall/ISA)<ul>
+<li>例子：Vibe-learning 和基于文件系统的 protocols</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="bold_attempt"><div>
+<h1 id="hacking-day">Hacking Day: 尝试</h1>
+<h2 id="vibe-code-os-kernel">Vibe Code 一个 OS Kernel!</h2>
+<ul>
+<li>全部交给 AI</li>
+<li>测试一下模型的能力<ul>
+<li>我们已经准备好了 os-minimal 的框架</li>
+<li>GPT-5.4 生成了一个 CLAUDE.md</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">我没有事先准备</h2>
+<ul>
+<li>随时可能翻车</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/os-minimal"><div><div>
+<h1 id="_1"><a href="/OS/demos/intro/os-minimal">最小 “操作系统”</a></h1>
+<p>我们希望不依赖任何外部库函数和代码，在 Coding Agent 的协助下实现一个最小的操作系统：在 CLAUDE.md (<a href="https://github.com/openclaw/openclaw/blob/main/AGENTS.md">AGENTS.md</a>) 描述设计思路、架构、流程等 (对于实际的项目，这些文档需要分解)，并设计一些有用的 skills/subagents，体验 “一个人就是产品经理” 的感觉。(CLAUDE.md 由 GPT-5.4 生成。)</p>
+</div></div>
+</div></div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e Scaling Law 和 Agentic AI (Hacking Day)\n \u003c/h1\u003e\n\u003cdiv class=\"note\" name=\"note\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hacking-day\"\u003eHacking Day\u003c/h1\u003e\n\u003cp\u003e应对课程向 3 学时调整，将会有 1/4 的课程内容为补充选讲内容，讲授本课程相关的扩展知识，不作为考试内容。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 大语言模型和 Agents\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"first_chatgpt\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"chatgpt\"\u003e在课堂上第一次感受 ChatGPT 的威力\u003c/h1\u003e\n\u003ch2 id=\"chatgpt_1\"\u003e问 ChatGPT: 编译器会对这段代码做出怎样的优化？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e2023.2.16 (ChatGPT 发布 2 个月 17 天)\u003cul\u003e\n\u003cli\u003eGPT-3.5 给出了完美的回答\u003c/li\u003e\n\u003cli\u003e在大家还在各种微调 BERT 的时候，忽然感觉世界变了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ereturn_1\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e100\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Compiler will assign [%0] an assembly operand\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003easm\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"movl $1, %0\"\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s\"\u003e\"=g\"\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e));\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// \"x = 1;\"\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"llm_concept\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e大; 语言; 模型\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e大\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSchrödinger: 《生命是什么》中的灵魂拷问：原子为什么这么小，我们为什么这么大？\u003c/li\u003e\n\u003cli\u003e原子本身不可能带有太多的\u003cstrong\u003e信息\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e“大” 是应对宏观复杂性的必要条件\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e语言\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e人类沉淀千年的世界模型\u003c/li\u003e\n\u003cli\u003e一个非常棒的，在人类之间对齐的 “物理世界模型” (你无法和外星人对齐)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e模型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e然后，我们就只要一个模型就行了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"llm_today\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e大语言模型的进化\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e“眼睛”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://arxiv.org/abs/2010.11929\"\u003eViT\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e一切 “感官” 都可以对齐到语言系统上\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e“草稿纸”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eChain-of-thought\u003cul\u003e\n\u003cli\u003eGPT-4 时代的宝藏 prompt: “think step by step”\u003c/li\u003e\n\u003cli\u003e有时候还需要我们帮他想一个 plan\u003c/li\u003e\n\u003cli\u003e(谁说 AI 自己不能想到呢)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e“计算器”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://arxiv.org/abs/2210.03629\"\u003eReAct\u003c/a\u003e 和 \u003ca href=\"https://arxiv.org/abs/2302.04761\"\u003eToolformer\u003c/a\u003e，\u003cul\u003e\n\u003cli\u003e知道 123 * 456 算不对，那就 “结果是 \u0026lt;| python3 -c “123 * 456” |\u0026gt;”\u003c/li\u003e\n\u003cli\u003e这就是 AI 的手和脚\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"llm_today_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"llm-agents\"\u003eLLM Agents\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e既然有眼睛、草稿纸、计算器 (等工具) 了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLLM 根本就是一个\u003cstrong\u003e活生生的人\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e能犯错、能尝试，但最终能把事情做对\u003cul\u003e\n\u003cli\u003eChatGPT 之前，我们都用 \u003ca href=\"https://github.com/nvbn/thefuck\"\u003ethef**k\u003c/a\u003e (我还带一个同学做增强这个的毕业设计)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"agentic-loop\"\u003eAgentic Loop\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e记忆：完整的工作区\u003cul\u003e\n\u003cli\u003eContext + Git repository\u003c/li\u003e\n\u003cli\u003e有时候觉得 LLM 像是在一个\u003ca href=\"https://store.steampowered.com/app/1252330/DEATHLOOP/\"\u003e死亡循环\u003c/a\u003e中\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e想出一个计划 (分解任务)\u003c/li\u003e\n\u003cli\u003e逐个执行、调用工具、检查结果\u003cul\u003e\n\u003cli\u003e复用：tools, sub-agents, skills\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 量变和质变\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"bitter_lesson\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"the-bitter-lesson\"\u003eThe Bitter Lesson\u003c/h1\u003e\n\u003ch2 id=\"by-richard-sutton-2024-turing-award-winner\"\u003eBy Richard Sutton (2024 Turing Award Winner)\u003c/h2\u003e\n\u003cblockquote\u003e\n\u003cp\u003eThe actual contents of minds are tremendously, irredeemably complex; we should stop trying to find simple ways to think about the contents of minds, such as simple ways to think about space, objects, multiple agents, or symmetries. All these are part of the arbitrary, intrinsically-complex, outside world. They are not what should be built in, as their complexity is endless; instead we should build in only the meta-methods that can find and capture this arbitrary complexity.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003e全文在\u003ca href=\"https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf\"\u003e这里\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"about_research\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e“量变引起质变”\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e一个我很喜欢的故事\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e1980s, 网页的增长速度慢于存储系统的增长速度\u003cul\u003e\n\u003cli\u003e我们有朝一日可以存下互联网上所有的数据\u003c/li\u003e\n\u003cli\u003e(所以我们有了 Google)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/storage-density.jpg\"\u003e\u003c/p\u003e\n\u003ch2 id=\"_3\"\u003e还有一个励志故事\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLoongson GS132 的 “烂代码”\u003cul\u003e\n\u003cli\u003e它竟然可以运行，后来竟然越来越快了\u003c/li\u003e\n\u003cli\u003e(要从零开始做)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"story_time\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e再讲一个我经历过的故事\u003c/h1\u003e\n\u003ch2 id=\"deepblue-scaling-law\"\u003eDeepBlue 的 “Scaling Law”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://www.attackingchess.com/understanding-the-elo-rating-system-in-chess/\"\u003eElo ranking system\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/garry.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"alphago\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e和大家经历过的故事\u003c/h1\u003e\n\u003ch2 id=\"alphago-scaling-law\"\u003eAlphaGo 的 “Scaling Law”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e2016 年，在美国熬夜看直播\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/lee.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"todays_scaling_law\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"scaling-law\"\u003e今天的 Scaling Law\u003c/h1\u003e\n\u003ch2 id=\"openai\"\u003e为什么 OpenAI 敢训练更大的模型？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e实验科学：“\u003ca href=\"https://arxiv.org/pdf/2001.08361\"\u003eKaplan’s Scaling Law Paper\u003c/a\u003e”; \u003ca href=\"https://arxiv.org/abs/2203.15556\"\u003eChinchilla Paper\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e我们甚至不知道 optimal 在哪里，人类就造出智能机器了\u003c/li\u003e\n\u003cli\u003e和 “生物进化” 很像：人类也是 highly suboptimal 的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/llm-scale.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"world_changed\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e世界变了\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eHeuristics is dead, Policy is Heuristics, LLM is Policy, Mechanism is King.\u003c/p\u003e\n\u003cp\u003e原文：“Tape is Dead, Disk is Tape, Flash is Disk, RAM Locality is King.” (Jim Gray, 2006)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_2\"\u003e对 “量变引起质变” 的理解\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e❌ 沉溺在低水平陷阱里，认为 “做什么都是有意义的”\u003c/li\u003e\n\u003cli\u003e✅ 要找到 “能走量” 的途径 (Agentic AI, OpenClaw, Agent Skills, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"code-is-cheap\"\u003eCode is cheap 的时代\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e以往不具有 scalability 的高级智能，现在 scale 了\u003cul\u003e\n\u003cli\u003e可以血洗一切了：“这篇学位论文是否有显著的逻辑错误，致使结论完全不能成立？如果没有，尝试复现实验结果，如果严重不吻合，指出论文可能存在潜在造假的地方。”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 打开 Agentic AI\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"using_llm\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e如何用好大模型的能力？\u003c/h1\u003e\n\u003ch2 id=\"transformer\"\u003e大模型是 \u003cstrong\u003eTransformer\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAttention is all you need\u003cul\u003e\n\u003cli\u003ePrompt engineering 实际上是 \u003cstrong\u003eattention engineering\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e(这就是为什么 GPT 刚开始出来的时候会有非常长的提示词)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e没有合适的提示词，LLM 会倾向于 “车轱辘话”\u003cul\u003e\n\u003cli\u003e(一部分是因为 instruct fine-tuning/RLHF)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e提示词的方法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e帮他\u003cstrong\u003e分解问题\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e曾经的 “Think step by step” prompt，以及 o1/deepseek-r1\u003c/li\u003e\n\u003cli\u003eAgent 实现了分解和复用 (而不是 single-context 推理)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"human_crisis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e软件工程中的复杂性分解\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e“构建合适的抽象”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e软件生态 - 系统调用 - 操作系统实现\u003c/li\u003e\n\u003cli\u003e操作系统/软件生态 - 指令集 - 硬件实现\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e一个软件中也可以有复杂性分解\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e函数调用 (封装)：自由组合、无限复用\u003cul\u003e\n\u003cli\u003eregister_user(name=…, gender=…)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e但一旦\u003cstrong\u003e接口改变\u003c/strong\u003e，就涉及软件的多处修改\u003cul\u003e\n\u003cli\u003eLLM 可以维护，但容易造成失控\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e实现 sub-systems 和 protocols (类似 syscall/ISA)\u003cul\u003e\n\u003cli\u003e例子：Vibe-learning 和基于文件系统的 protocols\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"bold_attempt\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hacking-day\"\u003eHacking Day: 尝试\u003c/h1\u003e\n\u003ch2 id=\"vibe-code-os-kernel\"\u003eVibe Code 一个 OS Kernel!\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e全部交给 AI\u003c/li\u003e\n\u003cli\u003e测试一下模型的能力\u003cul\u003e\n\u003cli\u003e我们已经准备好了 os-minimal 的框架\u003c/li\u003e\n\u003cli\u003eGPT-5.4 生成了一个 CLAUDE.md\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e我没有事先准备\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e随时可能翻车\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/os-minimal\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/intro/os-minimal\"\u003e最小 “操作系统”\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们希望不依赖任何外部库函数和代码，在 Coding Agent 的协助下实现一个最小的操作系统：在 CLAUDE.md (\u003ca href=\"https://github.com/openclaw/openclaw/blob/main/AGENTS.md\"\u003eAGENTS.md\u003c/a\u003e) 描述设计思路、架构、流程等 (对于实际的项目，这些文档需要分解)，并设计一些有用的 skills/subagents，体验 “一个人就是产品经理” 的感觉。(CLAUDE.md 由 GPT-5.4 生成。)\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect4.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

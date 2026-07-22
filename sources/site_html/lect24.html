@@ -1,0 +1,442 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 文件系统 API (1)
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="block">存储 (block) 设备的抽象</h2>
+<ul>
+<li><code>read_block(id)</code></li>
+<li>
+<code>write_block(id, data)</code><ul>
+<li>剩下的复杂性就不用你操心了</li>
+<li>设备上专门有一台计算机来处理这些请求 (FTL, …)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">让进程直接访问设备文件？</h2>
+<ul>
+<li>
+<code>open("/dev/mmcblk0p1", O_RDWR);</code> 然后 lseek</li>
+<li>那不就全乱套了吗！</li>
+<li>我们需要一个<strong>抽象层</strong>：文件系统<ul>
+<li>这次课：人类使用的文件系统 API</li>
+<li>下次课：程序 (AI Agent) 使用的文件系统 API</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 从块设备到文件系统
+ </h2>
+<div class="slideshow" name="storage_abstraction"><div>
+<h1 id="abstract-data-type">Abstract Data Type (数据结构)</h1>
+<h2 id="_1">地址空间上的数据结构抽象</h2>
+<ul>
+<li>物理内存 random access <code>char[]</code> → 虚拟内存和 mmap → malloc(), free() → list, set, map, …</li>
+<li>既然可以在 RAM 上实现 AbstractDataType，没道理不能在磁盘上实现<ul>
+<li>无非就是 block v.s. word 访问的区别</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">存储设备应该抽象成什么？</h2>
+<ul>
+<li>内存 → 虚拟内存；磁盘 → 虚拟磁盘 (字节序列 <code>vector&lt;char&gt;</code>)<ul>
+<li>转了一圈，又回到 virtualization 了</li>
+<li>文件 (file): 文字、符号固定于纸张等载体上的信息记录</li>
+<li>支持 read, write, lseek, ftruncate, … 的 hello.c, a.out, …</li>
+</ul>
+</li>
+<li>新需求：怎么<strong>管理</strong>系统中众多的文件？<ul>
+<li>对人类来说，pid 已经是一个很糟糕的抽象了</li>
+<li>如果再来一个 fid 就全乱套了</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="library"><div>
+<h1 id="_1">设备的抽象：目录树</h1>
+<h2 id="_2">管理文件的方法：建一个图书馆！</h2>
+<ul>
+<li>背后的原理：信息的局部性</li>
+<li>系统中的文件可以组织成<strong>层次索引</strong>结构</li>
+</ul>
+<p><img alt="" src="static/img/nju-lib.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="tree_index"><div>
+<h1 id="_1">树状分层索引：利用信息的局部性</h1>
+<div class="codehilite"><pre><span></span><code>.
+└── 学习资料
+    ├── .
+    ├── ..
+    ├── .学习资料(隐藏)
+    ├── ……
+    └── 操作系统
+</code></pre></div>
+
+<ul>
+<li>隐藏 “.” 开头的文件不是操作系统的行为，只是为了<strong>偷懒</strong><ul>
+<li>这是一个非常强大的抽象，我已经把完整的 “database” 交给 AI 了</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="p">((</span><span class="n">entry</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">readdir</span><span class="p">(</span><span class="n">dir</span><span class="p">))</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// busybox/coreutils/ls.c</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">'.'</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">option_mask32</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="p">(</span><span class="n">OPT_a</span><span class="o">|</span><span class="n">OPT_A</span><span class="p">)))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">option_mask32</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">OPT_a</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">(</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="sc">'.'</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="o">!</span><span class="n">entry</span><span class="o">-&gt;</span><span class="n">d_name</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span><span class="w"> </span><span class="k">continue</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="fs_directory_tree"><div>
+<h1 id="_1">设备 = 目录树</h1>
+<h2 id="_2">然而，系统中不止一个存储设备</h2>
+<ul>
+<li>
+<strong>每个设备、每个 partition 都是一个目录树</strong><ul>
+<li>
+<code>/dev/nvme0n1p1</code> (Namespace 1, Partition 1), 优盘、网络 (WebDAV)</li>
+</ul>
+</li>
+<li>操作系统设计者首先要面对 “文件系统” 对象的管理</li>
+</ul>
+<h2 id="windows">Windows</h2>
+<ul>
+<li>所有操作系统对象的根 <code>\</code>, 例如 <code>\Device\HarddiskVolume1</code>, <code>\Driver\Ntfs</code><ul>
+<li>
+<code>\\</code>: Universal Naming Convention 路径 (网络)</li>
+<li>
+<code>\\server\share</code> → <code>\Device\LanmanRedirector\server\share</code>
+</li>
+<li>这个 <code>\</code> 不能 cd，但可以用 API 访问</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">HANDLE</span><span class="w"> </span><span class="n">hDevice</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">CreateFile</span><span class="p">(</span>
+<span class="w">    </span><span class="s">"</span><span class="se">\\\\</span><span class="s">.</span><span class="se">\\</span><span class="s">PhysicalDrive0"</span><span class="p">,</span><span class="w"> </span><span class="n">GENERIC_READ</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">GENERIC_WRITE</span><span class="p">,</span>
+<span class="w">    </span><span class="n">FILE_SHARE_READ</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">FILE_SHARE_WRITE</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">OPEN_EXISTING</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>盘符 (历史遗留问题): <code>A:\</code>, <code>B:\</code>, <code>C:\</code>, …<ul>
+<li>实际上是 <code>\??\C:\</code> (<code>\??</code> 是 per-user 的命名空间)</li>
+<li>Windows 为用户隐藏了巨量的复杂性</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="mount"><div>
+<h1 id="_1">从无到有的目录树</h1>
+<h2 id="api">操作系统需要提供一个 API，把设备的目录树 “放” 到世界里</h2>
+<ul>
+<li>最小 Linux 启动时，只有 initramfs 和 <code>/dev/console</code><ul>
+<li>mount: 把<strong>块设备</strong>上的目录树 “放到” <strong>目录</strong>中</li>
+<li>
+<code>mount -t iso9660 /dev/cdrom /mnt/cdrom</code>; UDF (DVD, Blue-Ray)<ul>
+<li>
+<a href="https://github.com/util-linux/util-linux">util-linux</a> 会检测文件系统，最终会调用 mount 系统调用</li>
+<li>ISO 9660 就是一种 “数据结构” (我带了，可以让 AI 读一下)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">iso9660_primary_descriptor</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">uint8_t</span><span class="w">  </span><span class="n">type</span><span class="p">;</span><span class="w">              </span><span class="cm">/* ISO9660_VD_PRIMARY */</span>
+<span class="w">    </span><span class="kt">char</span><span class="w">     </span><span class="n">standard_id</span><span class="p">[</span><span class="mi">5</span><span class="p">];</span><span class="w">    </span><span class="cm">/* 必须是 "CD001" */</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">    </span><span class="kt">char</span><span class="w">     </span><span class="n">system_id</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span><span class="w">     </span><span class="cm">/* 系统标识符 (如 "Win32", "LINUX") */</span>
+<span class="w">    </span><span class="kt">char</span><span class="w">     </span><span class="n">volume_id</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span><span class="w">     </span><span class="cm">/* 卷标识符 (光盘名称) */</span><span class="w"> </span><span class="p">...</span>
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="virtualization/linux-minimal"><div><div>
+<h1 id="linux"><a href="/OS/demos/virtualization/linux-minimal">最小 Linux</a></h1>
+<p>我们完全可以构建一个 “只有一个文件” 的 Linux 系统——Linux 系统会首先加载一个 “init RAM Disk” 或 “init RAM FS”，在作系统最小初始化完成后，将控制权移交给 “第一个进程”。借助互联网或人工智能，你能够找到正确的文档，例如 <a href="https://www.kernel.org/doc/html/latest/admin-guide/kernel-parameters.html">The kernel’s command-line parameters</a> 描述了所有能传递给 Linux Kernel 的命令行选项。</p>
+</div></div>
+</div>
+<div class="slideshow" name="loopback"><div>
+<h1 id="aside">Aside: 挂载一个文件</h1>
+<h2 id="mount">mount 必须要求一个<strong>块设备</strong>
+</h2>
+<ul>
+<li>那 <a href="https://box.nju.edu.cn/f/0764665b70a34599813c/?dl=1">fs.img</a> 怎么办呢？</li>
+<li>答案：创建一个 loopback (回环) 设备<ul>
+<li>设备驱动把设备的 read/write 翻译成文件的 read/write</li>
+<li>
+<a href="https://elixir.bootlin.com/linux/latest/source/drivers/block/loop.c">drivers/block/loop.c</a><ul>
+<li>实现了 loop_mq_ops (不是 file_operations)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="strace">观察挂载文件的 strace</h2>
+<ul>
+<li>lsblk 查看系统中的 block devices (strace)</li>
+<li>strace 观察挂载的流程<ul>
+<li><code>ioctl(3, LOOP_CTL_GET_FREE)</code></li>
+<li><code>ioctl(4, LOOP_SET_FD, 3)</code></li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="fhs"><div>
+<h1 id="filesystem-hierarchy-standard">Filesystem Hierarchy Standard</h1>
+<blockquote>
+<p><a href="http://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html">FHS</a> enables software and user to predict the location of installed files and directories.</p>
+</blockquote>
+<ul>
+<li>例子：macOS 是 UNIX 的内核 (BSD), 但不遵循 Linux FHS</li>
+</ul>
+<p><img alt="" src="static/img/fhs.jpg"></p>
+</div></div>
+
+<h2> 2. 目录树 API
+ </h2>
+<div class="slideshow" name="directory_api"><div>
+<h1 id="api">目录树 API</h1>
+<h2 id="_1">“增删改查”</h2>
+<ul>
+<li>mkdir: 创建目录</li>
+<li>rmdir: 删除目录</li>
+<li>getdents: 读取目录</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">mkdirat</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">dirfd</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">pathname</span><span class="p">,</span><span class="w"> </span><span class="kt">mode_t</span><span class="w"> </span><span class="n">mode</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="nf">unlinkat</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">flag</span><span class="p">);</span>
+<span class="kt">ssize_t</span><span class="w"> </span><span class="nf">getdents64</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">dirp</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">count</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>看看 <code>bash -c 'echo /etc/**/*'</code> 的 strace<ul>
+<li>更多的工具，例如 fzf 也是同样的实现</li>
+<li>“Globbing”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/globbing"><div><div>
+<h1 id="globbing"><a href="/OS/demos/persistence/globbing">globbing</a></h1>
+<p>在 pstree 中，我们实现了目录树的遍历——我们几乎总是需要对底层文件系统 API 的封装，例如十分方便的 <a href="https://www.gnu.org/software/libc/manual/html_node/Calling-Glob.html">glob()</a>。Globbing 也是 Agent 的 “四大技能”，Read, Write, Grep, Glob; 加上 Bash 就可以完成几乎所有的运维工作了。</p>
+</div></div>
+</div>
+<div class="slideshow" name="hard_link"><div>
+<h1 id="hard">硬 (hard) 链接</h1>
+<h2 id="_1">需求：系统中可能有同一个运行库的多个版本</h2>
+<ul>
+<li>
+<code>libc-2.27.so</code>, <code>libc-2.26.so</code>, …</li>
+<li>还需要一个 “当前版本的 libc”<ul>
+<li>程序需要链接 “<code>libc.so.6</code>“，能否避免文件的一份拷贝？</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">(硬) 链接：允许一个文件被多个目录引用</h2>
+<ul>
+<li>文件系统实现的特性 (ls -i 查看)<ul>
+<li>不能链接目录、不能跨文件系统</li>
+<li>删除文件的系统调用称为 “unlink” (refcount–)<ul>
+<li>现在用 “万能” 的 unlinkat，也可以删除空目录</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>所以和 pid 一样，fid 也是存在的<ul>
+<li>(只是用于文件系统内部的实现)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="symbolic_link"><div>
+<h1 id="symbolic">软 (symbolic) 链接</h1>
+<h2 id="_1">软链接：在文件里存储一个 “跳转提示”</h2>
+<ul>
+<li>软链接也是一个文件<ul>
+<li>当引用这个文件时，去找另一个文件</li>
+<li>另一个文件的绝对/相对路径以文本形式存储在文件里</li>
+<li>可以跨文件系统、可以链接目录、……</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">几乎没有任何限制</h2>
+<ul>
+<li>类似 “<a href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-shllink/">快捷方式</a>”<ul>
+<li>快捷方式比你想象的复杂：文件重命名、移动、U 盘驱动器号改变……都能正确找到 (???)</li>
+<li>为解决一个问题带来了更多问题 😂</li>
+</ul>
+</li>
+<li>甚至可以用来制作 Galgame<ul>
+<li>今年已经改成 Agentic Design Harness 了</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/ggmaker"><div><div>
+<h1 id="symlink-game"><a href="/OS/demos/persistence/ggmaker">Symlink Game</a></h1>
+<p>我们可以使用符号链接创建 “近乎任意” 的目录结构，包括任意的图结构 (状态机)，操作系统也能正确解析。操作系统的机制 (系统调用、文件系统……) 给了我们无限的创作空间。</p>
+</div></div>
+</div>
+<div class="slideshow" name="nix"><div>
+<h1 id="_1">软连接：还可以用来 “伪造” 文件系统！</h1>
+<h2 id="nix">
+<a href="https://nixos.org/">Nix</a>: 这个题我会</h2>
+<ul>
+<li><strong>把所有软件包的所有版本都集中存储</strong></li>
+<li>
+<code>/nix/store/b6gvzjyb2pg0kjfwrjmg1vfhh54ad73z-firefox-33.1</code><ul>
+<li>然后用符号链接构建一个完全虚拟的环境<ul>
+<li>完全的 deterministic: 由软件包的 hash 决定</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>可以随时随地构建 “任意” 环境<ul>
+<li><code>nix-shell -p python3 nodejs</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="persistent-data-structure">这是一个 persistent data structure 啊</h2>
+<ul>
+<li>还记得吗？random read + append-only write = 任意数据结构<ul>
+<li>/nix/store 是 “只增不减” 的，符号链接就是 random read</li>
+<li>对比 apt: 所有的修改都是 in-place 的</li>
+</ul>
+</li>
+<li>随时回滚 <code>nix-shell -p $(nix-env --list-generations | grep "3 days ago")</code>
+</li>
+<li>随地构建 <code>nix-env --switch-generation</code> 后直接测试</li>
+</ul>
+</div></div>
+
+<h2> 3. 文件的元数据
+ </h2>
+<div class="slideshow" name="file_as_object"><div>
+<h1 id="_1">为文件增加属性</h1>
+<h2 id="_2">软件 = 物理世界在信息世界的投影</h2>
+<ul>
+<li>我们还希望 “byte array” 有自己的 “personality”<ul>
+<li>“隐藏” (1): <code>.学习资料</code> 实际存在、API 可以访问、命令行工具默认不显示<ul>
+<li>我们实际想要的：只有我自己在用电脑就不要隐藏，其他时候都要隐藏</li>
+<li>(但现在计算机不支持表达这样的 policy；<strong>这就是革命的机会</strong>)</li>
+</ul>
+</li>
+<li>“隐藏” (2): /proc/[tid] 实际存在，但 getdents 看不到 (让 AI “看” 吧)</li>
+</ul>
+</li>
+</ul>
+<h2 id="ls-l">
+<code>ls -l</code>: 查看对象的属性</h2>
+<div class="codehilite"><pre><span></span><code>$ ls -l example.txt
+-rw-r--r-- 1     alice staff 1024 Mar 10 12:34 example.txt
+mode       link  owner group size modified     name
+</code></pre></div>
+
+<ul>
+<li>Type:  d (directory), l (link), p (pipe), c (char), b (block)</li>
+<li>Mode: rwx (user, group, other)<ul>
+<li>例子：0o755 = rwx (111) r-x (101) r-x (101)</li>
+</ul>
+</li>
+<li>Links: 引用计数 (硬链接，包括目录)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="extended_attributes"><div>
+<h1 id="_1">更多的元数据</h1>
+<h2 id="extended-attributes-xattr">Extended Attributes (xattr)</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">ssize_t</span><span class="w"> </span><span class="nf">fgetxattr</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">value</span><span class="p">[.</span><span class="n">size</span><span class="p">],</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">size</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="nf">fsetxattr</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">value</span><span class="p">[.</span><span class="n">size</span><span class="p">],</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">size</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">flags</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>每个文件可以维护一个任意的 key-value dictionary</li>
+<li>例子：macOS 的 com.apple.metadata 会保存每个互联网下载文件的 url</li>
+</ul>
+<h2 id="_2">“好用不火” 的操作系统特性</h2>
+<ul>
+<li>文件系统的向量索引：<a href="https://vectorvfs.readthedocs.io/en/latest/">vectorfs</a><ul>
+<li>vfs search cat static/Photos/ | claude -p –summary</li>
+<li>这不比 iPhone 的 Photo Search 好用多了？</li>
+</ul>
+</li>
+<li>
+<strong>致命的缺陷</strong>：这是后加的特性<ul>
+<li>不是所有的文件系统都支持</li>
+<li>兼容性奇差 (cp 需要 –preserve=xattr 才能保留 xattrs)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="acl"><div>
+<h1 id="access-control-list">Access Control List (访问控制列表)</h1>
+<h2 id="user-group-other">比 user, group, other 更精细的访问控制</h2>
+<ul>
+<li>格式<ul>
+<li>[d:]<u | g m o>:name:perms</u>
+</li>
+</ul>
+</li>
+<li>用法<ul>
+<li>setfacl -m u:jyy:— file</li>
+<li>getfacl file</li>
+</ul>
+</li>
+<li>(Access Control 专门用一次课讲)</li>
+</ul>
+<h2 id="_1">“在没有直接经验的领域（如语言、技术、框架等）进行有质量保证的编程工作”</h2>
+<ul>
+<li>如果你希望实现一个 “飞书文档”，ACL 就是一个很好的选择</li>
+<li>你知道了 “fine-grained access control” 是可以的<ul>
+<li>在需要的时候，你能启发 AI 想到这一点</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 3.1. Aside: 面对未知
+ </h3>
+<div class="slideshow" name="aside"><div>
+<h1 id="_1">如何应对海量的信息？</h1>
+<h2 id="the-scaling-law">The Scaling Law</h2>
+<ul>
+<li>Pre-training, SFT 和 test-time scaling (深度思考中)</li>
+<li>“Kolmogorov complexity modulo experts” (Timothy Gowers)</li>
+</ul>
+<p><img alt="" src="static/img/kcme.png"></p>
+</div></div>
+
+<div class="slideshow" name="directory_compromise"><div>
+<h1 id="_1">“目录树” 也是个妥协</h1>
+<h2 id="_2">图书馆的索引系统其实可以淘汰了</h2>
+<ul>
+<li>一本书的<strong>内容</strong>就是它的索引</li>
+<li>摄像头可以确定任何一本书的位置<ul>
+<li>路径 → 结构化查询 (wildcard &amp; globbing) → 智能检索</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/photo-search.jpg"></p>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>目录 (链接) 和文件 (对象) 的简洁抽象赋予了我们管理对象的能力。操作系统的设计者也扩展了文件的元数据，使我们能给文件打上复杂的标签，从而使应用程序 (和操作系统) 提供更好的服务。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 37 章 - Files and Directories</li>
+<li>第 53 章 - Intro Security (不在考试范围)</li>
+<li>第 54 章 - Authentication (不在考试范围)</li>
+<li>第 55 章 - Access Control</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 文件系统 API (1)\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"block\"\u003e存储 (block) 设备的抽象\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ccode\u003eread_block(id)\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003ewrite_block(id, data)\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e剩下的复杂性就不用你操心了\u003c/li\u003e\n\u003cli\u003e设备上专门有一台计算机来处理这些请求 (FTL, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e让进程直接访问设备文件？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003eopen(\"/dev/mmcblk0p1\", O_RDWR);\u003c/code\u003e 然后 lseek\u003c/li\u003e\n\u003cli\u003e那不就全乱套了吗！\u003c/li\u003e\n\u003cli\u003e我们需要一个\u003cstrong\u003e抽象层\u003c/strong\u003e：文件系统\u003cul\u003e\n\u003cli\u003e这次课：人类使用的文件系统 API\u003c/li\u003e\n\u003cli\u003e下次课：程序 (AI Agent) 使用的文件系统 API\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 从块设备到文件系统\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"storage_abstraction\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"abstract-data-type\"\u003eAbstract Data Type (数据结构)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e地址空间上的数据结构抽象\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e物理内存 random access \u003ccode\u003echar[]\u003c/code\u003e → 虚拟内存和 mmap → malloc(), free() → list, set, map, …\u003c/li\u003e\n\u003cli\u003e既然可以在 RAM 上实现 AbstractDataType，没道理不能在磁盘上实现\u003cul\u003e\n\u003cli\u003e无非就是 block v.s. word 访问的区别\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e存储设备应该抽象成什么？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e内存 → 虚拟内存；磁盘 → 虚拟磁盘 (字节序列 \u003ccode\u003evector\u0026lt;char\u0026gt;\u003c/code\u003e)\u003cul\u003e\n\u003cli\u003e转了一圈，又回到 virtualization 了\u003c/li\u003e\n\u003cli\u003e文件 (file): 文字、符号固定于纸张等载体上的信息记录\u003c/li\u003e\n\u003cli\u003e支持 read, write, lseek, ftruncate, … 的 hello.c, a.out, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e新需求：怎么\u003cstrong\u003e管理\u003c/strong\u003e系统中众多的文件？\u003cul\u003e\n\u003cli\u003e对人类来说，pid 已经是一个很糟糕的抽象了\u003c/li\u003e\n\u003cli\u003e如果再来一个 fid 就全乱套了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"library\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e设备的抽象：目录树\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e管理文件的方法：建一个图书馆！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e背后的原理：信息的局部性\u003c/li\u003e\n\u003cli\u003e系统中的文件可以组织成\u003cstrong\u003e层次索引\u003c/strong\u003e结构\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/nju-lib.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"tree_index\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e树状分层索引：利用信息的局部性\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e.\n└── 学习资料\n    ├── .\n    ├── ..\n    ├── .学习资料(隐藏)\n    ├── ……\n    └── 操作系统\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e隐藏 “.” 开头的文件不是操作系统的行为，只是为了\u003cstrong\u003e偷懒\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e这是一个非常强大的抽象，我已经把完整的 “database” 交给 AI 了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"n\"\u003eentry\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ereaddir\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003edir\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e!=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nb\"\u003eNULL\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// busybox/coreutils/ls.c\u003c/span\u003e\n\u003cspan class=\"w\"\u003e      \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eentry\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ed_name\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sc\"\u003e'.'\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e      \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eoption_mask32\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eOPT_a\u003c/span\u003e\u003cspan class=\"o\"\u003e|\u003c/span\u003e\u003cspan class=\"n\"\u003eOPT_A\u003c/span\u003e\u003cspan class=\"p\"\u003e)))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econtinue\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eoption_mask32\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eOPT_a\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003eentry\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ed_name\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e||\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eentry\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ed_name\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sc\"\u003e'.'\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003eentry\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ed_name\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e]))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econtinue\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fs_directory_tree\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e设备 = 目录树\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e然而，系统中不止一个存储设备\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e每个设备、每个 partition 都是一个目录树\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003e/dev/nvme0n1p1\u003c/code\u003e (Namespace 1, Partition 1), 优盘、网络 (WebDAV)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e操作系统设计者首先要面对 “文件系统” 对象的管理\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"windows\"\u003eWindows\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e所有操作系统对象的根 \u003ccode\u003e\\\u003c/code\u003e, 例如 \u003ccode\u003e\\Device\\HarddiskVolume1\u003c/code\u003e, \u003ccode\u003e\\Driver\\Ntfs\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003e\\\\\u003c/code\u003e: Universal Naming Convention 路径 (网络)\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003e\\\\server\\share\u003c/code\u003e → \u003ccode\u003e\\Device\\LanmanRedirector\\server\\share\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e这个 \u003ccode\u003e\\\u003c/code\u003e 不能 cd，但可以用 API 访问\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003eHANDLE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ehDevice\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eCreateFile\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"se\"\u003e\\\\\\\\\u003c/span\u003e\u003cspan class=\"s\"\u003e.\u003c/span\u003e\u003cspan class=\"se\"\u003e\\\\\u003c/span\u003e\u003cspan class=\"s\"\u003ePhysicalDrive0\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eGENERIC_READ\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eGENERIC_WRITE\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eFILE_SHARE_READ\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eFILE_SHARE_WRITE\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nb\"\u003eNULL\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eOPEN_EXISTING\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nb\"\u003eNULL\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e盘符 (历史遗留问题): \u003ccode\u003eA:\\\u003c/code\u003e, \u003ccode\u003eB:\\\u003c/code\u003e, \u003ccode\u003eC:\\\u003c/code\u003e, …\u003cul\u003e\n\u003cli\u003e实际上是 \u003ccode\u003e\\??\\C:\\\u003c/code\u003e (\u003ccode\u003e\\??\u003c/code\u003e 是 per-user 的命名空间)\u003c/li\u003e\n\u003cli\u003eWindows 为用户隐藏了巨量的复杂性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"mount\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e从无到有的目录树\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e操作系统需要提供一个 API，把设备的目录树 “放” 到世界里\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e最小 Linux 启动时，只有 initramfs 和 \u003ccode\u003e/dev/console\u003c/code\u003e\u003cul\u003e\n\u003cli\u003emount: 把\u003cstrong\u003e块设备\u003c/strong\u003e上的目录树 “放到” \u003cstrong\u003e目录\u003c/strong\u003e中\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003emount -t iso9660 /dev/cdrom /mnt/cdrom\u003c/code\u003e; UDF (DVD, Blue-Ray)\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://github.com/util-linux/util-linux\"\u003eutil-linux\u003c/a\u003e 会检测文件系统，最终会调用 mount 系统调用\u003c/li\u003e\n\u003cli\u003eISO 9660 就是一种 “数据结构” (我带了，可以让 AI 读一下)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eiso9660_primary_descriptor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint8_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003etype\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e              \u003c/span\u003e\u003cspan class=\"cm\"\u003e/* ISO9660_VD_PRIMARY */\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e     \u003c/span\u003e\u003cspan class=\"n\"\u003estandard_id\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e5\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"cm\"\u003e/* 必须是 \"CD001\" */\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e     \u003c/span\u003e\u003cspan class=\"n\"\u003esystem_id\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e32\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\u003cspan class=\"w\"\u003e     \u003c/span\u003e\u003cspan class=\"cm\"\u003e/* 系统标识符 (如 \"Win32\", \"LINUX\") */\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e     \u003c/span\u003e\u003cspan class=\"n\"\u003evolume_id\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e32\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\u003cspan class=\"w\"\u003e     \u003c/span\u003e\u003cspan class=\"cm\"\u003e/* 卷标识符 (光盘名称) */\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/linux-minimal\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"linux\"\u003e\u003ca href=\"/OS/demos/virtualization/linux-minimal\"\u003e最小 Linux\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们完全可以构建一个 “只有一个文件” 的 Linux 系统——Linux 系统会首先加载一个 “init RAM Disk” 或 “init RAM FS”，在作系统最小初始化完成后，将控制权移交给 “第一个进程”。借助互联网或人工智能，你能够找到正确的文档，例如 \u003ca href=\"https://www.kernel.org/doc/html/latest/admin-guide/kernel-parameters.html\"\u003eThe kernel’s command-line parameters\u003c/a\u003e 描述了所有能传递给 Linux Kernel 的命令行选项。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"loopback\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aside\"\u003eAside: 挂载一个文件\u003c/h1\u003e\n\u003ch2 id=\"mount\"\u003emount 必须要求一个\u003cstrong\u003e块设备\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e那 \u003ca href=\"https://box.nju.edu.cn/f/0764665b70a34599813c/?dl=1\"\u003efs.img\u003c/a\u003e 怎么办呢？\u003c/li\u003e\n\u003cli\u003e答案：创建一个 loopback (回环) 设备\u003cul\u003e\n\u003cli\u003e设备驱动把设备的 read/write 翻译成文件的 read/write\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://elixir.bootlin.com/linux/latest/source/drivers/block/loop.c\"\u003edrivers/block/loop.c\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e实现了 loop_mq_ops (不是 file_operations)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"strace\"\u003e观察挂载文件的 strace\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003elsblk 查看系统中的 block devices (strace)\u003c/li\u003e\n\u003cli\u003estrace 观察挂载的流程\u003cul\u003e\n\u003cli\u003e\u003ccode\u003eioctl(3, LOOP_CTL_GET_FREE)\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003eioctl(4, LOOP_SET_FD, 3)\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fhs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"filesystem-hierarchy-standard\"\u003eFilesystem Hierarchy Standard\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e\u003ca href=\"http://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html\"\u003eFHS\u003c/a\u003e enables software and user to predict the location of installed files and directories.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003e例子：macOS 是 UNIX 的内核 (BSD), 但不遵循 Linux FHS\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fhs.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 目录树 API\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"directory_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"api\"\u003e目录树 API\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“增删改查”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003emkdir: 创建目录\u003c/li\u003e\n\u003cli\u003ermdir: 删除目录\u003c/li\u003e\n\u003cli\u003egetdents: 读取目录\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emkdirat\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003edirfd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003epathname\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003emode_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emode\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eunlinkat\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003epath\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eflag\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003essize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003egetdents64\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003edirp\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecount\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e看看 \u003ccode\u003ebash -c 'echo /etc/**/*'\u003c/code\u003e 的 strace\u003cul\u003e\n\u003cli\u003e更多的工具，例如 fzf 也是同样的实现\u003c/li\u003e\n\u003cli\u003e“Globbing”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/globbing\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"globbing\"\u003e\u003ca href=\"/OS/demos/persistence/globbing\"\u003eglobbing\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在 pstree 中，我们实现了目录树的遍历——我们几乎总是需要对底层文件系统 API 的封装，例如十分方便的 \u003ca href=\"https://www.gnu.org/software/libc/manual/html_node/Calling-Glob.html\"\u003eglob()\u003c/a\u003e。Globbing 也是 Agent 的 “四大技能”，Read, Write, Grep, Glob; 加上 Bash 就可以完成几乎所有的运维工作了。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"hard_link\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hard\"\u003e硬 (hard) 链接\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e需求：系统中可能有同一个运行库的多个版本\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003elibc-2.27.so\u003c/code\u003e, \u003ccode\u003elibc-2.26.so\u003c/code\u003e, …\u003c/li\u003e\n\u003cli\u003e还需要一个 “当前版本的 libc”\u003cul\u003e\n\u003cli\u003e程序需要链接 “\u003ccode\u003elibc.so.6\u003c/code\u003e“，能否避免文件的一份拷贝？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e(硬) 链接：允许一个文件被多个目录引用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e文件系统实现的特性 (ls -i 查看)\u003cul\u003e\n\u003cli\u003e不能链接目录、不能跨文件系统\u003c/li\u003e\n\u003cli\u003e删除文件的系统调用称为 “unlink” (refcount–)\u003cul\u003e\n\u003cli\u003e现在用 “万能” 的 unlinkat，也可以删除空目录\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e所以和 pid 一样，fid 也是存在的\u003cul\u003e\n\u003cli\u003e(只是用于文件系统内部的实现)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"symbolic_link\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"symbolic\"\u003e软 (symbolic) 链接\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e软链接：在文件里存储一个 “跳转提示”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e软链接也是一个文件\u003cul\u003e\n\u003cli\u003e当引用这个文件时，去找另一个文件\u003c/li\u003e\n\u003cli\u003e另一个文件的绝对/相对路径以文本形式存储在文件里\u003c/li\u003e\n\u003cli\u003e可以跨文件系统、可以链接目录、……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e几乎没有任何限制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e类似 “\u003ca href=\"https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-shllink/\"\u003e快捷方式\u003c/a\u003e”\u003cul\u003e\n\u003cli\u003e快捷方式比你想象的复杂：文件重命名、移动、U 盘驱动器号改变……都能正确找到 (???)\u003c/li\u003e\n\u003cli\u003e为解决一个问题带来了更多问题 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e甚至可以用来制作 Galgame\u003cul\u003e\n\u003cli\u003e今年已经改成 Agentic Design Harness 了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/ggmaker\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"symlink-game\"\u003e\u003ca href=\"/OS/demos/persistence/ggmaker\"\u003eSymlink Game\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以使用符号链接创建 “近乎任意” 的目录结构，包括任意的图结构 (状态机)，操作系统也能正确解析。操作系统的机制 (系统调用、文件系统……) 给了我们无限的创作空间。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"nix\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e软连接：还可以用来 “伪造” 文件系统！\u003c/h1\u003e\n\u003ch2 id=\"nix\"\u003e\n\u003ca href=\"https://nixos.org/\"\u003eNix\u003c/a\u003e: 这个题我会\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e把所有软件包的所有版本都集中存储\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003e/nix/store/b6gvzjyb2pg0kjfwrjmg1vfhh54ad73z-firefox-33.1\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e然后用符号链接构建一个完全虚拟的环境\u003cul\u003e\n\u003cli\u003e完全的 deterministic: 由软件包的 hash 决定\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e可以随时随地构建 “任意” 环境\u003cul\u003e\n\u003cli\u003e\u003ccode\u003enix-shell -p python3 nodejs\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"persistent-data-structure\"\u003e这是一个 persistent data structure 啊\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e还记得吗？random read + append-only write = 任意数据结构\u003cul\u003e\n\u003cli\u003e/nix/store 是 “只增不减” 的，符号链接就是 random read\u003c/li\u003e\n\u003cli\u003e对比 apt: 所有的修改都是 in-place 的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e随时回滚 \u003ccode\u003enix-shell -p $(nix-env --list-generations | grep \"3 days ago\")\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e随地构建 \u003ccode\u003enix-env --switch-generation\u003c/code\u003e 后直接测试\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 文件的元数据\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"file_as_object\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e为文件增加属性\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e软件 = 物理世界在信息世界的投影\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们还希望 “byte array” 有自己的 “personality”\u003cul\u003e\n\u003cli\u003e“隐藏” (1): \u003ccode\u003e.学习资料\u003c/code\u003e 实际存在、API 可以访问、命令行工具默认不显示\u003cul\u003e\n\u003cli\u003e我们实际想要的：只有我自己在用电脑就不要隐藏，其他时候都要隐藏\u003c/li\u003e\n\u003cli\u003e(但现在计算机不支持表达这样的 policy；\u003cstrong\u003e这就是革命的机会\u003c/strong\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“隐藏” (2): /proc/[tid] 实际存在，但 getdents 看不到 (让 AI “看” 吧)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ls-l\"\u003e\n\u003ccode\u003els -l\u003c/code\u003e: 查看对象的属性\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e$ ls -l example.txt\n-rw-r--r-- 1     alice staff 1024 Mar 10 12:34 example.txt\nmode       link  owner group size modified     name\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003eType:  d (directory), l (link), p (pipe), c (char), b (block)\u003c/li\u003e\n\u003cli\u003eMode: rwx (user, group, other)\u003cul\u003e\n\u003cli\u003e例子：0o755 = rwx (111) r-x (101) r-x (101)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eLinks: 引用计数 (硬链接，包括目录)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"extended_attributes\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e更多的元数据\u003c/h1\u003e\n\u003ch2 id=\"extended-attributes-xattr\"\u003eExtended Attributes (xattr)\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003essize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003efgetxattr\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ename\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003evalue\u003c/span\u003e\u003cspan class=\"p\"\u003e[.\u003c/span\u003e\u003cspan class=\"n\"\u003esize\u003c/span\u003e\u003cspan class=\"p\"\u003e],\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esize\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003efsetxattr\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ename\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003evalue\u003c/span\u003e\u003cspan class=\"p\"\u003e[.\u003c/span\u003e\u003cspan class=\"n\"\u003esize\u003c/span\u003e\u003cspan class=\"p\"\u003e],\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esize\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eflags\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e每个文件可以维护一个任意的 key-value dictionary\u003c/li\u003e\n\u003cli\u003e例子：macOS 的 com.apple.metadata 会保存每个互联网下载文件的 url\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e“好用不火” 的操作系统特性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e文件系统的向量索引：\u003ca href=\"https://vectorvfs.readthedocs.io/en/latest/\"\u003evectorfs\u003c/a\u003e\u003cul\u003e\n\u003cli\u003evfs search cat static/Photos/ | claude -p –summary\u003c/li\u003e\n\u003cli\u003e这不比 iPhone 的 Photo Search 好用多了？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003e致命的缺陷\u003c/strong\u003e：这是后加的特性\u003cul\u003e\n\u003cli\u003e不是所有的文件系统都支持\u003c/li\u003e\n\u003cli\u003e兼容性奇差 (cp 需要 –preserve=xattr 才能保留 xattrs)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"acl\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"access-control-list\"\u003eAccess Control List (访问控制列表)\u003c/h1\u003e\n\u003ch2 id=\"user-group-other\"\u003e比 user, group, other 更精细的访问控制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e格式\u003cul\u003e\n\u003cli\u003e[d:]\u003cu | g m o\u003e:name:perms\u003c/u\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e用法\u003cul\u003e\n\u003cli\u003esetfacl -m u:jyy:— file\u003c/li\u003e\n\u003cli\u003egetfacl file\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e(Access Control 专门用一次课讲)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e“在没有直接经验的领域（如语言、技术、框架等）进行有质量保证的编程工作”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果你希望实现一个 “飞书文档”，ACL 就是一个很好的选择\u003c/li\u003e\n\u003cli\u003e你知道了 “fine-grained access control” 是可以的\u003cul\u003e\n\u003cli\u003e在需要的时候，你能启发 AI 想到这一点\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.1. Aside: 面对未知\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"aside\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e如何应对海量的信息？\u003c/h1\u003e\n\u003ch2 id=\"the-scaling-law\"\u003eThe Scaling Law\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ePre-training, SFT 和 test-time scaling (深度思考中)\u003c/li\u003e\n\u003cli\u003e“Kolmogorov complexity modulo experts” (Timothy Gowers)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/kcme.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"directory_compromise\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e“目录树” 也是个妥协\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e图书馆的索引系统其实可以淘汰了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一本书的\u003cstrong\u003e内容\u003c/strong\u003e就是它的索引\u003c/li\u003e\n\u003cli\u003e摄像头可以确定任何一本书的位置\u003cul\u003e\n\u003cli\u003e路径 → 结构化查询 (wildcard \u0026amp; globbing) → 智能检索\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/photo-search.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e目录 (链接) 和文件 (对象) 的简洁抽象赋予了我们管理对象的能力。操作系统的设计者也扩展了文件的元数据，使我们能给文件打上复杂的标签，从而使应用程序 (和操作系统) 提供更好的服务。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 37 章 - Files and Directories\u003c/li\u003e\n\u003cli\u003e第 53 章 - Intro Security (不在考试范围)\u003c/li\u003e\n\u003cli\u003e第 54 章 - Authentication (不在考试范围)\u003c/li\u003e\n\u003cli\u003e第 55 章 - Access Control\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect24.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

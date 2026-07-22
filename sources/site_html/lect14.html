@@ -1,0 +1,615 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 并发控制：互斥
+ </h1>
+<div class="slideshow" name="os_concurrency"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">多处理器编程：从入门到放弃</h2>
+<ul>
+<li>thread.h: spawn(fn), join()</li>
+<li>1 + 1 也不会求了，1, 2, 3 也不会数了 😂</li>
+</ul>
+<h2 id="_2">为什么在《操作系统》课讲并发？</h2>
+<ul>
+<li>UNIX 的 fork-execve 模型，进程是<strong>不共享内存</strong>的<ul>
+<li>但是系统调用是<strong>共享内存</strong>的<ul>
+<li>syscall 指令会跳转到操作系统代码执行</li>
+<li>操作系统是 “同一个 C 程序” (共享内存)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>每个进程的系统调用部分就成了多个<strong>线程</strong><ul>
+<li>P1: read(fd, buf, size);</li>
+<li>P2: write(fd, buf, size);<ul>
+<li>它们可以访问<strong>同一个文件</strong>
+</li>
+</ul>
+</li>
+<li>操作系统是第一个真正 “严肃” 的大型并发程序</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 互斥：概念与 API
+ </h2>
+<div class="slideshow" name="simple_problem"><div>
+<h1 id="1-1">上节课没解决的问题：1 + 1</h1>
+<h2 id="api">我们希望引入一个语言机制/API</h2>
+<ul>
+<li>无论怎么执行，sum 的求和都是正确的</li>
+<li>互斥 (互相排斥)：<strong>阻止一些代码的并发/并行执行</strong><ul>
+<li>至少我们就能解决 1 + 1 了</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">long</span><span class="w"> </span><span class="n">sum</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_sum</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">make_it_work</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>祝贺，你发明了 “Transactional Memory”<ul>
+<li>Intel TSX: xbegin, xend (这又是一条可以和所有指令行为产生关联的指令 😂)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_mutex"><div>
+<h1 id="_1">在操作系统内核实现互斥</h1>
+<h2 id="make-it-work">单处理器系统：简单粗暴，一条指令 make it work</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">disable_interrupt</span><span class="p">();</span>
+<span class="n">sum</span><span class="o">++</span><span class="p">;</span>
+<span class="n">enable_interrupt</span><span class="p">();</span>
+</code></pre></div>
+
+<ul>
+<li>关闭中断处理使当前代码无法被中断<ul>
+<li>如果是 while (1)，就真的死机了</li>
+<li>让 AI 写一个 “关闭中断死循环” 的程序，看看会发生什么？</li>
+</ul>
+</li>
+<li>多处理器系统：就算同时关掉所有处理器的中断也没能实现保护</li>
+</ul>
+<p><img alt="" src="static/img/reset-button.jpg"></p>
+</div></div>
+
+<div class="code-card" path="concurrency/cli"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/cli">尝试关闭中断</a></h1>
+<p>在单处理器系统中，关闭中断即可实现 “stop the world” 的效果，消除并发/并行的可能性。我们尝试在进程中也调用关闭中断的指令。</p>
+</div></div>
+</div>
+<div class="slideshow" name="app_mutex"><div>
+<h1 id="api">互斥：API</h1>
+<h2 id="lock-mutually-exclusive">所有被 lock 标记的代码块都 “mutually exclusive”</h2>
+<ul>
+<li>因此也叫 “mutex lock”</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">lock</span><span class="p">();</span>
+<span class="c1">// 任意代码，例如 sum++;</span>
+<span class="n">unlock</span><span class="p">();</span>
+</code></pre></div>
+
+<h2 id="1">拟人视角 (1)：宿舍厕所的包厢</h2>
+<ul>
+<li>lock: 锁住别人就进不来了 (但我可以继续)</li>
+<li>unlock: 解锁别人才可以进来</li>
+</ul>
+<h2 id="2">拟人视角 (2)：桌上有一把 🔑</h2>
+<ul>
+<li>lock (acquire): 有 🔑，就拿走继续；没有 🔑，需要等待</li>
+<li>unlock (release): 把 🔑 放回桌上</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="app_mutex_1"><div>
+<h1 id="api-contd">互斥：API (cont’d)</h1>
+<h2 id="_1">没有人阻止我们创建多个桌子 (多把钥匙)</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">mutex_t</span><span class="w"> </span><span class="n">lock_a</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MUTEX_INIT</span><span class="p">();</span>
+<span class="n">mutex_t</span><span class="w"> </span><span class="n">lock_b</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MUTEX_INIT</span><span class="p">();</span>
+
+<span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock_a</span><span class="p">);</span>
+<span class="n">x</span><span class="o">++</span><span class="p">;</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock_a</span><span class="p">);</span>
+
+<span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock_b</span><span class="p">);</span>
+<span class="n">y</span><span class="o">++</span><span class="p">;</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lock_b</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>终于可以实现 1 + 1 了 (例子)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/sum-mutexapi"><div><div>
+<h1 id="mutex-api"><a href="/OS/demos/concurrency/sum-mutexapi">使用 mutex API 实现互斥</a></h1>
+<p>我们的线程库提供了 mutex_lock, mutex_unlock 的 API 实现互斥。</p>
+</div></div>
+</div>
+<h2> 2. 使用互斥锁
+ </h2>
+<div class="slideshow" name="use_mutex"><div>
+<h1 id="_1">互斥锁的使用方法</h1>
+<h2 id="mutex">假设正确使用锁 (其他线程的读写和 mutex 内的读写互不干扰)</h2>
+<ul>
+<li>程序行为就和 lock(); unlock(); 完全等价</li>
+<li>甚至和 stop_the_world(); 完全等价</li>
+</ul>
+<p><img alt="" src="static/img/the-world.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="use_mutex_hard"><div>
+<h1 id="_1">你高兴得太早了</h1>
+<h2 id="api">从设计出这个 API 开始……</h2>
+<ul>
+<li>人类就走上万劫不复的错误道路了</li>
+<li>因为 lock 和 unlock 都是<strong>程序员负责的</strong><ul>
+<li><strong>写代码的时候就必须清楚地知道什么时间会和谁共享数据</strong></li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">例子：链表</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">node</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">lock_t</span><span class="w"> </span><span class="n">lock</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">node</span><span class="w"> </span><span class="o">*</span><span class="n">prev</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">next</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<ul>
+<li>遍历需要先锁 next，再解锁 current</li>
+<li>插入、删除需要拿到 prev, current, next 三把锁</li>
+<li>删除后的内存回收 (必须由获得最有一个引用的线程回收)……<ul>
+<li>实验会教你的！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="caveat"><div>
+<h1 id="contd">你高兴得太早了 (cont’d)</h1>
+<h2 id="_1">看出错误了吗？</h2>
+<div class="codehilite"><pre><span></span><code><span class="nl">T_1</span><span class="p">:</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">l</span><span class="p">);</span><span class="w"> </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="n">unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">l</span><span class="p">);</span>
+<span class="nl">T_2</span><span class="p">:</span><span class="w"> </span><span class="n">lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">I</span><span class="p">);</span><span class="w"> </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span><span class="w"> </span><span class="n">unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">I</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>不要笑，🤡 就是你自己</li>
+<li>你以为不会犯这种错误？现实比你想象得复杂！<ul>
+<li>几十把锁、十几个文件</li>
+<li>没有人能确信自己能记得</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">《操作系统》课的建议</h2>
+<ul>
+<li>从<strong>一把大锁保平安</strong>开始<ul>
+<li>做好充足的压力测试</li>
+</ul>
+</li>
+<li>Premature optimization is the root of all evil</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="faq_concurrency"><div>
+<h1 id="faq">FAQ: 都不并发了，我们还要线程吗？</h1>
+<h2 id="amdahls-law">悲观的 Amdahl’s Law</h2>
+<ul>
+<li>如果你有 1/k 的代码是不能并行的，那么</li>
+</ul>
+<p>T_∞ &gt; T_1 / k</p>
+<h2 id="gustafsons-law">乐观的 Gustafson’s Law (的更细致版本)</h2>
+<ul>
+<li>能并行的并行计算总是能实现的</li>
+</ul>
+<p>T_p &lt; T_∞ + T_1 / p</p>
+<ul>
+<li>(T_n 代表 n 个处理器的运行时间)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="parallel_computing"><div>
+<h1 id="faq-contd">FAQ: 都不并发了，我们还要线程吗？ (cont’d)</h1>
+<h2 id="_1">经典物理：局部性原理</h2>
+<ul>
+<li>
+<strong>物体对相邻物体的影响需要时间</strong><ul>
+<li>(即便<a href="https://plato.stanford.edu/entries/bell-theorem/">严格来说不成立</a>，依然是一个很好的近似)</li>
+</ul>
+</li>
+<li>推论：任何物理世界模拟皆可以大规模并行</li>
+</ul>
+<p>T_∞ &lt;&lt; T_1</p>
+<h2 id="embarrassingly-parallel">Embarrassingly Parallel 的例子</h2>
+<ul>
+<li>图书馆 v.s. 分布式数据存储</li>
+<li>大脑 v.s. 深度神经网络</li>
+<li>NP-Hard 问题的搜索 (还记得 fork-based DFS 吗)</li>
+</ul>
+</div></div>
+
+<h2> 3. 在操作系统上实现互斥
+ </h2>
+<h3> 3.1. 不正确的尝试 (方向)
+ </h3>
+<div class="slideshow" name="dekker"><div>
+<h1 id="dekkers-algorithm-1965">Dekker’s Algorithm (1965)</h1>
+<blockquote>
+<p><a href="https://series1.github.io/blog/dekkers-algorithm/">绕口令</a>：A process P can enter the critical section if the other does not want to enter, otherwise it may enter only if it is its turn.</p>
+</blockquote>
+<ul>
+<li>“<a href="https://zoo.cs.yale.edu/classes/cs323/doc/Peterson.pdf">Myths about the mutual exclusion problem</a>” (IPL, 1981)</li>
+</ul>
+<p><img alt="" src="static/img/peterson.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="peterson"><div>
+<h1 id="petersons-algorithm-1981">Peterson’s Algorithm (1981)</h1>
+<blockquote>
+<p>还是绕口令：A process P can enter the critical section if the other does not want to enter, or it has indicated its desire to enter and has given the other process the turn.</p>
+</blockquote>
+<h2 id="_1">并发的危险</h2>
+<ul>
+<li>你很难从字面上判断它到底对不对<ul>
+<li>n 个线程循环 m 次，sum 的最小值为 1</li>
+<li>n 个线程循环 m 次，sum 的最小值为 2</li>
+<li>n 个线程循环 m 次，sum 的最小值为 3<ul>
+<li>这是一个 NP-Complete (甚至更难) 的问题</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="peterson_bathroom"><div>
+<h1 id="_1">回到我们 “拟人” 的视角理解并发</h1>
+<h2 id="_2">熟悉的仙林校区宿舍厕所……</h2>
+<ul>
+<li>厕所当然需要<strong>互斥使用</strong>
+</li>
+<li>(这厕所也太干净了吧……)</li>
+</ul>
+<p><img alt="" src="static/img/bathroom-nju.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="peterson_protocol"><div>
+<h1 id="petersons-protocol">Peterson’s Protocol</h1>
+<blockquote>
+<p>有三个变量：你的手、他的手、厕所门。</p>
+</blockquote>
+<h2 id="_1">如果希望进入厕所，按顺序执行以下操作：</h2>
+<ol>
+<li>举起自己的旗子 (store 手)</li>
+<li>把写有对方名字的字条贴在厕所门上 (store 门)</li>
+</ol>
+<h2 id="_2">然后进入持续的观察模式：</h2>
+<ol>
+<li>观察对方是否举旗 (load 手)</li>
+<li>观察厕所门上的名字 (load 门)</li>
+<li><strong>对方不举旗或名字是自己，进入厕所，否则继续观察</strong></li>
+</ol>
+<h2 id="_3">出厕所后，放下自己的旗子 (不用管门上的字条)</h2>
+</div></div>
+
+<div class="slideshow" name="intuition"><div>
+<h1 id="_1">直观解释</h1>
+<h2 id="_2">进入厕所的情况</h2>
+<ul>
+<li>如果只有一个人举旗，他就可以直接进入</li>
+<li>如果两个人同时举旗，由厕所门上的标签决定谁进<ul>
+<li>看似 “谦让”，实则手快有 (被另一个人的标签覆盖)、手慢无</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">一些更细节情况</h2>
+<ul>
+<li>A 看到 B 没有举旗<ul>
+<li>B 一定不在厕所</li>
+<li>B 可能想进但还没来得及把 “A 正在使用” 贴在门上</li>
+</ul>
+</li>
+<li>A 看到 B 举旗子<ul>
+<li>A 一定已经把旗子举起来了 (<em>!@^#</em>&amp;!%^(&amp;^!@%#</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="seek_for_a_proof"><div>
+<h1 id="peterson">如何理解 Peterson 算法？</h1>
+<h2 id="ai-proofdisproof">在 AI 时代，找一个 proof/disproof 是<strong>不难</strong>的</h2>
+<ul>
+<li>Prove by brute force<ul>
+<li>Peterson 算法的状态空间是<strong>有限</strong>的<ul>
+<li>(x, y, turn, PC1, PC2)</li>
+</ul>
+</li>
+<li>我们完全可以在黑板上模拟它的执行 (曾经我真的是这么干的)</li>
+<li>黑板上可以做，计算机也能做 (2007 Turing Award)</li>
+</ul>
+</li>
+<li>Prove by induction (适用于无限的状态空间)<ul>
+<li>其实和 brute force 是一样的，只不过把状态空间做了<strong>划分</strong>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="scalable">“电脑”：scalable 的智能</h2>
+<ul>
+<li>先贴标签再举旗，还对吗？</li>
+<li>如果放下旗子之后 (前) 把门上的字条撕掉，还对吗？</li>
+<li>观察举旗和名字的顺序交换，还对吗？</li>
+<li>是否存在“两个人谁都无法进入厕所”、“对某一方不公平”等行为？</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="mosaic"><div><div>
+<h1 id="_1"><a href="/OS/demos/mosaic">操作系统模型和检查器</a></h1>
+<p>我们可以把 “状态机的管理者” 这个思想在 Python 世界中构造出来：我们用 Python 的函数来声明状态机，并且实现状态空间的遍历。所有的实现都是 “最简” 的——但它真的能用来澄清 Three Easy Pieces 里的概念：Concurrency, Virtualization, 和 Persistence。</p>
+</div></div>
+</div>
+<div class="slideshow" name="cs_rebellion"><div>
+<h1 id="computer-science">Computer Science 的 “叛逆” 本质</h1>
+<h2 id="ta">每个班上都有一个老师总是夸夸，你曾经暗恋的 Ta</h2>
+<ul>
+<li>Ta：认认真真完成老师作业<ul>
+<li>工整的笔记，启发了思维，浪费了生命</li>
+</ul>
+</li>
+<li>我：烦死了！原神启动！<ul>
+<li>
+<strong>战略</strong>：提出好的问题、适当地分解问题</li>
+<li>
+<strong>战术</strong>：执行过程中使用先进工具替代机械思考<ul>
+<li>状态空间搜索 + AI 启发式剪枝 (AlphaX)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h4> 3.1.1. Peterson 算法的实现
+ </h4>
+<div class="slideshow" name="peterson_assumptions"><div>
+<h1 id="_1">回到刚才的 “模型”</h1>
+<h2 id="_2">模型 ≠ 现实：我们做了简化的假设</h2>
+<ol>
+<li>Load/store 指令是瞬间完成且生效的 ❌</li>
+<li>指令按照程序书写顺序执行 ❌<ul>
+<li>(不怪他们，那时候还没有高性能编译器和多核计算机)</li>
+</ul>
+</li>
+</ol>
+<h2 id="peterson">所以……直接写那么一个 Peterson 算法应该是错的？</h2>
+<ul>
+<li>我们当然能写个程序试试！</li>
+</ul>
+<p><img alt="" src="static/img/sc.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="peterson_correct"><div>
+<h1 id="peterson">实现正确的 Peterson 算法</h1>
+<h2 id="compiler-barrier">Compiler barrier (编译优化屏障)</h2>
+<ul>
+<li>asm volatile(“”: : :”memory”); 或是 volatile 变量</li>
+</ul>
+<h2 id="memory-barrier">Memory barrier (内存屏障)</h2>
+<ul>
+<li>__sync_synchronize() = Compiler Barrier +<ul>
+<li>x86: mfence</li>
+<li>ARM: dmb ish</li>
+<li>RISC-V: fence rw, rw</li>
+</ul>
+</li>
+<li>能够实现<strong>单次</strong> load/store 的原子性</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/peterson"><div><div>
+<h1 id="peterson"><a href="/OS/demos/concurrency/peterson">Peterson 算法</a></h1>
+<p>在宽松内存模型上，Peterson 算法既低效又很难实现。直接用 load/store 实现互斥并不是正确的努力方向。</p>
+</div></div>
+</div>
+<div class="slideshow" name="bathroom_unsolved"><div>
+<h1 id="_1">而且……上厕所的问题并没有解决……</h1>
+<h2 id="_2">智力体操不是我们想要的</h2>
+<ul>
+<li>我们需要 “absolutely correct” 的工程化方案</li>
+</ul>
+<p><img alt="" src="static/img/wc-new.jpg"></p>
+</div></div>
+
+<h3> 3.2. 硬件和操作系统来帮忙
+ </h3>
+<div class="slideshow" name="peterson_wrong_direction"><div>
+<h1 id="peterson">Peterson 算法的路线错误</h1>
+<h2 id="loadstore">试图在 load/store 上实现互斥</h2>
+<ul>
+<li>计算机系统是我们造的<ul>
+<li>我们当然也可以<strong>把它改成容易实现互斥的样子</strong>
+</li>
+<li>这是 Computer Science 和自然科学的一个很大不同<ul>
+<li>相当多的游戏规则是我们定的</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">软件不好解决的，硬件帮忙</h2>
+<ul>
+<li>允许我们添加一些<strong>指令</strong> (不太过复杂就行)<ul>
+<li>就像操作系统可以直接关闭中断</li>
+<li>但实现线程互斥需要怎样的指令？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="what_instruction"><div>
+<h1 id="_1">实现线程互斥：分析</h1>
+<h2 id="_2">思路</h2>
+<ul>
+<li>从不正确的代码开始，把我们 “想做到” 的事用指令去做</li>
+<li>错误原因：if 条件在执行 can_go = ❌ 时已经不成立了<ul>
+<li>和 Alipay 的例子是一样的</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">lock</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="nl">retry</span><span class="p">:</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">can_go</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="err">✅</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">can_go</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">❌</span><span class="p">;</span><span class="w">  </span><span class="c1">// then function returns</span>
+<span class="w">    </span><span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">goto</span><span class="w"> </span><span class="n">retry</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">unlock</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">can_go</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">✅</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="atomic_instruction"><div>
+<h1 id="stop-the-world">硬件：只要提供一小段时间的 stop-the-world 就可以</h1>
+<h2 id="atomosindivisible">ἄτομος (atomos)：“indivisible” 的原子指令</h2>
+<ul>
+<li>一个 “不被打断” 的 load + 计算 + store<ul>
+<li>x86: Bus Lock (locked instruction)</li>
+<li>RISC-V: LR/SC &amp; A 扩展<ul>
+<li>来自 MIPS: Load-Linked/Store-Conditional (LL/SC)</li>
+</ul>
+</li>
+<li>arm: ldxr/stxr, stadd (store add) 指令</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">can_go</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="err">✅</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">can_go</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="err">❌</span><span class="p">;</span><span class="w">  </span><span class="c1">// then function returns</span>
+<span class="p">}</span>
+
+<span class="c1">// movl $✅, %eax</span>
+<span class="c1">// movl $❌, %edx</span>
+<span class="c1">// lock cmpxchgl %edx, (can_go)</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="sum_atomic"><div>
+<h1 id="1-1">终于可以实现 1 + 1 了 😂</h1>
+<p><img alt="" src="static/img/80486-arch.jpg"></p>
+<ul>
+<li>甚至我们也可以用一条 lock addq $1, (sum) 来实现 + 1</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/sum-spinlock"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/sum-spinlock">使用硬件原子指令实现互斥</a></h1>
+<p>我们的线程库也提供了 spin_lock, spin_unlock 的 API 实现互斥，直接用 inline assembly 调用指令集实现——在实际上，GCC 提供了 __atomic_compare_exchange_n 的 built-in 帮助我们实现跨体系结构的可移植性：例如，armv8.1 加入了新的原子指令，使用正确的编译选项可以获得最佳的性能。</p>
+</div></div>
+</div>
+<div class="slideshow" name="spinlock_scalability"><div>
+<h1 id="_1">自旋锁：严重的性能问题</h1>
+<h2 id="1">性能问题 (1)</h2>
+<ul>
+<li>除了获得锁的线程，其他处理器上的线程都在<strong>空转</strong><ul>
+<li>“一核有难，八核围观”</li>
+<li>如果代码执行很久，不如把处理器让给其他线程</li>
+</ul>
+</li>
+</ul>
+<h2 id="2">性能问题 (2)</h2>
+<ul>
+<li>
+<strong>应用程序不能关中断……</strong><ul>
+<li>持有自旋锁的线程被切换</li>
+<li>导致 100% 的资源浪费</li>
+</ul>
+</li>
+<li>如果应用程序能 “告诉” 操作系统就好了<ul>
+<li>如何 “告诉” 操作系统？</li>
+<li>syscall!</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_help"><div>
+<h1 id="_1">线程自己解决不了，就让操作系统来帮忙</h1>
+<h2 id="_2">把锁的实现放到操作系统里就好啦</h2>
+<ul>
+<li>syscall(SYSCALL_acquire, &amp;lk);<ul>
+<li>试图获得 lk，但如果失败，就切换到其他线程</li>
+</ul>
+</li>
+<li>syscall(SYSCALL_release, &amp;lk);<ul>
+<li>释放 lk，如果有等待锁的线程就唤醒</li>
+</ul>
+</li>
+<li>剩下的复杂工作都交给内核<ul>
+<li>关中断 + 自旋<ul>
+<li><strong>自旋锁只用来保护操作系统中非常短的代码块</strong></li>
+</ul>
+</li>
+<li>成功获得锁 → 返回</li>
+<li>获得失败 → 设置线程为“不可执行”并切换</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">实际上由一个系统调用实现</h2>
+<ul>
+<li>man 7 futex | claude Explain<ul>
+<li>Fast (user-space only) &amp; Slow (kernel) Path</li>
+<li><a href="https://lwn.net/Articles/360699/">LWN: A futex overview and update</a></li>
+<li>
+<a href="https://cis.temple.edu/~giorgio/cis307/readings/futex.pdf">Futexes are tricky</a> by Ulrich Drepper</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="quantitative_research"><div>
+<h1 id="_1">定量研究方法</h1>
+<h2 id="_2">到底有没有提升性能？</h2>
+<ul>
+<li>我们可以做一个不太严格的<strong>控制变量</strong>的对比实验！<ul>
+<li>确定总的 sum++ 次数不变</li>
+<li>分布在 T = 1, 2, 4, 8, 16 个线程</li>
+<li>实验重复 5 次，统计一次 sum++ 的平均时间</li>
+</ul>
+</li>
+<li>AI 太擅长做这件事了 (值得一个 skill)<ul>
+<li>原始数据的列表 (csv)</li>
+<li>Jupyter Notebook 里生成的 plot (带 error bar)</li>
+</ul>
+</li>
+</ul>
+<h2 id="a-final-comment">A final comment</h2>
+<ul>
+<li><a href="https://gernot-heiser.org/benchmarking-crimes.html">Systems Benchmarking Crimes</a></li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/sum-experiment"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/sum-experiment">使用不同方式求和</a></h1>
+<p>我们对比使用自旋锁 (手工实现)、互斥锁和原子指令在求和上的性能，做一个基础的控制变量的对比实验：确定总的 sum++ 次数不变，分布在 T = 1, 2, 4, 8, 16 个线程，分别为三种实现实验重复 5 次，统计一次 sum++ 的平均时间。保存原始数据的列表 (csv)，并且在 Jupyter Notebook 里生成带 error bar 的 plot。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>并发编程 “很难”，而类应对这种复杂性的方法就是退回到不并发。我们可以在线程中使用 lock/unlock 实现互斥——所有被同一把锁保护的代码，都失去了并发的机会 (虽然先后依然是不受控制的)。当然，互斥的实现是相当有挑战性的，现代系统中的互斥设计线程中的原子操作、内核中的中断管理、原子操作和自旋等机制。值得注意的是，而只要程序中 “能并行” 的部分足够多，串行化一小部分也并不会对性能带来致命的影响。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 29 章 - Locked Data Structures</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 并发控制：互斥\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"os_concurrency\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e多处理器编程：从入门到放弃\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ethread.h: spawn(fn), join()\u003c/li\u003e\n\u003cli\u003e1 + 1 也不会求了，1, 2, 3 也不会数了 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e为什么在《操作系统》课讲并发？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eUNIX 的 fork-execve 模型，进程是\u003cstrong\u003e不共享内存\u003c/strong\u003e的\u003cul\u003e\n\u003cli\u003e但是系统调用是\u003cstrong\u003e共享内存\u003c/strong\u003e的\u003cul\u003e\n\u003cli\u003esyscall 指令会跳转到操作系统代码执行\u003c/li\u003e\n\u003cli\u003e操作系统是 “同一个 C 程序” (共享内存)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e每个进程的系统调用部分就成了多个\u003cstrong\u003e线程\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003eP1: read(fd, buf, size);\u003c/li\u003e\n\u003cli\u003eP2: write(fd, buf, size);\u003cul\u003e\n\u003cli\u003e它们可以访问\u003cstrong\u003e同一个文件\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e操作系统是第一个真正 “严肃” 的大型并发程序\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 互斥：概念与 API\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"simple_problem\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1-1\"\u003e上节课没解决的问题：1 + 1\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e我们希望引入一个语言机制/API\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e无论怎么执行，sum 的求和都是正确的\u003c/li\u003e\n\u003cli\u003e互斥 (互相排斥)：\u003cstrong\u003e阻止一些代码的并发/并行执行\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e至少我们就能解决 1 + 1 了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003elong\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emake_it_work\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e祝贺，你发明了 “Transactional Memory”\u003cul\u003e\n\u003cli\u003eIntel TSX: xbegin, xend (这又是一条可以和所有指令行为产生关联的指令 😂)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_mutex\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e在操作系统内核实现互斥\u003c/h1\u003e\n\u003ch2 id=\"make-it-work\"\u003e单处理器系统：简单粗暴，一条指令 make it work\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003edisable_interrupt\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003eenable_interrupt\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e关闭中断处理使当前代码无法被中断\u003cul\u003e\n\u003cli\u003e如果是 while (1)，就真的死机了\u003c/li\u003e\n\u003cli\u003e让 AI 写一个 “关闭中断死循环” 的程序，看看会发生什么？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e多处理器系统：就算同时关掉所有处理器的中断也没能实现保护\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/reset-button.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/cli\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/cli\"\u003e尝试关闭中断\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在单处理器系统中，关闭中断即可实现 “stop the world” 的效果，消除并发/并行的可能性。我们尝试在进程中也调用关闭中断的指令。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"app_mutex\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"api\"\u003e互斥：API\u003c/h1\u003e\n\u003ch2 id=\"lock-mutually-exclusive\"\u003e所有被 lock 标记的代码块都 “mutually exclusive”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e因此也叫 “mutex lock”\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 任意代码，例如 sum++;\u003c/span\u003e\n\u003cspan class=\"n\"\u003eunlock\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"1\"\u003e拟人视角 (1)：宿舍厕所的包厢\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003elock: 锁住别人就进不来了 (但我可以继续)\u003c/li\u003e\n\u003cli\u003eunlock: 解锁别人才可以进来\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"2\"\u003e拟人视角 (2)：桌上有一把 🔑\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003elock (acquire): 有 🔑，就拿走继续；没有 🔑，需要等待\u003c/li\u003e\n\u003cli\u003eunlock (release): 把 🔑 放回桌上\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"app_mutex_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"api-contd\"\u003e互斥：API (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e没有人阻止我们创建多个桌子 (多把钥匙)\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003emutex_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elock_a\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eMUTEX_INIT\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elock_b\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eMUTEX_INIT\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\n\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elock_a\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elock_a\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\n\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elock_b\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elock_b\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e终于可以实现 1 + 1 了 (例子)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/sum-mutexapi\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"mutex-api\"\u003e\u003ca href=\"/OS/demos/concurrency/sum-mutexapi\"\u003e使用 mutex API 实现互斥\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们的线程库提供了 mutex_lock, mutex_unlock 的 API 实现互斥。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 2. 使用互斥锁\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"use_mutex\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e互斥锁的使用方法\u003c/h1\u003e\n\u003ch2 id=\"mutex\"\u003e假设正确使用锁 (其他线程的读写和 mutex 内的读写互不干扰)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e程序行为就和 lock(); unlock(); 完全等价\u003c/li\u003e\n\u003cli\u003e甚至和 stop_the_world(); 完全等价\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/the-world.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"use_mutex_hard\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e你高兴得太早了\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e从设计出这个 API 开始……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e人类就走上万劫不复的错误道路了\u003c/li\u003e\n\u003cli\u003e因为 lock 和 unlock 都是\u003cstrong\u003e程序员负责的\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e写代码的时候就必须清楚地知道什么时间会和谁共享数据\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e例子：链表\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003enode\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003elock_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003enode\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eprev\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003enext\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e遍历需要先锁 next，再解锁 current\u003c/li\u003e\n\u003cli\u003e插入、删除需要拿到 prev, current, next 三把锁\u003c/li\u003e\n\u003cli\u003e删除后的内存回收 (必须由获得最有一个引用的线程回收)……\u003cul\u003e\n\u003cli\u003e实验会教你的！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"caveat\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e你高兴得太早了 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e看出错误了吗？\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"nl\"\u003eT_1\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003el\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eunlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003el\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"nl\"\u003eT_2\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eI\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eunlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eI\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e不要笑，🤡 就是你自己\u003c/li\u003e\n\u003cli\u003e你以为不会犯这种错误？现实比你想象得复杂！\u003cul\u003e\n\u003cli\u003e几十把锁、十几个文件\u003c/li\u003e\n\u003cli\u003e没有人能确信自己能记得\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e《操作系统》课的建议\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从\u003cstrong\u003e一把大锁保平安\u003c/strong\u003e开始\u003cul\u003e\n\u003cli\u003e做好充足的压力测试\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003ePremature optimization is the root of all evil\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"faq_concurrency\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"faq\"\u003eFAQ: 都不并发了，我们还要线程吗？\u003c/h1\u003e\n\u003ch2 id=\"amdahls-law\"\u003e悲观的 Amdahl’s Law\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果你有 1/k 的代码是不能并行的，那么\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003eT_∞ \u0026gt; T_1 / k\u003c/p\u003e\n\u003ch2 id=\"gustafsons-law\"\u003e乐观的 Gustafson’s Law (的更细致版本)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e能并行的并行计算总是能实现的\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003eT_p \u0026lt; T_∞ + T_1 / p\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e(T_n 代表 n 个处理器的运行时间)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"parallel_computing\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"faq-contd\"\u003eFAQ: 都不并发了，我们还要线程吗？ (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e经典物理：局部性原理\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e物体对相邻物体的影响需要时间\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e(即便\u003ca href=\"https://plato.stanford.edu/entries/bell-theorem/\"\u003e严格来说不成立\u003c/a\u003e，依然是一个很好的近似)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e推论：任何物理世界模拟皆可以大规模并行\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003eT_∞ \u0026lt;\u0026lt; T_1\u003c/p\u003e\n\u003ch2 id=\"embarrassingly-parallel\"\u003eEmbarrassingly Parallel 的例子\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e图书馆 v.s. 分布式数据存储\u003c/li\u003e\n\u003cli\u003e大脑 v.s. 深度神经网络\u003c/li\u003e\n\u003cli\u003eNP-Hard 问题的搜索 (还记得 fork-based DFS 吗)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 在操作系统上实现互斥\n \u003c/h2\u003e\n\u003ch3\u003e 3.1. 不正确的尝试 (方向)\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"dekker\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"dekkers-algorithm-1965\"\u003eDekker’s Algorithm (1965)\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e\u003ca href=\"https://series1.github.io/blog/dekkers-algorithm/\"\u003e绕口令\u003c/a\u003e：A process P can enter the critical section if the other does not want to enter, otherwise it may enter only if it is its turn.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003e“\u003ca href=\"https://zoo.cs.yale.edu/classes/cs323/doc/Peterson.pdf\"\u003eMyths about the mutual exclusion problem\u003c/a\u003e” (IPL, 1981)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/peterson.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"peterson\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"petersons-algorithm-1981\"\u003ePeterson’s Algorithm (1981)\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e还是绕口令：A process P can enter the critical section if the other does not want to enter, or it has indicated its desire to enter and has given the other process the turn.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e并发的危险\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e你很难从字面上判断它到底对不对\u003cul\u003e\n\u003cli\u003en 个线程循环 m 次，sum 的最小值为 1\u003c/li\u003e\n\u003cli\u003en 个线程循环 m 次，sum 的最小值为 2\u003c/li\u003e\n\u003cli\u003en 个线程循环 m 次，sum 的最小值为 3\u003cul\u003e\n\u003cli\u003e这是一个 NP-Complete (甚至更难) 的问题\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"peterson_bathroom\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e回到我们 “拟人” 的视角理解并发\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e熟悉的仙林校区宿舍厕所……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e厕所当然需要\u003cstrong\u003e互斥使用\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e(这厕所也太干净了吧……)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/bathroom-nju.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"peterson_protocol\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"petersons-protocol\"\u003ePeterson’s Protocol\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e有三个变量：你的手、他的手、厕所门。\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e如果希望进入厕所，按顺序执行以下操作：\u003c/h2\u003e\n\u003col\u003e\n\u003cli\u003e举起自己的旗子 (store 手)\u003c/li\u003e\n\u003cli\u003e把写有对方名字的字条贴在厕所门上 (store 门)\u003c/li\u003e\n\u003c/ol\u003e\n\u003ch2 id=\"_2\"\u003e然后进入持续的观察模式：\u003c/h2\u003e\n\u003col\u003e\n\u003cli\u003e观察对方是否举旗 (load 手)\u003c/li\u003e\n\u003cli\u003e观察厕所门上的名字 (load 门)\u003c/li\u003e\n\u003cli\u003e\u003cstrong\u003e对方不举旗或名字是自己，进入厕所，否则继续观察\u003c/strong\u003e\u003c/li\u003e\n\u003c/ol\u003e\n\u003ch2 id=\"_3\"\u003e出厕所后，放下自己的旗子 (不用管门上的字条)\u003c/h2\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"intuition\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e直观解释\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e进入厕所的情况\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果只有一个人举旗，他就可以直接进入\u003c/li\u003e\n\u003cli\u003e如果两个人同时举旗，由厕所门上的标签决定谁进\u003cul\u003e\n\u003cli\u003e看似 “谦让”，实则手快有 (被另一个人的标签覆盖)、手慢无\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e一些更细节情况\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eA 看到 B 没有举旗\u003cul\u003e\n\u003cli\u003eB 一定不在厕所\u003c/li\u003e\n\u003cli\u003eB 可能想进但还没来得及把 “A 正在使用” 贴在门上\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eA 看到 B 举旗子\u003cul\u003e\n\u003cli\u003eA 一定已经把旗子举起来了 (\u003cem\u003e!@^#\u003c/em\u003e\u0026amp;!%^(\u0026amp;^!@%#\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"seek_for_a_proof\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"peterson\"\u003e如何理解 Peterson 算法？\u003c/h1\u003e\n\u003ch2 id=\"ai-proofdisproof\"\u003e在 AI 时代，找一个 proof/disproof 是\u003cstrong\u003e不难\u003c/strong\u003e的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eProve by brute force\u003cul\u003e\n\u003cli\u003ePeterson 算法的状态空间是\u003cstrong\u003e有限\u003c/strong\u003e的\u003cul\u003e\n\u003cli\u003e(x, y, turn, PC1, PC2)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们完全可以在黑板上模拟它的执行 (曾经我真的是这么干的)\u003c/li\u003e\n\u003cli\u003e黑板上可以做，计算机也能做 (2007 Turing Award)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eProve by induction (适用于无限的状态空间)\u003cul\u003e\n\u003cli\u003e其实和 brute force 是一样的，只不过把状态空间做了\u003cstrong\u003e划分\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"scalable\"\u003e“电脑”：scalable 的智能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e先贴标签再举旗，还对吗？\u003c/li\u003e\n\u003cli\u003e如果放下旗子之后 (前) 把门上的字条撕掉，还对吗？\u003c/li\u003e\n\u003cli\u003e观察举旗和名字的顺序交换，还对吗？\u003c/li\u003e\n\u003cli\u003e是否存在“两个人谁都无法进入厕所”、“对某一方不公平”等行为？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"mosaic\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/mosaic\"\u003e操作系统模型和检查器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以把 “状态机的管理者” 这个思想在 Python 世界中构造出来：我们用 Python 的函数来声明状态机，并且实现状态空间的遍历。所有的实现都是 “最简” 的——但它真的能用来澄清 Three Easy Pieces 里的概念：Concurrency, Virtualization, 和 Persistence。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"cs_rebellion\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"computer-science\"\u003eComputer Science 的 “叛逆” 本质\u003c/h1\u003e\n\u003ch2 id=\"ta\"\u003e每个班上都有一个老师总是夸夸，你曾经暗恋的 Ta\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eTa：认认真真完成老师作业\u003cul\u003e\n\u003cli\u003e工整的笔记，启发了思维，浪费了生命\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我：烦死了！原神启动！\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e战略\u003c/strong\u003e：提出好的问题、适当地分解问题\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003e战术\u003c/strong\u003e：执行过程中使用先进工具替代机械思考\u003cul\u003e\n\u003cli\u003e状态空间搜索 + AI 启发式剪枝 (AlphaX)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch4\u003e 3.1.1. Peterson 算法的实现\n \u003c/h4\u003e\n\u003cdiv class=\"slideshow\" name=\"peterson_assumptions\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e回到刚才的 “模型”\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e模型 ≠ 现实：我们做了简化的假设\u003c/h2\u003e\n\u003col\u003e\n\u003cli\u003eLoad/store 指令是瞬间完成且生效的 ❌\u003c/li\u003e\n\u003cli\u003e指令按照程序书写顺序执行 ❌\u003cul\u003e\n\u003cli\u003e(不怪他们，那时候还没有高性能编译器和多核计算机)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ol\u003e\n\u003ch2 id=\"peterson\"\u003e所以……直接写那么一个 Peterson 算法应该是错的？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们当然能写个程序试试！\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sc.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"peterson_correct\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"peterson\"\u003e实现正确的 Peterson 算法\u003c/h1\u003e\n\u003ch2 id=\"compiler-barrier\"\u003eCompiler barrier (编译优化屏障)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003easm volatile(“”: : :”memory”); 或是 volatile 变量\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"memory-barrier\"\u003eMemory barrier (内存屏障)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e__sync_synchronize() = Compiler Barrier +\u003cul\u003e\n\u003cli\u003ex86: mfence\u003c/li\u003e\n\u003cli\u003eARM: dmb ish\u003c/li\u003e\n\u003cli\u003eRISC-V: fence rw, rw\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e能够实现\u003cstrong\u003e单次\u003c/strong\u003e load/store 的原子性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/peterson\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"peterson\"\u003e\u003ca href=\"/OS/demos/concurrency/peterson\"\u003ePeterson 算法\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在宽松内存模型上，Peterson 算法既低效又很难实现。直接用 load/store 实现互斥并不是正确的努力方向。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"bathroom_unsolved\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e而且……上厕所的问题并没有解决……\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e智力体操不是我们想要的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们需要 “absolutely correct” 的工程化方案\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/wc-new.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.2. 硬件和操作系统来帮忙\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"peterson_wrong_direction\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"peterson\"\u003ePeterson 算法的路线错误\u003c/h1\u003e\n\u003ch2 id=\"loadstore\"\u003e试图在 load/store 上实现互斥\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机系统是我们造的\u003cul\u003e\n\u003cli\u003e我们当然也可以\u003cstrong\u003e把它改成容易实现互斥的样子\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e这是 Computer Science 和自然科学的一个很大不同\u003cul\u003e\n\u003cli\u003e相当多的游戏规则是我们定的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e软件不好解决的，硬件帮忙\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e允许我们添加一些\u003cstrong\u003e指令\u003c/strong\u003e (不太过复杂就行)\u003cul\u003e\n\u003cli\u003e就像操作系统可以直接关闭中断\u003c/li\u003e\n\u003cli\u003e但实现线程互斥需要怎样的指令？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"what_instruction\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现线程互斥：分析\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e思路\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从不正确的代码开始，把我们 “想做到” 的事用指令去做\u003c/li\u003e\n\u003cli\u003e错误原因：if 条件在执行 can_go = ❌ 时已经不成立了\u003cul\u003e\n\u003cli\u003e和 Alipay 的例子是一样的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"nl\"\u003eretry\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ecan_go\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"err\"\u003e✅\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003ecan_go\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"err\"\u003e❌\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// then function returns\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003egoto\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eretry\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eunlock\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecan_go\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"err\"\u003e✅\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"atomic_instruction\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"stop-the-world\"\u003e硬件：只要提供一小段时间的 stop-the-world 就可以\u003c/h1\u003e\n\u003ch2 id=\"atomosindivisible\"\u003eἄτομος (atomos)：“indivisible” 的原子指令\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一个 “不被打断” 的 load + 计算 + store\u003cul\u003e\n\u003cli\u003ex86: Bus Lock (locked instruction)\u003c/li\u003e\n\u003cli\u003eRISC-V: LR/SC \u0026amp; A 扩展\u003cul\u003e\n\u003cli\u003e来自 MIPS: Load-Linked/Store-Conditional (LL/SC)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003earm: ldxr/stxr, stadd (store add) 指令\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ecan_go\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"err\"\u003e✅\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecan_go\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"err\"\u003e❌\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// then function returns\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"c1\"\u003e// movl $✅, %eax\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// movl $❌, %edx\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// lock cmpxchgl %edx, (can_go)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sum_atomic\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1-1\"\u003e终于可以实现 1 + 1 了 😂\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/80486-arch.jpg\"\u003e\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e甚至我们也可以用一条 lock addq $1, (sum) 来实现 + 1\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/sum-spinlock\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/sum-spinlock\"\u003e使用硬件原子指令实现互斥\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们的线程库也提供了 spin_lock, spin_unlock 的 API 实现互斥，直接用 inline assembly 调用指令集实现——在实际上，GCC 提供了 __atomic_compare_exchange_n 的 built-in 帮助我们实现跨体系结构的可移植性：例如，armv8.1 加入了新的原子指令，使用正确的编译选项可以获得最佳的性能。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"spinlock_scalability\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e自旋锁：严重的性能问题\u003c/h1\u003e\n\u003ch2 id=\"1\"\u003e性能问题 (1)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e除了获得锁的线程，其他处理器上的线程都在\u003cstrong\u003e空转\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e“一核有难，八核围观”\u003c/li\u003e\n\u003cli\u003e如果代码执行很久，不如把处理器让给其他线程\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"2\"\u003e性能问题 (2)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e应用程序不能关中断……\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e持有自旋锁的线程被切换\u003c/li\u003e\n\u003cli\u003e导致 100% 的资源浪费\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e如果应用程序能 “告诉” 操作系统就好了\u003cul\u003e\n\u003cli\u003e如何 “告诉” 操作系统？\u003c/li\u003e\n\u003cli\u003esyscall!\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_help\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e线程自己解决不了，就让操作系统来帮忙\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e把锁的实现放到操作系统里就好啦\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003esyscall(SYSCALL_acquire, \u0026amp;lk);\u003cul\u003e\n\u003cli\u003e试图获得 lk，但如果失败，就切换到其他线程\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003esyscall(SYSCALL_release, \u0026amp;lk);\u003cul\u003e\n\u003cli\u003e释放 lk，如果有等待锁的线程就唤醒\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e剩下的复杂工作都交给内核\u003cul\u003e\n\u003cli\u003e关中断 + 自旋\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e自旋锁只用来保护操作系统中非常短的代码块\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e成功获得锁 → 返回\u003c/li\u003e\n\u003cli\u003e获得失败 → 设置线程为“不可执行”并切换\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e实际上由一个系统调用实现\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eman 7 futex | claude Explain\u003cul\u003e\n\u003cli\u003eFast (user-space only) \u0026amp; Slow (kernel) Path\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://lwn.net/Articles/360699/\"\u003eLWN: A futex overview and update\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://cis.temple.edu/~giorgio/cis307/readings/futex.pdf\"\u003eFutexes are tricky\u003c/a\u003e by Ulrich Drepper\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"quantitative_research\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e定量研究方法\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e到底有没有提升性能？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们可以做一个不太严格的\u003cstrong\u003e控制变量\u003c/strong\u003e的对比实验！\u003cul\u003e\n\u003cli\u003e确定总的 sum++ 次数不变\u003c/li\u003e\n\u003cli\u003e分布在 T = 1, 2, 4, 8, 16 个线程\u003c/li\u003e\n\u003cli\u003e实验重复 5 次，统计一次 sum++ 的平均时间\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eAI 太擅长做这件事了 (值得一个 skill)\u003cul\u003e\n\u003cli\u003e原始数据的列表 (csv)\u003c/li\u003e\n\u003cli\u003eJupyter Notebook 里生成的 plot (带 error bar)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"a-final-comment\"\u003eA final comment\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://gernot-heiser.org/benchmarking-crimes.html\"\u003eSystems Benchmarking Crimes\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/sum-experiment\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/sum-experiment\"\u003e使用不同方式求和\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们对比使用自旋锁 (手工实现)、互斥锁和原子指令在求和上的性能，做一个基础的控制变量的对比实验：确定总的 sum++ 次数不变，分布在 T = 1, 2, 4, 8, 16 个线程，分别为三种实现实验重复 5 次，统计一次 sum++ 的平均时间。保存原始数据的列表 (csv)，并且在 Jupyter Notebook 里生成带 error bar 的 plot。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e并发编程 “很难”，而类应对这种复杂性的方法就是退回到不并发。我们可以在线程中使用 lock/unlock 实现互斥——所有被同一把锁保护的代码，都失去了并发的机会 (虽然先后依然是不受控制的)。当然，互斥的实现是相当有挑战性的，现代系统中的互斥设计线程中的原子操作、内核中的中断管理、原子操作和自旋等机制。值得注意的是，而只要程序中 “能并行” 的部分足够多，串行化一小部分也并不会对性能带来致命的影响。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 29 章 - Locked Data Structures\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect14.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

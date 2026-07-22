@@ -1,0 +1,393 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 进程的地址空间
+ </h1>
+<h2> 1. Review & Comments
+ </h2>
+<div class="slideshow" name="lifecycle_api"><div>
+<h1 id="api">进程管理 API</h1>
+<h2 id="fork-execve-_exit">fork(), execve() 和 _exit()</h2>
+<ul>
+<li>程序状态的复制、重置和删除</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fork</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">-1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// 错误</span>
+<span class="w">    </span><span class="n">perror</span><span class="p">(</span><span class="s">"fork"</span><span class="p">);</span><span class="w"> </span><span class="k">goto</span><span class="w"> </span><span class="n">fail</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// 子进程</span>
+<span class="w">    </span><span class="n">execve</span><span class="p">(...);</span>
+<span class="w">    </span><span class="n">perror</span><span class="p">(</span><span class="s">"execve"</span><span class="p">);</span><span class="w"> </span><span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// 父进程</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">status</span><span class="p">;</span>
+<span class="w">    </span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span><span class="w"> </span><span class="c1">// 会反复在示例代码中看到</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="crazy_os"><div>
+<h1 id="crazyos">观察 CrazyOS</h1>
+<h2 id="_1">细节：进程是有 “内存” 的</h2>
+<div class="codehilite"><pre><span></span><code><span class="cp">#define MEM_SIZE   (1 &lt;&lt; 20)</span>
+<span class="cp">#define MEM_OFFSET 0x80000000u</span>
+<span class="cp">#define STACK_TOP  (MEM_OFFSET + MEM_SIZE)</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">proc</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">CPUState</span><span class="w"> </span><span class="n">cpu</span><span class="p">;</span><span class="w">  </span><span class="c1">// points to mem[MEM_SIZE]</span>
+<span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="n">mem</span><span class="p">[</span><span class="n">MEM_SIZE</span><span class="p">];</span>
+
+<span class="w">    </span><span class="c1">// OS-internal state (pid, buf, buf_len, ...)</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<ul>
+<li>代码 (指令序列)、数据、堆、栈……都在同一份 “内存” 里<ul>
+<li>就有了今天的主题</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/crazy-os"><div><div>
+<h1 id="crazy-os"><a href="/OS/demos/virtualization/crazy-os">Crazy OS</a></h1>
+<p>我们希望 “模拟” 一个操作系统：crazy-os.c 能加载 argv 指定的 binary (p1, p2, …)，基于 mini-rv32ima.h 模拟单步执行 (RISC-V 指令)，并能够处理 syscall。</p>
+</div></div>
+</div>
+<h2> 2. 进程的地址空间
+ </h2>
+<h3> 2.1. 地址空间和指针
+ </h3>
+<div class="slideshow" name="understanding_pointers"><div>
+<h1 id="address-space">进程的地址空间 (Address Space)</h1>
+<blockquote>
+<p>AI: 操作系统为每个进程提供的一套<strong>独立的、连续的虚拟内存地址范围</strong>，因此也叫 “虚拟地址空间”。</p>
+</blockquote>
+<h2 id="_1">核心作用</h2>
+<ul>
+<li>隔离与保护：不同进程的地址空间相互独立</li>
+<li>便于管理与扩展：程序以为自己占有一大片连续内存 (实际按需分配)</li>
+<li>支持共享在隔离的前提下，允许有限的共享</li>
+</ul>
+<h2 id="_2">非常教科书式的精确定义</h2>
+<ul>
+<li>但其实我们可以从一个更直观的角度理解<ul>
+<li>知识的正向 “构建” v.s. 逆向 “总结”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="understanding_pointers_1"><div>
+<h1 id="_1">地址空间和指针</h1>
+<h2 id="crazyos-struct-proc-mem">地址空间 = CrazyOS “struct proc 中的 mem”</h2>
+<ul>
+<li>指针可以访问地址空间？</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">volatile</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">input</span><span class="p">();</span>
+<span class="o">*</span><span class="n">ptr</span><span class="p">;</span><span class="w">  </span><span class="c1">// load</span>
+<span class="o">*</span><span class="n">ptr</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w">  </span><span class="c1">// store</span>
+</code></pre></div>
+
+<ul>
+<li>Quick Quiz: 为什么需要 volatile?</li>
+<li>代码 (指令序列)、数据、堆、栈……都在同一份<strong>地址空间</strong>里<ul>
+<li>看看把指针指向不同的符号，能从中读出什么？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/pointers"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/pointers">重新理解指针</a></h1>
+<p>编写一个 C 程序，用指针指向不同的位置：代码、数据、栈，打印地址，并从中读出一些数据。并且验证指向 main 指针读取到的数据确实是 main 的二进制代码。</p>
+</div></div>
+</div>
+<div class="slideshow" name="understanding_pointers_2"><div>
+<h1 id="_1">问出今天这节课的关键问题</h1>
+<h2 id="_2"><strong>计算机世界里没有魔法</strong></h2>
+<ul>
+<li>每个字节都一定是有<strong>规定</strong>的<ul>
+<li>到底进程内存的每个字节是怎么来的？谁规定的？</li>
+<li>(你可以和 AI 聊历史)</li>
+</ul>
+</li>
+</ul>
+<h2 id="gpt-54">GPT-5.4: 下课</h2>
+<ul>
+<li>字节 “是什么”：本身不带类型，由 CPU 的 ISA 决定</li>
+<li>字节 “放哪”：由链接与可执行文件格式决定<ul>
+<li>编译/汇编会生成各类段 (.text, .rodata, …)，链接器决定布局</li>
+</ul>
+</li>
+<li>字节 “初始是什么样”：由 OS 加载器 + ABI 约定决定<ul>
+<li>Load 程序段，清零 bss、建立初始 CPU 状态 (PC, SP)、准备运行时栈内容 (argc, argv, enpv, auxv)</li>
+</ul>
+</li>
+<li>划定动态区域 (堆、栈……)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="initial_state_conclusion"><div>
+<h1 id="contd">问出今天这节课的关键问题 (cont’d)</h1>
+<h2 id="execve">进程 execve 后的进程地址空间</h2>
+<ul>
+<li>ABI 中规定的 initial state (<a href="http://jyywiki.cn/OS/manuals/sysv-abi.pdf">System V ABI</a>)<ul>
+<li>Section 3.4: “Process Initialization”</li>
+<li>只规定了部分寄存器和栈 (argv 和 envp 中的字符串保存在栈中)</li>
+</ul>
+</li>
+<li>Binary 中指定的 PT_LOAD 段<ul>
+<li>内存是分成 “一段一段” 的</li>
+<li>每一段有访问权限 (rwx)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">概念是概念，实现是实现</h2>
+<ul>
+<li>计算机系统公里：<strong>有意义的事情就一定能做到</strong><ul>
+<li>比如，看看 minimal 和真实进程的地址空间里有什么</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/addr-space"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/addr-space">探索进程地址空间</a></h1>
+<p>我在课堂上学习了 Linux 进程的地址空间。请你帮我做一个命令行工具，从命令行接收一个 pid，解析它的地址空间，输出每个部分是什么，如果是可执行的区域，把第一个 KB 的内容反汇编 (要兼容 x86-64 和 arm64)。</p>
+</div></div>
+</div>
+<h3> 2.2. 地址空间管理 API
+ </h3>
+<div class="slideshow" name="address_space_intro"><div>
+<h1 id="minimals">如果我们从 minimal.S 开始？</h1>
+<h2 id="_1">地址空间里 “什么也没有”</h2>
+<ul>
+<li>malloc(size) 的内存从哪里来呢？</li>
+</ul>
+<h2 id="mmu-vr">MMU: 操作系统给进程<strong>强制</strong>戴上的 VR 眼镜</h2>
+<ul>
+<li>应该有一个<strong>系统调用</strong>可以配置它<ul>
+<li>Quick Quiz: 你会怎么设计？</li>
+<li>UNIX: brk/sbrk (.bss 后有一个 “break”)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/vision-pro.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="mmap_syscall"><div>
+<h1 id="os-api-memory-map">[OS API] Memory Map 系统调用</h1>
+<h2 id="struct-proc">在 struct proc 上增加/删除/修改一段可访问的内存</h2>
+<ul>
+<li>MAP_ANONYMOUS: 匿名 (申请) 内存</li>
+<li>fd: 把文件 “搬到” 进程地址空间中</li>
+<li>更多的行为请让 AI 阅读 manpage</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="c1">// 映射</span>
+<span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="nf">mmap</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">addr</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">length</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">prot</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">flags</span><span class="p">,</span>
+<span class="w">           </span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="kt">off_t</span><span class="w"> </span><span class="n">offset</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="nf">munmap</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">addr</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">length</span><span class="p">);</span>
+
+<span class="c1">// 修改映射权限</span>
+<span class="kt">int</span><span class="w"> </span><span class="nf">mprotect</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">addr</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">length</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">prot</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>我有了一个更疯狂的想法：Vibe Code 一个全功能的 CrazyOS!</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="mmap_examples"><div>
+<h1 id="mmap">使用 mmap</h1>
+<h2 id="example-1">Example 1: 申请大量内存空间</h2>
+<ul>
+<li>瞬间完成内存分配<ul>
+<li>mmap/munmap 为 malloc/free 提供了机制</li>
+<li>不妨 strace/gdb 看一下</li>
+</ul>
+</li>
+</ul>
+<h2 id="example-2-everything-is-a-file">Example 2: Everything is a file</h2>
+<ul>
+<li>映射大文件、只访问其中的一小部分</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"/dev/sda"</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+    <span class="n">mm</span> <span class="o">=</span> <span class="n">mmap</span><span class="o">.</span><span class="n">mmap</span><span class="p">(</span><span class="n">fp</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),</span>
+                   <span class="n">prot</span><span class="o">=</span><span class="n">mmap</span><span class="o">.</span><span class="n">PROT_READ</span><span class="p">,</span> <span class="n">length</span><span class="o">=</span><span class="mi">128</span> <span class="o">&lt;&lt;</span> <span class="mi">30</span><span class="p">)</span>
+    <span class="n">hexdump</span><span class="o">.</span><span class="n">hexdump</span><span class="p">(</span><span class="n">mm</span><span class="p">[:</span><span class="mi">512</span><span class="p">])</span>
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="virtualization/mmap"><div><div>
+<h1 id="mmap"><a href="/OS/demos/virtualization/mmap">mmap 系统调用</a></h1>
+<p>Linux 系统使用 anonymous 的 mmap 来实现大段连续内存的分配——甚至在系统调用返回的瞬间，进程可以没有得到任何实际的内存，而是只要在首次访问时 (触发缺页异常) 分配即可。AddressSanitizer 就用 mmap 分配了 shadow memory，我们可以使用 strace 观察到这一点。</p>
+</div></div>
+</div>
+<div class="slideshow" name="mmap_examples_1"><div>
+<h1 id="mmap-contd">使用 mmap (cont’d)</h1>
+<h2 id="mmap">所有和<strong>内存</strong>相关的功能，底层几乎都是 mmap</h2>
+<ul>
+<li>内存分配<ul>
+<li>进程内的内存分配器会问操作系统要大内存<ul>
+<li>sbrk/brk 被保留，但操作系统内用 mmap 实现</li>
+</ul>
+</li>
+<li>再切小了分配给 malloc()</li>
+</ul>
+</li>
+<li>Memory-mapped I/O<ul>
+<li>/dev/gpiomem</li>
+</ul>
+</li>
+<li>进程间共享内存<ul>
+<li>shm_open() 可以返回一个文件，mmap 实现进程共享内存</li>
+</ul>
+</li>
+<li>Just-in-time 生成代码<ul>
+<li>mprotect 可以改变 mmaped region 的权限 (rwx)</li>
+</ul>
+</li>
+<li>……</li>
+</ul>
+</div></div>
+
+<h2> 3. 地址空间：有趣的应用
+ </h2>
+<div class="slideshow" name="hacking_intro"><div>
+<h1 id="hacking-address-spaces">Hacking Address Spaces</h1>
+<h2 id="_1">刚才我们已经不经意探索过进程的地址空间了</h2>
+<ul>
+<li>一个进程可以<strong>访问</strong>其他进程的地址空间<ul>
+<li>例子：gdb (分分钟可以 Vibe Code 一个 gdb 😂)</li>
+</ul>
+</li>
+</ul>
+<h2 id="code-is-cheap">在 code is cheap 的今天……</h2>
+<ul>
+<li>1970s: 个人电脑 (Bill Gates, Steve Jobs, …)</li>
+<li>2010s: 自媒体</li>
+<li>2020s: content-as-code 时代，一切皆可生成</li>
+</ul>
+<p><img alt="" src="static/img/civ-restart.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="game_genie"><div>
+<h1 id="_1">案例：物理入侵进程地址空间</h1>
+<h2 id="_2">金手指：直接物理劫持内存</h2>
+<ul>
+<li>听起来很离谱，但 “卡带机” 时代的确可以做到！<ul>
+<li>插卡 = mmap(NULL, rom_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, rom_fd, 0);</li>
+<li>今天我们有 Debug Registers 和 <a href="https://perf.wiki.kernel.org/index.php/Perf_tools_support_for_Intel%C2%AE_Processor_Trace">Intel Processor Trace</a> “合法入侵” 地址空间</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/game-genie.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="game_genie_lut"><div>
+<h1 id="cont">物理入侵进程地址空间 (cont’)</h1>
+<h2 id="game-genie-look-up-table-lut">Game Genie: 一个 Look-up Table (LUT)</h2>
+<ul>
+<li>简单、优雅：当 CPU 读地址 a 时读到 x，就替换为 y<ul>
+<li>
+<a href="https://tuxnes.sourceforge.net/gamegenie.html">Technical Notes</a> (<a href="https://patents.google.com/patent/EP0402067A2/en">专利</a>, <a href="https://www.howtogeek.com/706248/what-was-the-game-genie-cheat-device-and-how-did-it-work/">How did it work?</a>)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/game-genie-lut.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="game_genie_firmware"><div>
+<h1 id="cont">物理入侵进程地址空间 (cont’)</h1>
+<h2 id="game-genie-as-a-firmware">Game Genie as a Firmware</h2>
+<ul>
+<li>配置好 LUT、加载卡带上的代码 (像是一个 “Boot Loader”)</li>
+</ul>
+<p><img alt="" src="static/img/game-genie-init.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="memory_search"><div>
+<h1 id="_1">能做一个对任何游戏都生效的金手指吗？</h1>
+<h2 id="_2">我们需要 “知道” 程序的<strong>语义</strong>
+</h2>
+<ul>
+<li>例如：地址空间里到底什么是金钱/经验/…</li>
+<li>观察它们的<strong>变化</strong>！<ul>
+<li>进入游戏时 EXP = 4,950，打一个怪 EXP = 5,100</li>
+<li>扫描内存，只有一个 int *p 符合，改成 1,000,000，打一个小怪就满级</li>
+</ul>
+</li>
+</ul>
+<h2 id="game-wizard-32-cheat-engine">Game Wizard 32, Cheat Engine, 金山游侠</h2>
+<p><img alt="" src="static/img/knight.jpg"></p>
+</div></div>
+
+<div class="code-card" path="virtualization/knight"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/knight">金山游侠</a></h1>
+<p>通过操作系统赋予我们实现调试器的机制，我们可以窥探甚至修改任何进程的代码和数据。这个能力使我们可以绕过游戏为我们设置的 “人为障碍”，取得更多的金钱、经验，或是锁定生命值等。</p>
+</div></div>
+</div>
+<div class="slideshow" name="memory_search_1"><div>
+<h1 id="_1">扫描内存：对有些游戏是不生效的</h1>
+<div class="codehilite"><pre><span></span><code><span class="n">state_new</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">new</span><span class="w"> </span><span class="n">State</span><span class="p">(</span><span class="n">state</span><span class="p">);</span>
+<span class="n">state_new</span><span class="p">.</span><span class="n">update</span><span class="p">(</span><span class="n">exp</span><span class="p">);</span>
+<span class="n">state</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">state_new</span><span class="p">;</span>
+</code></pre></div>
+
+<h2 id="_2">我们需要更深入地知道程序的语义</h2>
+<ul>
+<li>无非就是为 “<a href="https://jyywiki.cn/OS/img/game-hack.mp4">某个游戏</a>” 定制的 gdb 脚本<ul>
+<li>(Tower of Hanoi 也是游戏外挂)</li>
+<li>例如 “变速齿轮” 会 patch 所有和时间相关的系统调用 (sleep, alarm) 实现 ”加速效果“</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/hanoi-nr"><div><div>
+<h1 id="_1"><a href="/OS/demos/intro/hanoi-nr">汉诺塔</a></h1>
+<p>汉诺塔是递归和分治的经典问题，而同学们也曾经在理解这个程序的时候遇到困难。遇到困难是正常的：C/C++ 中的 “函数” 和数学的函数很不一样，例如我们可以把 Fibonacci 数列的递归写成</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="c1">// 也可以 return y + x;</span>
+<span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">y</span><span class="p">;</span>
+</code></pre></div>
+
+<p>或是任意调换函数调用的次序，但汉诺塔不行。</p>
+<p>不行的根本原因在于汉诺塔中的 printf 会带来全局的副作用。但 C/C++ 遵循 “顺序执行” 的原则，函数的执行有 “先后” (不像数学的函数，先后是无关的)，按照不同顺序调用会导致程序输出不同的结果。实际上，C 标准中 <code>return f(n - 1) + f(n - 2);</code> 甚至不保证从左到右的调用顺序。(但现代编译器为了防止产生难以理解的执行，通常按照自然顺序调用、不做激进优化。)</p>
+</div></div>
+</div>
+<div class="slideshow" name="what_can_we_do"><div>
+<h1 id="_1">畅想的空间</h1>
+<h2 id="intelligence-is-cheap">Intelligence is cheap!</h2>
+<ul>
+<li>
+<strong>Retro 任何老游戏</strong>：逆向游戏状态 + 重渲染 + 更改游戏进程</li>
+<li>
+<strong>AI 游戏辅助</strong>：采集游戏画面，并给出训练建议</li>
+<li>软、硬、物理融合的应用…… (未来课程的 Project)</li>
+</ul>
+<p><img alt="" src="static/img/dlss5.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="pcileech"><div>
+<h1 id="_1">例子：“外挂” 的终极手段</h1>
+<h2 id="_2">做一个虚假的内存控制器 😂</h2>
+<ul>
+<li>CXL double-write (memory mirror)——不仅可以是游戏外挂！</li>
+</ul>
+<p><img alt="" src="static/img/pcileech.jpg"></p>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>操作系统通过虚拟内存为每个进程提供独立的地址空间，实现了进程间的隔离和保护。操作系统通过 mmap/munmap 实现地址空间的管理，并且还提供特定机制 (如 procfs、ptrace、process_vm_writev、共享内存等) 访问彼此的地址空间。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 12 章 - Dialogue</li>
+<li>第 13 章 - Address Spaces</li>
+<li>第 14 章 - Memory API</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 进程的地址空间\n \u003c/h1\u003e\n\u003ch2\u003e 1. Review \u0026 Comments\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"lifecycle_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"api\"\u003e进程管理 API\u003c/h1\u003e\n\u003ch2 id=\"fork-execve-_exit\"\u003efork(), execve() 和 _exit()\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e程序状态的复制、重置和删除\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efork\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e-1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 错误\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eperror\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"fork\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003egoto\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efail\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 子进程\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eexecve\u003c/span\u003e\u003cspan class=\"p\"\u003e(...);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eperror\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"execve\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eexit\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eEXIT_FAILURE\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 父进程\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003estatus\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ewaitpid\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003estatus\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 会反复在示例代码中看到\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"crazy_os\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"crazyos\"\u003e观察 CrazyOS\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e细节：进程是有 “内存” 的\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#define MEM_SIZE   (1 \u0026lt;\u0026lt; 20)\u003c/span\u003e\n\u003cspan class=\"cp\"\u003e#define MEM_OFFSET 0x80000000u\u003c/span\u003e\n\u003cspan class=\"cp\"\u003e#define STACK_TOP  (MEM_OFFSET + MEM_SIZE)\u003c/span\u003e\n\n\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eproc\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eCPUState\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecpu\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// points to mem[MEM_SIZE]\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint8_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emem\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003eMEM_SIZE\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// OS-internal state (pid, buf, buf_len, ...)\u003c/span\u003e\n\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e代码 (指令序列)、数据、堆、栈……都在同一份 “内存” 里\u003cul\u003e\n\u003cli\u003e就有了今天的主题\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/crazy-os\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"crazy-os\"\u003e\u003ca href=\"/OS/demos/virtualization/crazy-os\"\u003eCrazy OS\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们希望 “模拟” 一个操作系统：crazy-os.c 能加载 argv 指定的 binary (p1, p2, …)，基于 mini-rv32ima.h 模拟单步执行 (RISC-V 指令)，并能够处理 syscall。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 2. 进程的地址空间\n \u003c/h2\u003e\n\u003ch3\u003e 2.1. 地址空间和指针\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"understanding_pointers\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"address-space\"\u003e进程的地址空间 (Address Space)\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eAI: 操作系统为每个进程提供的一套\u003cstrong\u003e独立的、连续的虚拟内存地址范围\u003c/strong\u003e，因此也叫 “虚拟地址空间”。\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e核心作用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e隔离与保护：不同进程的地址空间相互独立\u003c/li\u003e\n\u003cli\u003e便于管理与扩展：程序以为自己占有一大片连续内存 (实际按需分配)\u003c/li\u003e\n\u003cli\u003e支持共享在隔离的前提下，允许有限的共享\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e非常教科书式的精确定义\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e但其实我们可以从一个更直观的角度理解\u003cul\u003e\n\u003cli\u003e知识的正向 “构建” v.s. 逆向 “总结”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"understanding_pointers_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e地址空间和指针\u003c/h1\u003e\n\u003ch2 id=\"crazyos-struct-proc-mem\"\u003e地址空间 = CrazyOS “struct proc 中的 mem”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e指针可以访问地址空间？\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003evolatile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eptr\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003einput\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eptr\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// load\u003c/span\u003e\n\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eptr\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// store\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003eQuick Quiz: 为什么需要 volatile?\u003c/li\u003e\n\u003cli\u003e代码 (指令序列)、数据、堆、栈……都在同一份\u003cstrong\u003e地址空间\u003c/strong\u003e里\u003cul\u003e\n\u003cli\u003e看看把指针指向不同的符号，能从中读出什么？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/pointers\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/pointers\"\u003e重新理解指针\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e编写一个 C 程序，用指针指向不同的位置：代码、数据、栈，打印地址，并从中读出一些数据。并且验证指向 main 指针读取到的数据确实是 main 的二进制代码。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"understanding_pointers_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e问出今天这节课的关键问题\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e\u003cstrong\u003e计算机世界里没有魔法\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每个字节都一定是有\u003cstrong\u003e规定\u003c/strong\u003e的\u003cul\u003e\n\u003cli\u003e到底进程内存的每个字节是怎么来的？谁规定的？\u003c/li\u003e\n\u003cli\u003e(你可以和 AI 聊历史)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"gpt-54\"\u003eGPT-5.4: 下课\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e字节 “是什么”：本身不带类型，由 CPU 的 ISA 决定\u003c/li\u003e\n\u003cli\u003e字节 “放哪”：由链接与可执行文件格式决定\u003cul\u003e\n\u003cli\u003e编译/汇编会生成各类段 (.text, .rodata, …)，链接器决定布局\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e字节 “初始是什么样”：由 OS 加载器 + ABI 约定决定\u003cul\u003e\n\u003cli\u003eLoad 程序段，清零 bss、建立初始 CPU 状态 (PC, SP)、准备运行时栈内容 (argc, argv, enpv, auxv)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e划定动态区域 (堆、栈……)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"initial_state_conclusion\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e问出今天这节课的关键问题 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"execve\"\u003e进程 execve 后的进程地址空间\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eABI 中规定的 initial state (\u003ca href=\"http://jyywiki.cn/OS/manuals/sysv-abi.pdf\"\u003eSystem V ABI\u003c/a\u003e)\u003cul\u003e\n\u003cli\u003eSection 3.4: “Process Initialization”\u003c/li\u003e\n\u003cli\u003e只规定了部分寄存器和栈 (argv 和 envp 中的字符串保存在栈中)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eBinary 中指定的 PT_LOAD 段\u003cul\u003e\n\u003cli\u003e内存是分成 “一段一段” 的\u003c/li\u003e\n\u003cli\u003e每一段有访问权限 (rwx)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e概念是概念，实现是实现\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机系统公里：\u003cstrong\u003e有意义的事情就一定能做到\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e比如，看看 minimal 和真实进程的地址空间里有什么\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/addr-space\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/addr-space\"\u003e探索进程地址空间\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我在课堂上学习了 Linux 进程的地址空间。请你帮我做一个命令行工具，从命令行接收一个 pid，解析它的地址空间，输出每个部分是什么，如果是可执行的区域，把第一个 KB 的内容反汇编 (要兼容 x86-64 和 arm64)。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch3\u003e 2.2. 地址空间管理 API\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"address_space_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"minimals\"\u003e如果我们从 minimal.S 开始？\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e地址空间里 “什么也没有”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003emalloc(size) 的内存从哪里来呢？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"mmu-vr\"\u003eMMU: 操作系统给进程\u003cstrong\u003e强制\u003c/strong\u003e戴上的 VR 眼镜\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e应该有一个\u003cstrong\u003e系统调用\u003c/strong\u003e可以配置它\u003cul\u003e\n\u003cli\u003eQuick Quiz: 你会怎么设计？\u003c/li\u003e\n\u003cli\u003eUNIX: brk/sbrk (.bss 后有一个 “break”)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/vision-pro.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"mmap_syscall\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"os-api-memory-map\"\u003e[OS API] Memory Map 系统调用\u003c/h1\u003e\n\u003ch2 id=\"struct-proc\"\u003e在 struct proc 上增加/删除/修改一段可访问的内存\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eMAP_ANONYMOUS: 匿名 (申请) 内存\u003c/li\u003e\n\u003cli\u003efd: 把文件 “搬到” 进程地址空间中\u003c/li\u003e\n\u003cli\u003e更多的行为请让 AI 阅读 manpage\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"c1\"\u003e// 映射\u003c/span\u003e\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"nf\"\u003emmap\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eaddr\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elength\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eprot\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eflags\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e           \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eoff_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eoffset\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emunmap\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eaddr\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elength\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\n\u003cspan class=\"c1\"\u003e// 修改映射权限\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emprotect\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eaddr\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003elength\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eprot\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e我有了一个更疯狂的想法：Vibe Code 一个全功能的 CrazyOS!\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"mmap_examples\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"mmap\"\u003e使用 mmap\u003c/h1\u003e\n\u003ch2 id=\"example-1\"\u003eExample 1: 申请大量内存空间\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e瞬间完成内存分配\u003cul\u003e\n\u003cli\u003emmap/munmap 为 malloc/free 提供了机制\u003c/li\u003e\n\u003cli\u003e不妨 strace/gdb 看一下\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"example-2-everything-is-a-file\"\u003eExample 2: Everything is a file\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e映射大文件、只访问其中的一小部分\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ewith\u003c/span\u003e \u003cspan class=\"nb\"\u003eopen\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"/dev/sda\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"s2\"\u003e\"rb\"\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e \u003cspan class=\"k\"\u003eas\u003c/span\u003e \u003cspan class=\"n\"\u003efp\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\n    \u003cspan class=\"n\"\u003emm\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"n\"\u003emmap\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003emmap\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efp\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003efileno\u003c/span\u003e\u003cspan class=\"p\"\u003e(),\u003c/span\u003e\n                   \u003cspan class=\"n\"\u003eprot\u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"n\"\u003emmap\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ePROT_READ\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"n\"\u003elength\u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"mi\"\u003e128\u003c/span\u003e \u003cspan class=\"o\"\u003e\u0026lt;\u0026lt;\u003c/span\u003e \u003cspan class=\"mi\"\u003e30\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n    \u003cspan class=\"n\"\u003ehexdump\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ehexdump\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003emm\u003c/span\u003e\u003cspan class=\"p\"\u003e[:\u003c/span\u003e\u003cspan class=\"mi\"\u003e512\u003c/span\u003e\u003cspan class=\"p\"\u003e])\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/mmap\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"mmap\"\u003e\u003ca href=\"/OS/demos/virtualization/mmap\"\u003emmap 系统调用\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eLinux 系统使用 anonymous 的 mmap 来实现大段连续内存的分配——甚至在系统调用返回的瞬间，进程可以没有得到任何实际的内存，而是只要在首次访问时 (触发缺页异常) 分配即可。AddressSanitizer 就用 mmap 分配了 shadow memory，我们可以使用 strace 观察到这一点。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"mmap_examples_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"mmap-contd\"\u003e使用 mmap (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"mmap\"\u003e所有和\u003cstrong\u003e内存\u003c/strong\u003e相关的功能，底层几乎都是 mmap\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e内存分配\u003cul\u003e\n\u003cli\u003e进程内的内存分配器会问操作系统要大内存\u003cul\u003e\n\u003cli\u003esbrk/brk 被保留，但操作系统内用 mmap 实现\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e再切小了分配给 malloc()\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eMemory-mapped I/O\u003cul\u003e\n\u003cli\u003e/dev/gpiomem\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e进程间共享内存\u003cul\u003e\n\u003cli\u003eshm_open() 可以返回一个文件，mmap 实现进程共享内存\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eJust-in-time 生成代码\u003cul\u003e\n\u003cli\u003emprotect 可以改变 mmaped region 的权限 (rwx)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 地址空间：有趣的应用\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"hacking_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hacking-address-spaces\"\u003eHacking Address Spaces\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e刚才我们已经不经意探索过进程的地址空间了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一个进程可以\u003cstrong\u003e访问\u003c/strong\u003e其他进程的地址空间\u003cul\u003e\n\u003cli\u003e例子：gdb (分分钟可以 Vibe Code 一个 gdb 😂)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"code-is-cheap\"\u003e在 code is cheap 的今天……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e1970s: 个人电脑 (Bill Gates, Steve Jobs, …)\u003c/li\u003e\n\u003cli\u003e2010s: 自媒体\u003c/li\u003e\n\u003cli\u003e2020s: content-as-code 时代，一切皆可生成\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/civ-restart.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"game_genie\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e案例：物理入侵进程地址空间\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e金手指：直接物理劫持内存\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e听起来很离谱，但 “卡带机” 时代的确可以做到！\u003cul\u003e\n\u003cli\u003e插卡 = mmap(NULL, rom_size, PROT_READ | PROT_EXEC, MAP_PRIVATE, rom_fd, 0);\u003c/li\u003e\n\u003cli\u003e今天我们有 Debug Registers 和 \u003ca href=\"https://perf.wiki.kernel.org/index.php/Perf_tools_support_for_Intel%C2%AE_Processor_Trace\"\u003eIntel Processor Trace\u003c/a\u003e “合法入侵” 地址空间\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/game-genie.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"game_genie_lut\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"cont\"\u003e物理入侵进程地址空间 (cont’)\u003c/h1\u003e\n\u003ch2 id=\"game-genie-look-up-table-lut\"\u003eGame Genie: 一个 Look-up Table (LUT)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e简单、优雅：当 CPU 读地址 a 时读到 x，就替换为 y\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://tuxnes.sourceforge.net/gamegenie.html\"\u003eTechnical Notes\u003c/a\u003e (\u003ca href=\"https://patents.google.com/patent/EP0402067A2/en\"\u003e专利\u003c/a\u003e, \u003ca href=\"https://www.howtogeek.com/706248/what-was-the-game-genie-cheat-device-and-how-did-it-work/\"\u003eHow did it work?\u003c/a\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/game-genie-lut.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"game_genie_firmware\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"cont\"\u003e物理入侵进程地址空间 (cont’)\u003c/h1\u003e\n\u003ch2 id=\"game-genie-as-a-firmware\"\u003eGame Genie as a Firmware\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e配置好 LUT、加载卡带上的代码 (像是一个 “Boot Loader”)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/game-genie-init.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"memory_search\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e能做一个对任何游戏都生效的金手指吗？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e我们需要 “知道” 程序的\u003cstrong\u003e语义\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例如：地址空间里到底什么是金钱/经验/…\u003c/li\u003e\n\u003cli\u003e观察它们的\u003cstrong\u003e变化\u003c/strong\u003e！\u003cul\u003e\n\u003cli\u003e进入游戏时 EXP = 4,950，打一个怪 EXP = 5,100\u003c/li\u003e\n\u003cli\u003e扫描内存，只有一个 int *p 符合，改成 1,000,000，打一个小怪就满级\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"game-wizard-32-cheat-engine\"\u003eGame Wizard 32, Cheat Engine, 金山游侠\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/knight.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/knight\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/knight\"\u003e金山游侠\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e通过操作系统赋予我们实现调试器的机制，我们可以窥探甚至修改任何进程的代码和数据。这个能力使我们可以绕过游戏为我们设置的 “人为障碍”，取得更多的金钱、经验，或是锁定生命值等。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"memory_search_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e扫描内存：对有些游戏是不生效的\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003estate_new\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003enew\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eState\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003estate\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003estate_new\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eupdate\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eexp\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003estate\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003estate_new\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_2\"\u003e我们需要更深入地知道程序的语义\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e无非就是为 “\u003ca href=\"https://jyywiki.cn/OS/img/game-hack.mp4\"\u003e某个游戏\u003c/a\u003e” 定制的 gdb 脚本\u003cul\u003e\n\u003cli\u003e(Tower of Hanoi 也是游戏外挂)\u003c/li\u003e\n\u003cli\u003e例如 “变速齿轮” 会 patch 所有和时间相关的系统调用 (sleep, alarm) 实现 ”加速效果“\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/hanoi-nr\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/intro/hanoi-nr\"\u003e汉诺塔\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e汉诺塔是递归和分治的经典问题，而同学们也曾经在理解这个程序的时候遇到困难。遇到困难是正常的：C/C++ 中的 “函数” 和数学的函数很不一样，例如我们可以把 Fibonacci 数列的递归写成\u003c/p\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 也可以 return y + x;\u003c/span\u003e\n\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e或是任意调换函数调用的次序，但汉诺塔不行。\u003c/p\u003e\n\u003cp\u003e不行的根本原因在于汉诺塔中的 printf 会带来全局的副作用。但 C/C++ 遵循 “顺序执行” 的原则，函数的执行有 “先后” (不像数学的函数，先后是无关的)，按照不同顺序调用会导致程序输出不同的结果。实际上，C 标准中 \u003ccode\u003ereturn f(n - 1) + f(n - 2);\u003c/code\u003e 甚至不保证从左到右的调用顺序。(但现代编译器为了防止产生难以理解的执行，通常按照自然顺序调用、不做激进优化。)\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"what_can_we_do\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e畅想的空间\u003c/h1\u003e\n\u003ch2 id=\"intelligence-is-cheap\"\u003eIntelligence is cheap!\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003eRetro 任何老游戏\u003c/strong\u003e：逆向游戏状态 + 重渲染 + 更改游戏进程\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003eAI 游戏辅助\u003c/strong\u003e：采集游戏画面，并给出训练建议\u003c/li\u003e\n\u003cli\u003e软、硬、物理融合的应用…… (未来课程的 Project)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/dlss5.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"pcileech\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e例子：“外挂” 的终极手段\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e做一个虚假的内存控制器 😂\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCXL double-write (memory mirror)——不仅可以是游戏外挂！\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/pcileech.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e操作系统通过虚拟内存为每个进程提供独立的地址空间，实现了进程间的隔离和保护。操作系统通过 mmap/munmap 实现地址空间的管理，并且还提供特定机制 (如 procfs、ptrace、process_vm_writev、共享内存等) 访问彼此的地址空间。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 12 章 - Dialogue\u003c/li\u003e\n\u003cli\u003e第 13 章 - Address Spaces\u003c/li\u003e\n\u003cli\u003e第 14 章 - Memory API\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect6.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

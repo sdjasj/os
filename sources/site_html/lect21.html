@@ -1,0 +1,514 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 一个 Token 的旅程
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">回顾 “并发编程”</h2>
+<ul>
+<li>从 <code>spawn(T_worker)</code> 和 join 开始<ul>
+<li>一切的基础：<strong>计算图模型</strong>
+</li>
+<li>共享内存、互斥锁、条件变量、信号量的底层机制</li>
+</ul>
+</li>
+<li>面向 “异构” 复杂 T_worker 的改进<ul>
+<li>关键问题：管理状态、同步、复杂性<ul>
+<li>Coroutine, goroutine</li>
+<li>Promise, async/await</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>面向 “同构” 小而短 T_worker 的改进<ul>
+<li>关键问题：最大化计算密度和能效比<ul>
+<li>SIMD (数据并行)</li>
+<li>从图形处理器到到 CUDA/SIMT</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">并发部分的最后一课</h2>
+<ul>
+<li>让我们看看 “真实的系统” 吧！</li>
+</ul>
+</div></div>
+
+<h2> 1. 用户的视角
+ </h2>
+<div class="slideshow" name="chat_with_ds"><div>
+<h1 id="deepseek">让 DeepSeek 和我聊聊天</h1>
+<h2 id="api-doc">官方 API doc</h2>
+<div class="codehilite"><pre><span></span><code>curl<span class="w"> </span>https://api.deepseek.com/chat/completions<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Content-Type: application/json"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">"Authorization: Bearer </span><span class="si">${</span><span class="nv">DEEPSEEK_API_KEY</span><span class="si">}</span><span class="s2">"</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">'{</span>
+<span class="s1">        "model": "deepseek-v4-flash",</span>
+<span class="s1">        "messages": [</span>
+<span class="s1">          {"role": "user", "content": "Hooo."}</span>
+<span class="s1">        ],</span>
+<span class="s1">        "stream": true</span>
+<span class="s1">      }'</span>
+</code></pre></div>
+
+<ul>
+<li>https://jyywiki.cn/submit.sh 也有一个 curl<ul>
+<li>curl: command not found 会提交失败</li>
+</ul>
+</li>
+<li>我们准备了一个 “有功能” 的 Python 版本<ul>
+<li>让我们用 strace 拆开它</li>
+<li>建立连接、发送数据 (HTTP request)、等待数据</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/llm-request"><div><div>
+<h1 id="llm-request"><a href="/OS/demos/concurrency/llm-request">一个 LLM Request</a></h1>
+<p>在地球上的任何一个地方，只要能接入互联网，通过 requests 库请求 DeepSeek API endpoint，就能够直接启动和 AI 的聊天。很难想象短短数年时间，全人类都在使用的新基础设施就已经建设完毕了。</p>
+</div></div>
+</div>
+<div class="slideshow" name="packet_journey"><div>
+<h1 id="_1">“数据” 是如何到达另一台机器的？</h1>
+<h2 id="dns-ip">第一步：DNS 解析 — 域名 → IP</h2>
+<div class="codehilite"><pre><span></span><code>dig<span class="w"> </span>api.deepseek.com<span class="w"> </span>+short
+</code></pre></div>
+
+<ul>
+<li>直接让 DeepSeek 自己瞧瞧吧<ul>
+<li>(DNS 就已经开始做负载均衡了)</li>
+</ul>
+</li>
+</ul>
+<h2 id="packet-forwarding">第二步：packet forwarding — 逐跳到达</h2>
+<ul>
+<li>你的机器 → 路由器 → ISP → … → 数据中心 → 服务器</li>
+<li>Gateway: 默认网关，”不知道往哪走就往这扔”</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>traceroute<span class="w"> </span>api.deepseek.com
+</code></pre></div>
+
+<ul>
+<li>操纵 TTL 值，使路由器产生 ICMP Time Exceeded</li>
+<li>典型的延迟：局域网 &lt;1ms, 同城 &lt;5ms, 跨国 ~200ms</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="real_packet"><div>
+<h1 id="_1">终于，我们 “到达” 数据中心的另一台机器</h1>
+<h2 id="load-balancer">这台机器很大概率也只是一个 Load Balancer</h2>
+<ul>
+<li>会再把请求转发到真正的业务服务器</li>
+<li>我们实际看到的 response (curl -i)</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>HTTP/2 200
+server: openresty
+content-type: text/event-stream
+cache-control: no-cache
+connection: keep-alive
+</code></pre></div>
+
+<ul>
+<li>https://api.deepseek.com/chat/completions 和 https://www.deepseek.com/ 是不同的服务<ul>
+<li>API: <code>server: openresty</code>
+</li>
+<li>WWW: <code>server: tencent-cos</code>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="reach_business"><div>
+<h1 id="_1">最终，到达实际的业务节点</h1>
+<h2 id="_2">业务节点收到来自本机的请求</h2>
+<ul>
+<li>Header 中的 DEEPSEEK_API_KEY</li>
+<li>Body 中的 JSON (model, messages, stream, …)</li>
+</ul>
+<h2 id="_3">麻烦的事情才真正开始！</h2>
+<ul>
+<li>服务端要鉴权、计费、审计……</li>
+<li>后面还连着数据库、缓存、消息队列……<ul>
+<li>我们学习的 “操作系统 API”、“并发编程”……默默支撑了这一切</li>
+<li>把做过的实验拼起来，就是一个非常完整的 Computer Systems 的图景</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 进入数据中心
+ </h2>
+<div class="slideshow" name="datacenter_hero"><div>
+<h1 id="ai">数据中心：互联网 &amp; AI 时代的幕后英雄</h1>
+<blockquote>
+<p>Datacenter: “A network of computing and storage resources that enable the delivery of <em>shared</em> applications and data.” (CISCO)</p>
+</blockquote>
+<h2 id="199x-">上半场：应用后端 (199X - 至今)</h2>
+<ul>
+<li>从静态的 http 页面 (Yahoo!), … 到 Web 2.0 (Facebook)，再到移动互联网 (iOS, Android)</li>
+<li>在 “云端” 留有你的 personality<ul>
+<li>同时，意味着我们其实没有任何隐私 😂</li>
+</ul>
+</li>
+</ul>
+<h2 id="ai-2022-">下半场：AI 推理 (2022 - 至今)</h2>
+<ul>
+<li>DeepSeekV4 Flash: 284B-A13B</li>
+<li>DeepSeekV4 Pro: 1.6T-A49B<ul>
+<li>这还是 per token 的计算量，不包括 attention 的成本</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/dsv4.png"></p>
+</div></div>
+
+<div class="slideshow" name="an_industry"><div>
+<h1 id="_1">数据中心：一个产业链</h1>
+<h2 id="_2">我们在学校里学 “做题”，很少学 “题目是怎么来的”</h2>
+<ul>
+<li>但市场的供需关系永远存在<ul>
+<li>朝阳产业就需要更多的人</li>
+<li>夕阳产业就会陷入内卷</li>
+</ul>
+</li>
+<li>技术总有一天会过时<ul>
+<li>试着去获得 “推导出这些技术” 的能力，才能获得 visions</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">学校不教大家的 “世界模型”</h2>
+<ul>
+<li>产业结构和市场环境</li>
+<li>企业的本质、供应链、运转、股权、激励机制……<ul>
+<li>做题家们进入社会，还会经历一次重新学习的机会</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="datacenter_characteristics"><div>
+<h1 id="_1">数据中心中的海量分布式数据处理</h1>
+<h2 id="crud">实时的 “小数据处理” (CRUD)</h2>
+<ul>
+<li>订单事务、内容分发、用户鉴权、弹幕、计费、视频串流……</li>
+<li>DeepSeek Chat 会保存完整的聊天记录，允许继续追问</li>
+</ul>
+<h2 id="_2">半离线的 “中数据处理”</h2>
+<ul>
+<li>周期记账、备份、数据看板……</li>
+</ul>
+<h2 id="_3">离线的 “大数据处理”</h2>
+<ul>
+<li>内容索引、数据挖掘、流量分析……</li>
+</ul>
+<h2 id="_4">所有应用，无一例外</h2>
+<ul>
+<li>豆包、千问、搜索、社交、支付、游戏……</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="c10k"><div>
+<h1 id="the-c10k-problem">The C10K Problem</h1>
+<h2 id="dan-kegel-1999">Dan Kegel, 1999</h2>
+<blockquote>
+<p>It’s time for web servers to handle ten thousand clients simultaneously, don’t you think? After all, the web is a big place now.</p>
+</blockquote>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="nb">true</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">Request</span><span class="w"> </span><span class="o">*</span><span class="n">rq</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get_request</span><span class="p">();</span>
+<span class="w">    </span><span class="n">pthread_create</span><span class="p">(</span><span class="o">&amp;</span><span class="n">tid</span><span class="p">,</span><span class="w"> </span><span class="nb">NULL</span><span class="p">,</span><span class="w"> </span><span class="n">handle_request</span><span class="p">,</span><span class="w"> </span><span class="n">rq</span><span class="p">);</span>
+<span class="w">    </span><span class="c1">// 如果软件写得不好，就无法支撑 C10K</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>催生了 epoll、Nginx、事件驱动架构，和之前的并发编程模型 (goroutine, etc.)</li>
+<li>再等到 C10M 的时代，就必须走向分布式系统了 (Google, 2003)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="datacenter_concurrency"><div>
+<h1 id="_1">数据中心里的并发编程</h1>
+<h2 id="qps">高吞吐 (QPS) &amp; 低延迟的事件处理</h2>
+<ul>
+<li>处理事件可能需要读写持久存储或请求其他节点的服务<ul>
+<li>计算机系统栈是一层一层垒起来的，到处都是坑</li>
+<li>例子：下单会关联多个子系统 (是一个计算图)</li>
+</ul>
+</li>
+<li>P99/P999 Latency (最慢的那一些也不能卡顿) 也很关键<ul>
+<li>一个 fully locked hash table resize 就能出性能事故</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">假设有数千/数万个请求同时到达服务器……</h2>
+<ul>
+<li>“Denial of Service, DoS”<ul>
+<li>全国的小爱音箱在小米汽车发布会上同步瘫痪</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">还必须保证 “超高可靠性”</h2>
+<ul>
+<li>99.9999% 的可用性和绝对的数据正确性</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="distributed_challenges"><div>
+<h1 id="_1">分布式系统难题</h1>
+<h2 id="cap-theorem">CAP Theorem</h2>
+<ul>
+<li>数据保持一致 (Consistency)、服务时刻可用 (Availability)、容忍机器离线 (Partition tolerance) 不可兼得<ul>
+<li>Sloppy counter 有 “牺牲一致性换可用性” 的意味</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/CAP-theorem.png"></p>
+</div></div>
+
+<div class="slideshow" name="ds_api"><div>
+<h1 id="llm-request">例子：LLM Request</h1>
+<h2 id="header-deepseek_api_key">Header 中有 DEEPSEEK_API_KEY</h2>
+<ul>
+<li>需要从 key 反查到账号做鉴权、billing (类似点赞/收藏)</li>
+<li>需要做日志记录 (审计、频率控制 429 Rate Limit)</li>
+</ul>
+<h2 id="key">同一个 key 可以被多个机器使用 (真正的并行)</h2>
+<ul>
+<li>用户还可以随时 disable API key</li>
+<li>这就立即撞到了 CAP Theorem 的墙了<ul>
+<li>大家在 mymalloc 并发编程的时候已经吃够苦头了<ul>
+<li>分布式的锁开销从 ns 级到 ms 级</li>
+<li>还有随时可能发生的 non-deterministic delay/crash</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/apikey-leak.png"></p>
+</div></div>
+
+<div class="slideshow" name="redesign_system"><div>
+<h1 id="_1">解决方法：重新设计系统接口</h1>
+<h2 id="unix-open-read-write">UNIX 的设计: open, read, write, …</h2>
+<ul>
+<li>对于单机应用很好，分布式应用不行</li>
+</ul>
+<h2 id="vs">数据 v.s. 计算</h2>
+<ul>
+<li>UNIX: 管道流式数据处理 (<strong>把数据带到计算</strong>)</li>
+<li>分布式系统：必须把计算分发到机器/线程 (<strong>把计算带到数据</strong>)</li>
+</ul>
+<h2 id="_2">容错和可靠性</h2>
+<ul>
+<li>UNIX: 假设机器和程序都是可靠的</li>
+<li>分布式系统：必须支持透明的网络延迟/容错 (重算)</li>
+</ul>
+<h2 id="unix">扩展 UNIX 的设计</h2>
+<ul>
+<li>Google File System: 数据依然是文件 (byte array)</li>
+<li>BigTable: 在文件的基础上构建 key-value 数据库，解决 CRUD (OLTP, Transactional)</li>
+<li>MapReduce: 限制计算必须是 “能 scale out” 的形式，解决后台索引 (OLAP, Analytical)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="serverless"><div>
+<h1 id="_1">如何为大规模分布式系统编程？</h1>
+<h2 id="promise">其实只要抄之前 Promise 的答案就行了</h2>
+<ul>
+<li>足够好的存储系统 + 描述数据上的计算图 = Serverless Computing</li>
+<li>Function as a Service: Write Once, Planet Scale<ul>
+<li>
+<strong>函数的写法表达分布式的流程</strong>，C10M 就让厂商去头疼吧</li>
+<li>FaaS 允许多次重试，因此大部分功能需要 idempotence (幂等性)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kd">const</span><span class="w"> </span><span class="nx">dynamo</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">AWS</span><span class="p">.</span><span class="nx">DynamoDB</span><span class="p">.</span><span class="nx">DocumentClient</span><span class="p">();</span>
+<span class="nx">exports</span><span class="p">.</span><span class="nx">handler</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="p">(</span><span class="nx">event</span><span class="p">)</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">apiKey</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">event</span><span class="p">.</span><span class="nx">headers</span><span class="p">[</span><span class="s1">'Authorization'</span><span class="p">]</span><span class="o">?</span><span class="p">.</span><span class="nx">replace</span><span class="p">(</span><span class="s1">'Bearer '</span><span class="p">,</span><span class="w"> </span><span class="s1">''</span><span class="p">);</span>
+<span class="w">    </span><span class="kd">const</span><span class="w"> </span><span class="nx">user</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">dynamo</span><span class="p">.</span><span class="nx">send</span><span class="p">(</span><span class="ow">new</span><span class="w"> </span><span class="nx">GetCommand</span><span class="p">({</span>
+<span class="w">        </span><span class="nx">TableName</span><span class="o">:</span><span class="w"> </span><span class="s1">'APIKeys'</span><span class="p">,</span><span class="w"> </span><span class="nx">Key</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">apiKey</span><span class="w"> </span><span class="p">}</span>
+<span class="w">    </span><span class="p">})).</span><span class="nx">Item</span><span class="p">;</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nx">user</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="nx">user</span><span class="p">.</span><span class="nx">disabled</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">statusCode</span><span class="o">:</span><span class="w"> </span><span class="mf">401</span><span class="p">,</span><span class="w"> </span><span class="nx">body</span><span class="o">:</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">};</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">statusCode</span><span class="o">:</span><span class="w"> </span><span class="mf">200</span><span class="p">,</span>
+<span class="w">        </span><span class="nx">body</span><span class="o">:</span><span class="w"> </span><span class="nx">do_llm_inference</span><span class="p">(...),</span><span class="w">  </span><span class="c1">// 就剩下它了</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<h2> 3. 从 Token 到 Tensor
+ </h2>
+<div class="slideshow" name="a_new_world"><div>
+<h1 id="simt">进入 SIMT 的世界</h1>
+<h2 id="do_llm_inference"><code>do_llm_inference()</code></h2>
+<ul>
+<li>Next-token prediction</li>
+<li>本质：从一个 “学到的” 函数里采样<ul>
+<li>一个非常大的计算图，但存在一个 “很短的 generator” (<a href="https://git.nju.edu.cn/jyy/os2026/-/blob/M6/gpt/gpt.c?ref_type=heads">gpt.c</a>)</li>
+<li>Richard Sutton: <a href="https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf">The Bitter Lesson</a>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="tensors">有各种各样的 “tensors” (参数)</h2>
+<p><img alt="" src="static/img/tensor.png"></p>
+</div></div>
+
+<div class="slideshow" name="attention"><div>
+<h1 id="attention-is-all-you-need">Attention is All You Need</h1>
+<h2 id="transformer-head">每一层 Transformer (head) 都是 “一本书”</h2>
+<ul>
+<li>每一本书都输出一个 “改写后的版本” (去掉噪声，越来越接近天书)<ul>
+<li>看书 = Q: 需要补全的句子 (我在找什么)，K: 书的目录 (我有什么)，V: 书的内容 (具体的内容是什么，甚至这也是学出来的)</li>
+<li>“看书” 以后生成 “短时记忆”，不需要再看 context，直接经过全连接层 “重写” 记忆</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/qkv.png"></p>
+</div></div>
+
+<div class="slideshow" name="cuda_good_at"><div>
+<h1 id="attention-is-all-you-need">Attention is All You Need: 实现</h1>
+<h2 id="llmctrain_gpt2_fp32cu">让我们看一眼 <code>llm.c/train_gpt2_fp32.cu</code>
+</h2>
+<ul>
+<li>
+<code>attention_forward</code>, <code>matmul_forward</code> 的代码，是不是和 <code>mandelbrot()</code> 很像？</li>
+<li>我们可以非常容易地用 spawn、SIMD, SIMT 等任何一种方式并行化它 (当然要获得极致的性能，这并不容易)</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">matmul_forward</span><span class="p">(</span><span class="kt">float</span><span class="o">*</span><span class="w"> </span><span class="n">out</span><span class="p">,</span><span class="w"> </span><span class="p">...,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">B</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">T</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">OC</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">sqrt_block_size</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">16</span><span class="p">;</span>
+
+<span class="w">    </span><span class="n">dim3</span><span class="w"> </span><span class="n">gridDim</span><span class="p">(</span><span class="n">CEIL_DIV</span><span class="p">(</span><span class="n">B</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">T</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="o">*</span><span class="n">sqrt_block_size</span><span class="p">),</span><span class="w"> </span><span class="n">CEIL_DIV</span><span class="p">(</span><span class="n">OC</span><span class="p">,</span><span class="w"> </span><span class="mi">8</span><span class="o">*</span><span class="n">sqrt_block_size</span><span class="p">));</span>
+<span class="w">    </span><span class="n">dim3</span><span class="w"> </span><span class="n">blockDim</span><span class="p">(</span><span class="n">sqrt_block_size</span><span class="p">,</span><span class="w"> </span><span class="n">sqrt_block_size</span><span class="p">);</span>
+<span class="w">    </span><span class="n">matmul_forward_kernel4</span><span class="o">&lt;&lt;&lt;</span><span class="n">gridDim</span><span class="p">,</span><span class="w"> </span><span class="n">blockDim</span><span class="o">&gt;&gt;&gt;</span><span class="p">(</span><span class="n">out</span><span class="p">,</span><span class="w"> </span><span class="n">inp</span><span class="p">,</span><span class="w"> </span><span class="n">weight</span><span class="p">,</span><span class="w"> </span><span class="n">bias</span><span class="p">,</span><span class="w"> </span><span class="n">C</span><span class="p">,</span><span class="w"> </span><span class="n">OC</span><span class="p">);</span>
+<span class="w">    </span><span class="n">cudaCheck</span><span class="p">(</span><span class="n">cudaGetLastError</span><span class="p">());</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>
+<code>&lt;&lt;&lt; &gt;&gt;&gt;</code>: 发送参数到 GPU，GPU 开始执行，CPU 立即返回，GPU 内部会按顺序执行所有的 kernels</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="tensor_core"><div>
+<h1 id="_1">如果还要压榨极致的性能？</h1>
+<h2 id="simd-ptx">能不能把 SIMD 引入到 PTX 指令集里？</h2>
+<ul>
+<li>SIMT + SIMD，指令译码的开销就真的接近零了</li>
+<li>恭喜你，你发明了 <a href="https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#tensorcore-5th-generation-instructions">Tensore Cores</a><ul>
+<li>混合精度 FMA <code>D (m×n) += A (m×k) x B (k×n)</code>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">不，你没有</h2>
+<ul>
+<li>SIMD 省去了 <code>base + row * stride + col</code> 的指令</li>
+<li>但难题其实是<strong>内存移动与布局优化</strong><ul>
+<li>多维寻址、稀疏数据搬运、跨步访问、异步同步、布局转换和内存管理</li>
+<li>cp.async.bulk.tensor<ul>
+<li>支持稀疏数据拷贝 (解压缩)</li>
+<li>支持 zero-overhead 转置</li>
+<li>……</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="ai_industry"><div>
+<h1 id="_1">这些就是十万亿美元产业生态的起点</h1>
+<h2 id="_2">再回顾操作系统的发展历程，历史总是<strong>惊人地相似</strong>
+</h2>
+<ul>
+<li>底层：加速器 (GPU)、底层编程模型 (CUDA)，库函数 (cuBLAS, DeepGEMM, NCCL)</li>
+<li>中层：编译器 (FlashAttention, Triton)、训练 (Megatron)、推理 (vLLM) 框架、</li>
+<li>开发者生态：训练 (PyTorch, TensorFlow)、模型分发 (HuggingFace), …</li>
+<li>用户接口：ollama, OpenWebUI, …</li>
+<li>应用：Claude Code, OpenClaw, Manvus, NotebookLM, …<ul>
+<li>你能想到的一切，都有人做 (所以在 “做题” 之余，也可以想一想 big picture)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/nvda.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="generate_a_token"><div>
+<h1 id="token">生成一个 Token</h1>
+<h2 id="gpt2-xl-15b-1k-context">如果推理集群运行的都是 GPT2-XL (1.5B), 1k context</h2>
+<ul>
+<li>问题就几乎解决了 (类似于 http 请求最终到达业务节点，直接创建一个 goroutine 执行就行)</li>
+<li>但是对于 1.6T, 1M context 的模型来说，绝对是极为困难的<ul>
+<li>O(n²) 的 full attention → sparsify, low-rank, …</li>
+<li>ChatGPT 爆火以后，NVDA 的起飞绝对是可以预见的</li>
+</ul>
+</li>
+</ul>
+<h2 id="token_1">生成一个 token 要做两件事</h2>
+<ul>
+<li>Prefill: 算出每一层所有的 attention “书库” (K 和 V)<ul>
+<li>保存到 KV Cache</li>
+</ul>
+</li>
+<li>Decode: 生成输出 token<ul>
+<li>读取完整 KV Cache</li>
+<li>取出 K/V → 根据当前 Q 计算 “短时记忆” → 生成下一个 token → 更新 KV Cache</li>
+</ul>
+</li>
+</ul>
+<h2 id="mlsyser">MLSyser: “你们在体系结构、操作系统课上学的概念全都过时了”</h2>
+<ul>
+<li>存储、互联、带宽、延迟……都和经典教科书完全不一样</li>
+<li>只有分析问题的 first principles 是有用的</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="token_finally"><div>
+<h1 id="_1">旅程的终点</h1>
+<h2 id="token">终于，生成的 token 回来了</h2>
+<ul>
+<li>在推理集群内经历了 TP (Tensor Parallelism)、PP (Pipeline Parallelism)、EP (Expert Parallelism), … 返回<strong>一个整数</strong>
+</li>
+<li>后端代码再次开始执行<ul>
+<li>审计 (模型经常生成到一半闭嘴)、记账 (通常是 append 到一个 log，然后 log 延迟更新到 dashboard)……最终生成一个 http event-stream response (jsonl)，原路返回</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>HTTP/1.1 200 Connection established
+
+HTTP/2 200 
+content-type: text/event-stream; charset=utf-8 ...
+
+data: {"id":"8fd70919-7f53-4a75-a959-bb6851d542dc","object":"chat.completion.chunk","created":1778726742,"model":"deepseek-v4-flash","system_fingerprint":"fp_8b330d02d0_prod0820_fp8_kvcache_20260402","choices":[{"index":0,"delta":{"role":"assistant","content":null,"reasoning_content":""},"logprobs":null,"finish_reason":null}]}
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="not_end"><div>
+<h1 id="_1">旅程：没有终点</h1>
+<h2 id="_2">也许全世界都做错了呢？</h2>
+<ul>
+<li>Scaling Law: Transformers 比 LSTM 在长上下文下表现更好<ul>
+<li>但 “最好” 的那个在哪里，人类也许还不知道</li>
+</ul>
+</li>
+<li>希望大家不要 “错上加错”：<strong>无意义的学术裁缝是有害的</strong><ul>
+<li>象牙塔里的老登们在权利寻租，年轻人被服从性测试疯狂折磨 (参与答辩与评教有感)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/dlm.png"></p>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>一个 Token 的旅程，穿越了整个计算机系统栈：从浏览器的 HTTP 请求，到数据中心的负载均衡、API 网关、分布式存储，最终到达 GPU 上的矩阵乘法。课堂的意义从来不是教会大家具体的技术，而是在理解这些技术的过程中领悟属于自己的 “还原方法论”，从而去面对未知的新挑战。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 一个 Token 的旅程\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e回顾 “并发编程”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从 \u003ccode\u003espawn(T_worker)\u003c/code\u003e 和 join 开始\u003cul\u003e\n\u003cli\u003e一切的基础：\u003cstrong\u003e计算图模型\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e共享内存、互斥锁、条件变量、信号量的底层机制\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e面向 “异构” 复杂 T_worker 的改进\u003cul\u003e\n\u003cli\u003e关键问题：管理状态、同步、复杂性\u003cul\u003e\n\u003cli\u003eCoroutine, goroutine\u003c/li\u003e\n\u003cli\u003ePromise, async/await\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e面向 “同构” 小而短 T_worker 的改进\u003cul\u003e\n\u003cli\u003e关键问题：最大化计算密度和能效比\u003cul\u003e\n\u003cli\u003eSIMD (数据并行)\u003c/li\u003e\n\u003cli\u003e从图形处理器到到 CUDA/SIMT\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e并发部分的最后一课\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e让我们看看 “真实的系统” 吧！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 用户的视角\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"chat_with_ds\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"deepseek\"\u003e让 DeepSeek 和我聊聊天\u003c/h1\u003e\n\u003ch2 id=\"api-doc\"\u003e官方 API doc\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003ecurl\u003cspan class=\"w\"\u003e \u003c/span\u003ehttps://api.deepseek.com/chat/completions\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"se\"\u003e\\\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e-H\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"Content-Type: application/json\"\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"se\"\u003e\\\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e-H\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"Authorization: Bearer \u003c/span\u003e\u003cspan class=\"si\"\u003e${\u003c/span\u003e\u003cspan class=\"nv\"\u003eDEEPSEEK_API_KEY\u003c/span\u003e\u003cspan class=\"si\"\u003e}\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"se\"\u003e\\\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e-d\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'{\u003c/span\u003e\n\u003cspan class=\"s1\"\u003e        \"model\": \"deepseek-v4-flash\",\u003c/span\u003e\n\u003cspan class=\"s1\"\u003e        \"messages\": [\u003c/span\u003e\n\u003cspan class=\"s1\"\u003e          {\"role\": \"user\", \"content\": \"Hooo.\"}\u003c/span\u003e\n\u003cspan class=\"s1\"\u003e        ],\u003c/span\u003e\n\u003cspan class=\"s1\"\u003e        \"stream\": true\u003c/span\u003e\n\u003cspan class=\"s1\"\u003e      }'\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003ehttps://jyywiki.cn/submit.sh 也有一个 curl\u003cul\u003e\n\u003cli\u003ecurl: command not found 会提交失败\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们准备了一个 “有功能” 的 Python 版本\u003cul\u003e\n\u003cli\u003e让我们用 strace 拆开它\u003c/li\u003e\n\u003cli\u003e建立连接、发送数据 (HTTP request)、等待数据\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/llm-request\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"llm-request\"\u003e\u003ca href=\"/OS/demos/concurrency/llm-request\"\u003e一个 LLM Request\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在地球上的任何一个地方，只要能接入互联网，通过 requests 库请求 DeepSeek API endpoint，就能够直接启动和 AI 的聊天。很难想象短短数年时间，全人类都在使用的新基础设施就已经建设完毕了。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"packet_journey\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e“数据” 是如何到达另一台机器的？\u003c/h1\u003e\n\u003ch2 id=\"dns-ip\"\u003e第一步：DNS 解析 — 域名 → IP\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003edig\u003cspan class=\"w\"\u003e \u003c/span\u003eapi.deepseek.com\u003cspan class=\"w\"\u003e \u003c/span\u003e+short\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e直接让 DeepSeek 自己瞧瞧吧\u003cul\u003e\n\u003cli\u003e(DNS 就已经开始做负载均衡了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"packet-forwarding\"\u003e第二步：packet forwarding — 逐跳到达\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e你的机器 → 路由器 → ISP → … → 数据中心 → 服务器\u003c/li\u003e\n\u003cli\u003eGateway: 默认网关，”不知道往哪走就往这扔”\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003etraceroute\u003cspan class=\"w\"\u003e \u003c/span\u003eapi.deepseek.com\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e操纵 TTL 值，使路由器产生 ICMP Time Exceeded\u003c/li\u003e\n\u003cli\u003e典型的延迟：局域网 \u0026lt;1ms, 同城 \u0026lt;5ms, 跨国 ~200ms\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"real_packet\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e终于，我们 “到达” 数据中心的另一台机器\u003c/h1\u003e\n\u003ch2 id=\"load-balancer\"\u003e这台机器很大概率也只是一个 Load Balancer\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e会再把请求转发到真正的业务服务器\u003c/li\u003e\n\u003cli\u003e我们实际看到的 response (curl -i)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003eHTTP/2 200\nserver: openresty\ncontent-type: text/event-stream\ncache-control: no-cache\nconnection: keep-alive\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003ehttps://api.deepseek.com/chat/completions 和 https://www.deepseek.com/ 是不同的服务\u003cul\u003e\n\u003cli\u003eAPI: \u003ccode\u003eserver: openresty\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eWWW: \u003ccode\u003eserver: tencent-cos\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"reach_business\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e最终，到达实际的业务节点\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e业务节点收到来自本机的请求\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eHeader 中的 DEEPSEEK_API_KEY\u003c/li\u003e\n\u003cli\u003eBody 中的 JSON (model, messages, stream, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e麻烦的事情才真正开始！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e服务端要鉴权、计费、审计……\u003c/li\u003e\n\u003cli\u003e后面还连着数据库、缓存、消息队列……\u003cul\u003e\n\u003cli\u003e我们学习的 “操作系统 API”、“并发编程”……默默支撑了这一切\u003c/li\u003e\n\u003cli\u003e把做过的实验拼起来，就是一个非常完整的 Computer Systems 的图景\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 进入数据中心\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"datacenter_hero\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ai\"\u003e数据中心：互联网 \u0026amp; AI 时代的幕后英雄\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eDatacenter: “A network of computing and storage resources that enable the delivery of \u003cem\u003eshared\u003c/em\u003e applications and data.” (CISCO)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"199x-\"\u003e上半场：应用后端 (199X - 至今)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从静态的 http 页面 (Yahoo!), … 到 Web 2.0 (Facebook)，再到移动互联网 (iOS, Android)\u003c/li\u003e\n\u003cli\u003e在 “云端” 留有你的 personality\u003cul\u003e\n\u003cli\u003e同时，意味着我们其实没有任何隐私 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai-2022-\"\u003e下半场：AI 推理 (2022 - 至今)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eDeepSeekV4 Flash: 284B-A13B\u003c/li\u003e\n\u003cli\u003eDeepSeekV4 Pro: 1.6T-A49B\u003cul\u003e\n\u003cli\u003e这还是 per token 的计算量，不包括 attention 的成本\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/dsv4.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"an_industry\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e数据中心：一个产业链\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e我们在学校里学 “做题”，很少学 “题目是怎么来的”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e但市场的供需关系永远存在\u003cul\u003e\n\u003cli\u003e朝阳产业就需要更多的人\u003c/li\u003e\n\u003cli\u003e夕阳产业就会陷入内卷\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e技术总有一天会过时\u003cul\u003e\n\u003cli\u003e试着去获得 “推导出这些技术” 的能力，才能获得 visions\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e学校不教大家的 “世界模型”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e产业结构和市场环境\u003c/li\u003e\n\u003cli\u003e企业的本质、供应链、运转、股权、激励机制……\u003cul\u003e\n\u003cli\u003e做题家们进入社会，还会经历一次重新学习的机会\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"datacenter_characteristics\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e数据中心中的海量分布式数据处理\u003c/h1\u003e\n\u003ch2 id=\"crud\"\u003e实时的 “小数据处理” (CRUD)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e订单事务、内容分发、用户鉴权、弹幕、计费、视频串流……\u003c/li\u003e\n\u003cli\u003eDeepSeek Chat 会保存完整的聊天记录，允许继续追问\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e半离线的 “中数据处理”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e周期记账、备份、数据看板……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e离线的 “大数据处理”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e内容索引、数据挖掘、流量分析……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e所有应用，无一例外\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e豆包、千问、搜索、社交、支付、游戏……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"c10k\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"the-c10k-problem\"\u003eThe C10K Problem\u003c/h1\u003e\n\u003ch2 id=\"dan-kegel-1999\"\u003eDan Kegel, 1999\u003c/h2\u003e\n\u003cblockquote\u003e\n\u003cp\u003eIt’s time for web servers to handle ten thousand clients simultaneously, don’t you think? After all, the web is a big place now.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nb\"\u003etrue\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eRequest\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003erq\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eget_request\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003epthread_create\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nb\"\u003eNULL\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ehandle_request\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003erq\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 如果软件写得不好，就无法支撑 C10K\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e催生了 epoll、Nginx、事件驱动架构，和之前的并发编程模型 (goroutine, etc.)\u003c/li\u003e\n\u003cli\u003e再等到 C10M 的时代，就必须走向分布式系统了 (Google, 2003)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"datacenter_concurrency\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e数据中心里的并发编程\u003c/h1\u003e\n\u003ch2 id=\"qps\"\u003e高吞吐 (QPS) \u0026amp; 低延迟的事件处理\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e处理事件可能需要读写持久存储或请求其他节点的服务\u003cul\u003e\n\u003cli\u003e计算机系统栈是一层一层垒起来的，到处都是坑\u003c/li\u003e\n\u003cli\u003e例子：下单会关联多个子系统 (是一个计算图)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eP99/P999 Latency (最慢的那一些也不能卡顿) 也很关键\u003cul\u003e\n\u003cli\u003e一个 fully locked hash table resize 就能出性能事故\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e假设有数千/数万个请求同时到达服务器……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“Denial of Service, DoS”\u003cul\u003e\n\u003cli\u003e全国的小爱音箱在小米汽车发布会上同步瘫痪\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e还必须保证 “超高可靠性”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e99.9999% 的可用性和绝对的数据正确性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"distributed_challenges\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e分布式系统难题\u003c/h1\u003e\n\u003ch2 id=\"cap-theorem\"\u003eCAP Theorem\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e数据保持一致 (Consistency)、服务时刻可用 (Availability)、容忍机器离线 (Partition tolerance) 不可兼得\u003cul\u003e\n\u003cli\u003eSloppy counter 有 “牺牲一致性换可用性” 的意味\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/CAP-theorem.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ds_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"llm-request\"\u003e例子：LLM Request\u003c/h1\u003e\n\u003ch2 id=\"header-deepseek_api_key\"\u003eHeader 中有 DEEPSEEK_API_KEY\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e需要从 key 反查到账号做鉴权、billing (类似点赞/收藏)\u003c/li\u003e\n\u003cli\u003e需要做日志记录 (审计、频率控制 429 Rate Limit)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"key\"\u003e同一个 key 可以被多个机器使用 (真正的并行)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e用户还可以随时 disable API key\u003c/li\u003e\n\u003cli\u003e这就立即撞到了 CAP Theorem 的墙了\u003cul\u003e\n\u003cli\u003e大家在 mymalloc 并发编程的时候已经吃够苦头了\u003cul\u003e\n\u003cli\u003e分布式的锁开销从 ns 级到 ms 级\u003c/li\u003e\n\u003cli\u003e还有随时可能发生的 non-deterministic delay/crash\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/apikey-leak.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"redesign_system\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e解决方法：重新设计系统接口\u003c/h1\u003e\n\u003ch2 id=\"unix-open-read-write\"\u003eUNIX 的设计: open, read, write, …\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e对于单机应用很好，分布式应用不行\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"vs\"\u003e数据 v.s. 计算\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eUNIX: 管道流式数据处理 (\u003cstrong\u003e把数据带到计算\u003c/strong\u003e)\u003c/li\u003e\n\u003cli\u003e分布式系统：必须把计算分发到机器/线程 (\u003cstrong\u003e把计算带到数据\u003c/strong\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e容错和可靠性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eUNIX: 假设机器和程序都是可靠的\u003c/li\u003e\n\u003cli\u003e分布式系统：必须支持透明的网络延迟/容错 (重算)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"unix\"\u003e扩展 UNIX 的设计\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eGoogle File System: 数据依然是文件 (byte array)\u003c/li\u003e\n\u003cli\u003eBigTable: 在文件的基础上构建 key-value 数据库，解决 CRUD (OLTP, Transactional)\u003c/li\u003e\n\u003cli\u003eMapReduce: 限制计算必须是 “能 scale out” 的形式，解决后台索引 (OLAP, Analytical)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"serverless\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e如何为大规模分布式系统编程？\u003c/h1\u003e\n\u003ch2 id=\"promise\"\u003e其实只要抄之前 Promise 的答案就行了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e足够好的存储系统 + 描述数据上的计算图 = Serverless Computing\u003c/li\u003e\n\u003cli\u003eFunction as a Service: Write Once, Planet Scale\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e函数的写法表达分布式的流程\u003c/strong\u003e，C10M 就让厂商去头疼吧\u003c/li\u003e\n\u003cli\u003eFaaS 允许多次重试，因此大部分功能需要 idempotence (幂等性)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kd\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003edynamo\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"ow\"\u003enew\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eAWS\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eDynamoDB\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eDocumentClient\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"nx\"\u003eexports\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003ehandler\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003easync\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003eevent\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e=\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kd\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eapiKey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eevent\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eheaders\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"s1\"\u003e'Authorization'\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"o\"\u003e?\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003ereplace\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s1\"\u003e'Bearer '\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e''\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kd\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003euser\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eawait\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003edynamo\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003esend\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"ow\"\u003enew\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eGetCommand\u003c/span\u003e\u003cspan class=\"p\"\u003e({\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"nx\"\u003eTableName\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'APIKeys'\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eKey\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eapiKey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e})).\u003c/span\u003e\u003cspan class=\"nx\"\u003eItem\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"nx\"\u003euser\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e||\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003euser\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003edisabled\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003estatusCode\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mf\"\u003e401\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003ebody\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"nx\"\u003estatusCode\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mf\"\u003e200\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"nx\"\u003ebody\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003edo_llm_inference\u003c/span\u003e\u003cspan class=\"p\"\u003e(...),\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 就剩下它了\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 从 Token 到 Tensor\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"a_new_world\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"simt\"\u003e进入 SIMT 的世界\u003c/h1\u003e\n\u003ch2 id=\"do_llm_inference\"\u003e\u003ccode\u003edo_llm_inference()\u003c/code\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eNext-token prediction\u003c/li\u003e\n\u003cli\u003e本质：从一个 “学到的” 函数里采样\u003cul\u003e\n\u003cli\u003e一个非常大的计算图，但存在一个 “很短的 generator” (\u003ca href=\"https://git.nju.edu.cn/jyy/os2026/-/blob/M6/gpt/gpt.c?ref_type=heads\"\u003egpt.c\u003c/a\u003e)\u003c/li\u003e\n\u003cli\u003eRichard Sutton: \u003ca href=\"https://www.cs.utexas.edu/~eunsol/courses/data/bitter_lesson.pdf\"\u003eThe Bitter Lesson\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"tensors\"\u003e有各种各样的 “tensors” (参数)\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/tensor.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"attention\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"attention-is-all-you-need\"\u003eAttention is All You Need\u003c/h1\u003e\n\u003ch2 id=\"transformer-head\"\u003e每一层 Transformer (head) 都是 “一本书”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每一本书都输出一个 “改写后的版本” (去掉噪声，越来越接近天书)\u003cul\u003e\n\u003cli\u003e看书 = Q: 需要补全的句子 (我在找什么)，K: 书的目录 (我有什么)，V: 书的内容 (具体的内容是什么，甚至这也是学出来的)\u003c/li\u003e\n\u003cli\u003e“看书” 以后生成 “短时记忆”，不需要再看 context，直接经过全连接层 “重写” 记忆\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/qkv.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cuda_good_at\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"attention-is-all-you-need\"\u003eAttention is All You Need: 实现\u003c/h1\u003e\n\u003ch2 id=\"llmctrain_gpt2_fp32cu\"\u003e让我们看一眼 \u003ccode\u003ellm.c/train_gpt2_fp32.cu\u003c/code\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003eattention_forward\u003c/code\u003e, \u003ccode\u003ematmul_forward\u003c/code\u003e 的代码，是不是和 \u003ccode\u003emandelbrot()\u003c/code\u003e 很像？\u003c/li\u003e\n\u003cli\u003e我们可以非常容易地用 spawn、SIMD, SIMT 等任何一种方式并行化它 (当然要获得极致的性能，这并不容易)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ematmul_forward\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003efloat\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eout\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eB\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eT\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eC\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eOC\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esqrt_block_size\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e16\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edim3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003egridDim\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eCEIL_DIV\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eB\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eT\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e8\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003esqrt_block_size\u003c/span\u003e\u003cspan class=\"p\"\u003e),\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eCEIL_DIV\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eOC\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e8\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003esqrt_block_size\u003c/span\u003e\u003cspan class=\"p\"\u003e));\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edim3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eblockDim\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esqrt_block_size\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esqrt_block_size\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ematmul_forward_kernel4\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u0026lt;\u0026lt;\u003c/span\u003e\u003cspan class=\"n\"\u003egridDim\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eblockDim\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eout\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003einp\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eweight\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ebias\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eC\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eOC\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecudaCheck\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ecudaGetLastError\u003c/span\u003e\u003cspan class=\"p\"\u003e());\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003e\u0026lt;\u0026lt;\u0026lt; \u0026gt;\u0026gt;\u0026gt;\u003c/code\u003e: 发送参数到 GPU，GPU 开始执行，CPU 立即返回，GPU 内部会按顺序执行所有的 kernels\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"tensor_core\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e如果还要压榨极致的性能？\u003c/h1\u003e\n\u003ch2 id=\"simd-ptx\"\u003e能不能把 SIMD 引入到 PTX 指令集里？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSIMT + SIMD，指令译码的开销就真的接近零了\u003c/li\u003e\n\u003cli\u003e恭喜你，你发明了 \u003ca href=\"https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#tensorcore-5th-generation-instructions\"\u003eTensore Cores\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e混合精度 FMA \u003ccode\u003eD (m×n) += A (m×k) x B (k×n)\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e不，你没有\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSIMD 省去了 \u003ccode\u003ebase + row * stride + col\u003c/code\u003e 的指令\u003c/li\u003e\n\u003cli\u003e但难题其实是\u003cstrong\u003e内存移动与布局优化\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e多维寻址、稀疏数据搬运、跨步访问、异步同步、布局转换和内存管理\u003c/li\u003e\n\u003cli\u003ecp.async.bulk.tensor\u003cul\u003e\n\u003cli\u003e支持稀疏数据拷贝 (解压缩)\u003c/li\u003e\n\u003cli\u003e支持 zero-overhead 转置\u003c/li\u003e\n\u003cli\u003e……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ai_industry\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e这些就是十万亿美元产业生态的起点\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e再回顾操作系统的发展历程，历史总是\u003cstrong\u003e惊人地相似\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e底层：加速器 (GPU)、底层编程模型 (CUDA)，库函数 (cuBLAS, DeepGEMM, NCCL)\u003c/li\u003e\n\u003cli\u003e中层：编译器 (FlashAttention, Triton)、训练 (Megatron)、推理 (vLLM) 框架、\u003c/li\u003e\n\u003cli\u003e开发者生态：训练 (PyTorch, TensorFlow)、模型分发 (HuggingFace), …\u003c/li\u003e\n\u003cli\u003e用户接口：ollama, OpenWebUI, …\u003c/li\u003e\n\u003cli\u003e应用：Claude Code, OpenClaw, Manvus, NotebookLM, …\u003cul\u003e\n\u003cli\u003e你能想到的一切，都有人做 (所以在 “做题” 之余，也可以想一想 big picture)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/nvda.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"generate_a_token\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"token\"\u003e生成一个 Token\u003c/h1\u003e\n\u003ch2 id=\"gpt2-xl-15b-1k-context\"\u003e如果推理集群运行的都是 GPT2-XL (1.5B), 1k context\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e问题就几乎解决了 (类似于 http 请求最终到达业务节点，直接创建一个 goroutine 执行就行)\u003c/li\u003e\n\u003cli\u003e但是对于 1.6T, 1M context 的模型来说，绝对是极为困难的\u003cul\u003e\n\u003cli\u003eO(n²) 的 full attention → sparsify, low-rank, …\u003c/li\u003e\n\u003cli\u003eChatGPT 爆火以后，NVDA 的起飞绝对是可以预见的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"token_1\"\u003e生成一个 token 要做两件事\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ePrefill: 算出每一层所有的 attention “书库” (K 和 V)\u003cul\u003e\n\u003cli\u003e保存到 KV Cache\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eDecode: 生成输出 token\u003cul\u003e\n\u003cli\u003e读取完整 KV Cache\u003c/li\u003e\n\u003cli\u003e取出 K/V → 根据当前 Q 计算 “短时记忆” → 生成下一个 token → 更新 KV Cache\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"mlsyser\"\u003eMLSyser: “你们在体系结构、操作系统课上学的概念全都过时了”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e存储、互联、带宽、延迟……都和经典教科书完全不一样\u003c/li\u003e\n\u003cli\u003e只有分析问题的 first principles 是有用的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"token_finally\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e旅程的终点\u003c/h1\u003e\n\u003ch2 id=\"token\"\u003e终于，生成的 token 回来了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在推理集群内经历了 TP (Tensor Parallelism)、PP (Pipeline Parallelism)、EP (Expert Parallelism), … 返回\u003cstrong\u003e一个整数\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e后端代码再次开始执行\u003cul\u003e\n\u003cli\u003e审计 (模型经常生成到一半闭嘴)、记账 (通常是 append 到一个 log，然后 log 延迟更新到 dashboard)……最终生成一个 http event-stream response (jsonl)，原路返回\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003eHTTP/1.1 200 Connection established\n\nHTTP/2 200 \ncontent-type: text/event-stream; charset=utf-8 ...\n\ndata: {\"id\":\"8fd70919-7f53-4a75-a959-bb6851d542dc\",\"object\":\"chat.completion.chunk\",\"created\":1778726742,\"model\":\"deepseek-v4-flash\",\"system_fingerprint\":\"fp_8b330d02d0_prod0820_fp8_kvcache_20260402\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null,\"reasoning_content\":\"\"},\"logprobs\":null,\"finish_reason\":null}]}\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"not_end\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e旅程：没有终点\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e也许全世界都做错了呢？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eScaling Law: Transformers 比 LSTM 在长上下文下表现更好\u003cul\u003e\n\u003cli\u003e但 “最好” 的那个在哪里，人类也许还不知道\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e希望大家不要 “错上加错”：\u003cstrong\u003e无意义的学术裁缝是有害的\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e象牙塔里的老登们在权利寻租，年轻人被服从性测试疯狂折磨 (参与答辩与评教有感)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/dlm.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e一个 Token 的旅程，穿越了整个计算机系统栈：从浏览器的 HTTP 请求，到数据中心的负载均衡、API 网关、分布式存储，最终到达 GPU 上的矩阵乘法。课堂的意义从来不是教会大家具体的技术，而是在理解这些技术的过程中领悟属于自己的 “还原方法论”，从而去面对未知的新挑战。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect21.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

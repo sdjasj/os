@@ -1,0 +1,464 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 文件系统实现
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">文件系统 = 数据结构</h2>
+<ul>
+<li>任何实现了 “<code>struct fuse_operations</code>” 的东西都是文件系统<ul>
+<li>readdir, mkdir, getattr, open, …</li>
+<li>例子例子：procfs, sysfs, Galgame FS</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">我们需要在块设备 (按块访问的字节序列) 上实现数据结构</h2>
+<ul>
+<li>bread (load), bwrite (store)</li>
+<li>bsync (<code>__sync_synchronize</code>)<ul>
+<li>这不是魔鬼的盒子吗？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 块设备上的数据结构
+ </h2>
+<h3> 1.1. 复习：块设备模型
+ </h3>
+<div class="slideshow" name="lvm"><div>
+<h1 id="_1">真实的块设备</h1>
+<h2 id="_2">可以是一个实际的设备</h2>
+<ul>
+<li>GPT (GUID Partition Table), 属于 UEFI 的一部分</li>
+<li>也是一个<a href="https://uefi.org/specs/UEFI/2.10/05_GUID_Partition_Table_Format.html">数据结构</a>，帮助你分出 /dev/nvme0n1p1, …</li>
+</ul>
+<h2 id="_3">也可以是虚拟化的设备</h2>
+<ul>
+<li>Physical Volume → Volume Group → Logical Volume (可以一对多、多对一、多对多)<ul>
+<li>用户空间的工具：vgdisplay, lvextend, resize2fs</li>
+<li>我们也可以 strace 观察它们</li>
+</ul>
+</li>
+<li>NVMe namespace: “硬件级”的 “LVM”</li>
+</ul>
+<p><img alt="" src="static/img/guid-part.png"></p>
+</div></div>
+
+<div class="code-card" path="persistence/lvm"><div><div>
+<h1 id="logic-volume-manager"><a href="/OS/demos/persistence/lvm">Logic Volume Manager</a></h1>
+<p>Logical Volume Manager (LVM) 是 Linux 中用于虚拟化存储设备的工具。它允许将物理卷 (Physical Volume, PV) 组成卷组 (Volume Group, VG)，然后从卷组中创建逻辑卷 (Logical Volume, LV)。</p>
+</div></div>
+</div>
+<div class="slideshow" name="data_structure_cost"><div>
+<h1 id="_1">实现文件系统的代价</h1>
+<h2 id="_2">读、写放大</h2>
+<ul>
+<li>bread, bwrite 必须按块读写</li>
+<li>更新一个字节 (例如 modification time) 会发生什么？<ul>
+<li>bread() x 1</li>
+<li>bwrite() x 1，会涉及 SSD FTL 的 map table <strong>数据结构更新</strong>，因此写放大可能达到几万倍 😂</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">缓解办法：缓存</h2>
+<ul>
+<li>和 memory hierarchy 一样，在更快的存储器 (内存) 中留一份数据<ul>
+<li>bread/bwrite 总是访问 cache</li>
+<li>如果 cache miss，就要去存储设备里取</li>
+<li>异步 write back</li>
+</ul>
+</li>
+<li>Locality 原理也帮忙了 (把相近文件的 metadata 放在一起)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="fs_requirements"><div>
+<h1 id="_1">进入文件系统设计</h1>
+<h2 id="_2">先做需求分析</h2>
+<ul>
+<li>要 persist 什么？<ul>
+<li>文件数据 (bytes)</li>
+<li>文件 metadata (name, size, permissions, timestamps, …)</li>
+<li>目录结构 (name → 文件的映射)</li>
+</ul>
+</li>
+<li>观察一些统计规律<ul>
+<li>Most files are small (~2K); a few big files use most space</li>
+<li>Directories are typically small (≤20 entries)</li>
+<li>File systems are roughly half full</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">核心数据结构问题</h2>
+<ul>
+<li>文件的 metadata (size, mode, time, …) 怎么存储？</li>
+<li>文件的 virtual to physical map table 什么数据结构？怎么存储？</li>
+<li>目录如何实现？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="superblock"><div>
+<h1 id="super-block">Super Block</h1>
+<h2 id="_1">数据结构的 “根结构体”</h2>
+<ul>
+<li>任何数据结构都需要一个入口<ul>
+<li>链表 head; 树结构的 root</li>
+<li>各种文件的 Header: ELF, BMP, …</li>
+</ul>
+</li>
+<li>文件系统把 “入口” 放在 Superblock (固定位置)</li>
+</ul>
+<h2 id="_2">描述文件系统布局的 “元信息”</h2>
+<ul>
+<li>Magic number, block size</li>
+<li>Total/free blocks, total/free inodes</li>
+<li>数据结构的起始位置、大小、…<ul>
+<li>
+<code>mkfs</code> 创建; <code>mount</code> 命令会根据 super block 确定文件系统类型</li>
+</ul>
+</li>
+</ul>
+<h2 id="block">最关键的一个 block</h2>
+<ul>
+<li>损坏 = 修复起来比较麻烦 (因此通常备份多份)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="fat"><div>
+<h1 id="fat">小文件系统和 FAT</h1>
+<h2 id="525-160-kib">5.25“ 软盘：单面 160 KiB</h2>
+<ul>
+<li>320 个 512B 扇区 (sectors)：任何复杂的数据结构都显得过于奢侈</li>
+</ul>
+<h2 id="file-allocation-table-fat">核心数据结构：<a href="https://jyywiki.cn/OS/manuals/MSFAT-spec.pdf">File Allocation Table</a> (FAT)</h2>
+<ul>
+<li>把磁盘分成 clusters (sector 的 2^k 倍), <code>BPB_SecPerClus</code>
+</li>
+<li>
+<code>cluster_t fat[4096];</code> (FAT-12)，代表每个 cluster 的 next<ul>
+<li>0 = free, -1 = EOF</li>
+<li>在 FAT 碎片的情况下，大文件 lseek 会产生显著的读放大</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">目录</h2>
+<ul>
+<li>
+<code>struct dent entries[0];</code> “目录文件”<ul>
+<li>DOS “8 + 3” 文件名 “AUTOEXEC.BAT”，连一个字节都省了</li>
+<li>不支持硬链接、长文件名需要打补丁</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/readfat"><div><div>
+<h1 id="readfat"><a href="/OS/demos/persistence/readfat">readfat</a></h1>
+<p>通过摘抄手册，可以得到 fat32.h 并明确每个字段的含义，mmap 把磁盘镜像映射到内存就可以实现解析了。现在这个工作，哪怕是全新的系统，也完全可以交给大语言模型完成。</p>
+</div></div>
+</div>
+<div class="slideshow" name="unix"><div>
+<h1 id="unix">UNIX 的选择：分离</h1>
+<h2 id="gv-e">G(V, E) 顶点和边分开存储 (非常符合直觉的选择)</h2>
+<ul>
+<li>inode (Index Node): Mode, Links, User/Group, Size, …<ul>
+<li>fstat 直接返回 inode 里的信息即可 (FAT 就麻烦了)</li>
+</ul>
+</li>
+<li>通过 bitmap 分配 (相比 FAT 有更好的 locality)</li>
+</ul>
+<h2 id="fastslow-path-ext2">索引：联合数据结构 (Fast/Slow Path) ext2</h2>
+<ul>
+<li>12 个直接指针 + 1 indirect + 1 double indirect + 1 triple indirect</li>
+<li>代价：inode 本身体积变大</li>
+</ul>
+<h2 id="_1">目录</h2>
+<ul>
+<li>
+<code>using dent = map&lt;string, inode_t&gt;;</code> 天然支持硬链接</li>
+<li>能不能 dump inode 和 dirent 的数据结构，并且可视化它？<ul>
+<li>ext4: &lt;= 60B 的符号链接直接存储在 inode 中</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/ext4"><div><div>
+<h1 id="debug-file-systems"><a href="/OS/demos/persistence/ext4">Debug File Systems</a></h1>
+<p>debugfs 工具使我们能在用户态调试文件系统——这也给了我们 “可视化” 一个目录的机会，我们可以递归地 dump 出一个目录的 raw data structure，看到文件系统的 “内部”，例如符号链接是如何存储的，并且用合适的工具渲染成直接可视化的 diagram。</p>
+</div></div>
+</div>
+<h2> 2. 文件系统的崩溃一致性
+ </h2>
+<div class="slideshow" name="crash_problem"><div>
+<h1 id="_1">存储系统：应对崩溃</h1>
+<h2 id="crash">Crash: 内存里的一切都瞬间丢失</h2>
+<ul>
+<li>可能是 power loss，也可能是 bug (Kernel panic)<ul>
+<li>但 persistent storage 的数据是<strong>不能丢失</strong>的</li>
+</ul>
+</li>
+</ul>
+<h2 id="crash-consistency">Crash Consistency</h2>
+<ul>
+<li>Move the file system from one consistent state (e.g., before the file got appended to) to another atomically (e.g., after the inode, bitmap, and new data block have been written to disk.</li>
+</ul>
+<p><img alt="" src="static/img/cat-crash-consistency.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="multiple_writes"><div>
+<h1 id="_1">暗藏杀机的数据结构</h1>
+<h2 id="multiple-location-writes">数据结构更新涉及 multiple-location writes</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">write</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="mi">4096</span><span class="p">);</span><span class="w"> </span><span class="c1">// append</span>
+</code></pre></div>
+
+<ul>
+<li>分配数据块: bwrite(d-bitmap)</li>
+<li>写入数据块: bwrite(data)</li>
+<li>更新元数据 (size, time, index, …): bwrite(iblock)</li>
+</ul>
+<p><img alt="" src="static/img/unix-fs.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="storage_system"><div>
+<h1 id="_1">层次化存储结构带来的问题</h1>
+<h2 id="block-cache-queue-dma-queue">Block cache → queue (DMA) → 存储系统上的计算机 → queue</h2>
+<ul>
+<li>计算机系统会按照他认为的 “最佳” 顺序写入 (乱序执行)<ul>
+<li>例子：HDD 的磁头运动规划；SSD FTL</li>
+</ul>
+</li>
+<li>于是 bread, bwrite 不就成了 relaxed memory model 了吗<ul>
+<li>不就又打开了魔鬼的盒子吗 😱😱😱</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/m2ssd.png"></p>
+</div></div>
+
+<div class="slideshow" name="out_of_order"><div>
+<h1 id="_1">乱序执行：后果</h1>
+<h2 id="_2">磁盘掉电时，写入请求的顺序是没有任何保证的</h2>
+<ul>
+<li>multi-write 会产生怎样的后果？<ul>
+<li>bwrite(inode), bwrite(d-bitmap), bwrite(data)</li>
+<li>(人类在几十年的时间里其实都在 “裸奔” 😂)</li>
+</ul>
+</li>
+</ul>
+<h2 id="ssd">早期 SSD 还有更严重的问题</h2>
+<ul>
+<li>FTL crash 后会留下 corrupted data structure!</li>
+</ul>
+<p><img alt="" src="static/img/mai-fast13.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="fsck_intro"><div>
+<h1 id="systems">Systems: “先挣钱，后还债”</h1>
+<h2 id="_1">崩溃会导致数据丢失、目录损坏，甚至文件系统无法挂载</h2>
+<ul>
+<li>这时候当然是送去修电脑 (File System Check) 了！</li>
+<li>“快速格式化” 的文件系统都，不一致的文件系统必须也能<ul>
+<li>“摄影师事件” 中修电脑的被判处有期徒刑 8 个月</li>
+<li>于是有了 fsrecov 的实验</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/leaked-photo.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="fsck_detail"><div>
+<h1 id="file-system-checking-fsck">File System Checking (FSCK)</h1>
+<h2 id="gv-e">根据磁盘上已有的 G(V, E)，恢复出 “最可能” 的数据结构</h2>
+<ul>
+<li>这是个算法题；但要小心 <a href="https://dl.acm.org/doi/10.1145/3281031">fsck crash</a>
+</li>
+<li>强行终止虚拟机，可能观测到 Git repo 的损坏 (git fsck 可以修复)<ul>
+<li>Linus: Git 已经是 append-only 了，不要引入额外的性能问题</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/fsck-recovery.png"></p>
+</div></div>
+
+<div class="slideshow" name="two_perspectives"><div>
+<h1 id="_1">实现崩溃一致性：重新理解 “数据结构”</h1>
+<h2 id="1">视角 1: 存储实际数据结构</h2>
+<ul>
+<li>链表、二叉树、……<ul>
+<li>文件系统的 “直观” 表示</li>
+<li>Multi-write (crash unsafe)</li>
+</ul>
+</li>
+</ul>
+<h2 id="2-append-only">视角 2: Append-only 记录所有历史操作</h2>
+<ul>
+<li>容易实现崩溃一致性</li>
+<li>一旦有历史操作，就可以随时重构实际的数据结构了<ul>
+<li>Write-ahead log (“Redo log”)</li>
+<li>1 + 1 &gt; 2: append 在现代存储系统上更容易高效实现！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="lsm_intro"><div>
+<h1 id="append-only-lazy-update">Append-only + Lazy Update</h1>
+<h2 id="store-buffer">Store buffer</h2>
+<ul>
+<li>Store 写入 CPU 本地缓存，慢慢传递给其他处理器</li>
+</ul>
+<h2 id="lsm-log-structured-merge-trees">LSM (Log-structured Merge Trees)</h2>
+<ul>
+<li>只有 MemTable 可写 (例如 Skip List)，带 WAL (crash consistency)<ul>
+<li>MemTable 写满，触发 Flush 向磁盘持久化</li>
+</ul>
+</li>
+<li>磁盘上全是 Immutable SSTable<ul>
+<li>如果结构不够好就 Merge (创建新 SSTable), Amortized O(1)</li>
+<li>类比 Memory Hierarchy，小的树会 override 大的树</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/lsm-tree.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="journaling"><div>
+<h1 id="write-ahead-log">文件系统中的 Write-ahead Log</h1>
+<h2 id="txbegin-operations">写入 TXBegin; operations</h2>
+<ul>
+<li>写完后 flush 等待数据落盘</li>
+</ul>
+<h2 id="txend">写入 TxEnd</h2>
+<ul>
+<li>在此之前写完后 flush 等待数据落盘</li>
+<li>数据落盘 “happens-before” TxEnd 落盘</li>
+</ul>
+<h2 id="checkpointing">写入文件系统 (Checkpointing) &amp; 崩溃恢复</h2>
+<ul>
+<li>replay(operations) 写入文件系统、回收日志空间</li>
+<li>如果写入时崩溃，fsck 将会 replay(operations) 恢复数据</li>
+</ul>
+<p><img alt="" src="static/img/fs-journaling.png"></p>
+</div></div>
+
+<div class="slideshow" name="journaling_opt"><div>
+<h1 id="journaling-tricks">Journaling Tricks</h1>
+<h2 id="xv6-jbd">批处理 (xv6; jbd)</h2>
+<ul>
+<li>多次系统调用的 Tx 合并成一个，减少 log 的大小</li>
+<li>jbd: 定期 write back</li>
+</ul>
+<h2 id="checksum-ext4">Checksum (ext4)</h2>
+<ul>
+<li>不再标记 TxBegin/TxEnd</li>
+<li>直接标记 Tx 的长度和 checksum (顺便还检查了日志完整性)</li>
+</ul>
+<h2 id="metadata-journaling-ext4-default">Metadata journaling (ext4 default)</h2>
+<ul>
+<li>数据占磁盘写入的绝大部分<ul>
+<li>只对 inode 和 bitmap 做 journaling 可以提高性能</li>
+</ul>
+</li>
+<li>保证文件系统的目录结构是一致的；但数据可能丢失</li>
+</ul>
+</div></div>
+
+<h2> 3. 应用程序的崩溃一致性
+ </h2>
+<div class="slideshow" name="app_cc"><div>
+<h1 id="_1">应用程序的崩溃一致性</h1>
+<h2 id="_2">应用程序的多个写入操作也会被乱序吗？</h2>
+<ul>
+<li>会！因为有 metadata journaling，下面的操作是 crash unsafe 的<ul>
+<li><code>Path("a.txt.tmp").write_text(...)</code></li>
+<li><code>unlink("a.txt")</code></li>
+<li><code>rename("a.txt.tmp", "a.txt")</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="phd">想起了<a href="https://dl.acm.org/doi/10.1145/2950290.2950327">我读 PhD 时候的工作</a>
+</h2>
+<ul>
+<li>想法来自 <a href="https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai">All file systems are not created equal</a>
+</li>
+<li>能不能实现一个能 “自动检查任何软件” 的 checker？<ul>
+<li>Make, sort, perl, bzip2, … 无一幸免</li>
+<li>2016 年的 Node.js 甚至无法安全地保存文件</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="sync_api"><div>
+<h1 id="sync">sync() 系列系统调用</h1>
+<h2 id="_1">全局同步</h2>
+<ul>
+<li>同步所有文件系统中的所有数据</li>
+<li>等于 performance bug<ul>
+<li>只在关机/命令行使用</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">文件描述符同步</h2>
+<ul>
+<li>
+<code>syncfs(fd)</code>: 同步 fd 对应的文件系统</li>
+<li>
+<code>fsync(fd)</code>: 同步文件 data + 全部 metadata</li>
+<li>
+<code>fdatasync(fd)</code>: 同步文件 data<ul>
+<li>仅同步改变了的数据相关 metadata (size、索引)</li>
+<li>最弱，但依旧可以控制 data loss</li>
+<li>例子：实现应用程序中的 WAL (实现 bflush 的效果)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="sync_api_1"><div>
+<h1 id="_1">《操作系统》课到底教会了我们什么？</h1>
+<h2 id="api">学习了新的文件系统 API</h2>
+<ul>
+<li>fsync, fdatasync</li>
+<li>有什么办法巩固学习的成果呢？</li>
+</ul>
+<h2 id="vibe-code-a-crash-consistency-checker">Vibe code a crash consistency checker!</h2>
+<ul>
+<li>打开 Coding Agent 读一遍论文</li>
+<li>再让他实现一个简易版本，直接开跑<ul>
+<li>半天时间就可以得到一个好得多的实现</li>
+<li>再做范围巨大的实验，提交成百上千的补丁</li>
+</ul>
+</li>
+</ul>
+<h2 id="paper">我找到了一个发 (洗) paper 的流量密码</h2>
+<ul>
+<li>找到一些有 conceptual novelty 的老 paper</li>
+<li>用钞能力扩大 100× 实验验规模，用 LLM 替代 heuristics<ul>
+<li>(不要总这么做，会伤害大家的研究品味)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/ccheck"><div><div>
+<h1 id="crash-consistency-checker"><a href="/OS/demos/persistence/ccheck">Crash Consistency Checker</a></h1>
+<p>一个 user-space 的 strace-based crash consistency checker。追踪一次程序所有对数据文件的写入，包括 fsync 系列的系统调用，生成一系列的 trace，并使用 LLM 判定是否存在数据不一致等。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>把文件系统理解成一个 “数据结构”，就不难理解经典和现代文件系统的设计理念——所有人都是在为了合适的硬件、合适的读写 workload 上，用合适的方式组织数据，维护树状 (和链接) 的目录结构和随机访问的文件操作。当然，文件系统也通过各种手段默默守护了你数据的安全和一致性。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 40 章 - File System Implementation</li>
+<li>第 41 章 - Locality and The Fast File System</li>
+<li>第 42 章 - Crash Consistency: FSCK and Journaling</li>
+<li>第 43 章 - Log-Structured File Systems</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 文件系统实现\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e文件系统 = 数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e任何实现了 “\u003ccode\u003estruct fuse_operations\u003c/code\u003e” 的东西都是文件系统\u003cul\u003e\n\u003cli\u003ereaddir, mkdir, getattr, open, …\u003c/li\u003e\n\u003cli\u003e例子例子：procfs, sysfs, Galgame FS\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e我们需要在块设备 (按块访问的字节序列) 上实现数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ebread (load), bwrite (store)\u003c/li\u003e\n\u003cli\u003ebsync (\u003ccode\u003e__sync_synchronize\u003c/code\u003e)\u003cul\u003e\n\u003cli\u003e这不是魔鬼的盒子吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 块设备上的数据结构\n \u003c/h2\u003e\n\u003ch3\u003e 1.1. 复习：块设备模型\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"lvm\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e真实的块设备\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e可以是一个实际的设备\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eGPT (GUID Partition Table), 属于 UEFI 的一部分\u003c/li\u003e\n\u003cli\u003e也是一个\u003ca href=\"https://uefi.org/specs/UEFI/2.10/05_GUID_Partition_Table_Format.html\"\u003e数据结构\u003c/a\u003e，帮助你分出 /dev/nvme0n1p1, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e也可以是虚拟化的设备\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ePhysical Volume → Volume Group → Logical Volume (可以一对多、多对一、多对多)\u003cul\u003e\n\u003cli\u003e用户空间的工具：vgdisplay, lvextend, resize2fs\u003c/li\u003e\n\u003cli\u003e我们也可以 strace 观察它们\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eNVMe namespace: “硬件级”的 “LVM”\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/guid-part.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/lvm\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"logic-volume-manager\"\u003e\u003ca href=\"/OS/demos/persistence/lvm\"\u003eLogic Volume Manager\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eLogical Volume Manager (LVM) 是 Linux 中用于虚拟化存储设备的工具。它允许将物理卷 (Physical Volume, PV) 组成卷组 (Volume Group, VG)，然后从卷组中创建逻辑卷 (Logical Volume, LV)。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"data_structure_cost\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现文件系统的代价\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e读、写放大\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ebread, bwrite 必须按块读写\u003c/li\u003e\n\u003cli\u003e更新一个字节 (例如 modification time) 会发生什么？\u003cul\u003e\n\u003cli\u003ebread() x 1\u003c/li\u003e\n\u003cli\u003ebwrite() x 1，会涉及 SSD FTL 的 map table \u003cstrong\u003e数据结构更新\u003c/strong\u003e，因此写放大可能达到几万倍 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e缓解办法：缓存\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e和 memory hierarchy 一样，在更快的存储器 (内存) 中留一份数据\u003cul\u003e\n\u003cli\u003ebread/bwrite 总是访问 cache\u003c/li\u003e\n\u003cli\u003e如果 cache miss，就要去存储设备里取\u003c/li\u003e\n\u003cli\u003e异步 write back\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eLocality 原理也帮忙了 (把相近文件的 metadata 放在一起)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fs_requirements\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e进入文件系统设计\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e先做需求分析\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e要 persist 什么？\u003cul\u003e\n\u003cli\u003e文件数据 (bytes)\u003c/li\u003e\n\u003cli\u003e文件 metadata (name, size, permissions, timestamps, …)\u003c/li\u003e\n\u003cli\u003e目录结构 (name → 文件的映射)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e观察一些统计规律\u003cul\u003e\n\u003cli\u003eMost files are small (~2K); a few big files use most space\u003c/li\u003e\n\u003cli\u003eDirectories are typically small (≤20 entries)\u003c/li\u003e\n\u003cli\u003eFile systems are roughly half full\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e核心数据结构问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e文件的 metadata (size, mode, time, …) 怎么存储？\u003c/li\u003e\n\u003cli\u003e文件的 virtual to physical map table 什么数据结构？怎么存储？\u003c/li\u003e\n\u003cli\u003e目录如何实现？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"superblock\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"super-block\"\u003eSuper Block\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e数据结构的 “根结构体”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e任何数据结构都需要一个入口\u003cul\u003e\n\u003cli\u003e链表 head; 树结构的 root\u003c/li\u003e\n\u003cli\u003e各种文件的 Header: ELF, BMP, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e文件系统把 “入口” 放在 Superblock (固定位置)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e描述文件系统布局的 “元信息”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eMagic number, block size\u003c/li\u003e\n\u003cli\u003eTotal/free blocks, total/free inodes\u003c/li\u003e\n\u003cli\u003e数据结构的起始位置、大小、…\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003emkfs\u003c/code\u003e 创建; \u003ccode\u003emount\u003c/code\u003e 命令会根据 super block 确定文件系统类型\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"block\"\u003e最关键的一个 block\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e损坏 = 修复起来比较麻烦 (因此通常备份多份)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fat\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"fat\"\u003e小文件系统和 FAT\u003c/h1\u003e\n\u003ch2 id=\"525-160-kib\"\u003e5.25“ 软盘：单面 160 KiB\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e320 个 512B 扇区 (sectors)：任何复杂的数据结构都显得过于奢侈\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"file-allocation-table-fat\"\u003e核心数据结构：\u003ca href=\"https://jyywiki.cn/OS/manuals/MSFAT-spec.pdf\"\u003eFile Allocation Table\u003c/a\u003e (FAT)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把磁盘分成 clusters (sector 的 2^k 倍), \u003ccode\u003eBPB_SecPerClus\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003ecluster_t fat[4096];\u003c/code\u003e (FAT-12)，代表每个 cluster 的 next\u003cul\u003e\n\u003cli\u003e0 = free, -1 = EOF\u003c/li\u003e\n\u003cli\u003e在 FAT 碎片的情况下，大文件 lseek 会产生显著的读放大\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e目录\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003estruct dent entries[0];\u003c/code\u003e “目录文件”\u003cul\u003e\n\u003cli\u003eDOS “8 + 3” 文件名 “AUTOEXEC.BAT”，连一个字节都省了\u003c/li\u003e\n\u003cli\u003e不支持硬链接、长文件名需要打补丁\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/readfat\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"readfat\"\u003e\u003ca href=\"/OS/demos/persistence/readfat\"\u003ereadfat\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e通过摘抄手册，可以得到 fat32.h 并明确每个字段的含义，mmap 把磁盘镜像映射到内存就可以实现解析了。现在这个工作，哪怕是全新的系统，也完全可以交给大语言模型完成。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"unix\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix\"\u003eUNIX 的选择：分离\u003c/h1\u003e\n\u003ch2 id=\"gv-e\"\u003eG(V, E) 顶点和边分开存储 (非常符合直觉的选择)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003einode (Index Node): Mode, Links, User/Group, Size, …\u003cul\u003e\n\u003cli\u003efstat 直接返回 inode 里的信息即可 (FAT 就麻烦了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e通过 bitmap 分配 (相比 FAT 有更好的 locality)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"fastslow-path-ext2\"\u003e索引：联合数据结构 (Fast/Slow Path) ext2\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e12 个直接指针 + 1 indirect + 1 double indirect + 1 triple indirect\u003c/li\u003e\n\u003cli\u003e代价：inode 本身体积变大\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e目录\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003eusing dent = map\u0026lt;string, inode_t\u0026gt;;\u003c/code\u003e 天然支持硬链接\u003c/li\u003e\n\u003cli\u003e能不能 dump inode 和 dirent 的数据结构，并且可视化它？\u003cul\u003e\n\u003cli\u003eext4: \u0026lt;= 60B 的符号链接直接存储在 inode 中\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/ext4\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"debug-file-systems\"\u003e\u003ca href=\"/OS/demos/persistence/ext4\"\u003eDebug File Systems\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003edebugfs 工具使我们能在用户态调试文件系统——这也给了我们 “可视化” 一个目录的机会，我们可以递归地 dump 出一个目录的 raw data structure，看到文件系统的 “内部”，例如符号链接是如何存储的，并且用合适的工具渲染成直接可视化的 diagram。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 2. 文件系统的崩溃一致性\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"crash_problem\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e存储系统：应对崩溃\u003c/h1\u003e\n\u003ch2 id=\"crash\"\u003eCrash: 内存里的一切都瞬间丢失\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e可能是 power loss，也可能是 bug (Kernel panic)\u003cul\u003e\n\u003cli\u003e但 persistent storage 的数据是\u003cstrong\u003e不能丢失\u003c/strong\u003e的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"crash-consistency\"\u003eCrash Consistency\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eMove the file system from one consistent state (e.g., before the file got appended to) to another atomically (e.g., after the inode, bitmap, and new data block have been written to disk.\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/cat-crash-consistency.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"multiple_writes\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e暗藏杀机的数据结构\u003c/h1\u003e\n\u003ch2 id=\"multiple-location-writes\"\u003e数据结构更新涉及 multiple-location writes\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003ewrite\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e4096\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// append\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e分配数据块: bwrite(d-bitmap)\u003c/li\u003e\n\u003cli\u003e写入数据块: bwrite(data)\u003c/li\u003e\n\u003cli\u003e更新元数据 (size, time, index, …): bwrite(iblock)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/unix-fs.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"storage_system\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e层次化存储结构带来的问题\u003c/h1\u003e\n\u003ch2 id=\"block-cache-queue-dma-queue\"\u003eBlock cache → queue (DMA) → 存储系统上的计算机 → queue\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机系统会按照他认为的 “最佳” 顺序写入 (乱序执行)\u003cul\u003e\n\u003cli\u003e例子：HDD 的磁头运动规划；SSD FTL\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e于是 bread, bwrite 不就成了 relaxed memory model 了吗\u003cul\u003e\n\u003cli\u003e不就又打开了魔鬼的盒子吗 😱😱😱\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/m2ssd.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"out_of_order\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e乱序执行：后果\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e磁盘掉电时，写入请求的顺序是没有任何保证的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003emulti-write 会产生怎样的后果？\u003cul\u003e\n\u003cli\u003ebwrite(inode), bwrite(d-bitmap), bwrite(data)\u003c/li\u003e\n\u003cli\u003e(人类在几十年的时间里其实都在 “裸奔” 😂)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ssd\"\u003e早期 SSD 还有更严重的问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFTL crash 后会留下 corrupted data structure!\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mai-fast13.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fsck_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"systems\"\u003eSystems: “先挣钱，后还债”\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e崩溃会导致数据丢失、目录损坏，甚至文件系统无法挂载\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这时候当然是送去修电脑 (File System Check) 了！\u003c/li\u003e\n\u003cli\u003e“快速格式化” 的文件系统都，不一致的文件系统必须也能\u003cul\u003e\n\u003cli\u003e“摄影师事件” 中修电脑的被判处有期徒刑 8 个月\u003c/li\u003e\n\u003cli\u003e于是有了 fsrecov 的实验\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/leaked-photo.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fsck_detail\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"file-system-checking-fsck\"\u003eFile System Checking (FSCK)\u003c/h1\u003e\n\u003ch2 id=\"gv-e\"\u003e根据磁盘上已有的 G(V, E)，恢复出 “最可能” 的数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这是个算法题；但要小心 \u003ca href=\"https://dl.acm.org/doi/10.1145/3281031\"\u003efsck crash\u003c/a\u003e\n\u003c/li\u003e\n\u003cli\u003e强行终止虚拟机，可能观测到 Git repo 的损坏 (git fsck 可以修复)\u003cul\u003e\n\u003cli\u003eLinus: Git 已经是 append-only 了，不要引入额外的性能问题\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fsck-recovery.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"two_perspectives\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现崩溃一致性：重新理解 “数据结构”\u003c/h1\u003e\n\u003ch2 id=\"1\"\u003e视角 1: 存储实际数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e链表、二叉树、……\u003cul\u003e\n\u003cli\u003e文件系统的 “直观” 表示\u003c/li\u003e\n\u003cli\u003eMulti-write (crash unsafe)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"2-append-only\"\u003e视角 2: Append-only 记录所有历史操作\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e容易实现崩溃一致性\u003c/li\u003e\n\u003cli\u003e一旦有历史操作，就可以随时重构实际的数据结构了\u003cul\u003e\n\u003cli\u003eWrite-ahead log (“Redo log”)\u003c/li\u003e\n\u003cli\u003e1 + 1 \u0026gt; 2: append 在现代存储系统上更容易高效实现！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"lsm_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"append-only-lazy-update\"\u003eAppend-only + Lazy Update\u003c/h1\u003e\n\u003ch2 id=\"store-buffer\"\u003eStore buffer\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eStore 写入 CPU 本地缓存，慢慢传递给其他处理器\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"lsm-log-structured-merge-trees\"\u003eLSM (Log-structured Merge Trees)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e只有 MemTable 可写 (例如 Skip List)，带 WAL (crash consistency)\u003cul\u003e\n\u003cli\u003eMemTable 写满，触发 Flush 向磁盘持久化\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e磁盘上全是 Immutable SSTable\u003cul\u003e\n\u003cli\u003e如果结构不够好就 Merge (创建新 SSTable), Amortized O(1)\u003c/li\u003e\n\u003cli\u003e类比 Memory Hierarchy，小的树会 override 大的树\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/lsm-tree.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"journaling\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"write-ahead-log\"\u003e文件系统中的 Write-ahead Log\u003c/h1\u003e\n\u003ch2 id=\"txbegin-operations\"\u003e写入 TXBegin; operations\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e写完后 flush 等待数据落盘\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"txend\"\u003e写入 TxEnd\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在此之前写完后 flush 等待数据落盘\u003c/li\u003e\n\u003cli\u003e数据落盘 “happens-before” TxEnd 落盘\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"checkpointing\"\u003e写入文件系统 (Checkpointing) \u0026amp; 崩溃恢复\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ereplay(operations) 写入文件系统、回收日志空间\u003c/li\u003e\n\u003cli\u003e如果写入时崩溃，fsck 将会 replay(operations) 恢复数据\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fs-journaling.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"journaling_opt\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"journaling-tricks\"\u003eJournaling Tricks\u003c/h1\u003e\n\u003ch2 id=\"xv6-jbd\"\u003e批处理 (xv6; jbd)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e多次系统调用的 Tx 合并成一个，减少 log 的大小\u003c/li\u003e\n\u003cli\u003ejbd: 定期 write back\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"checksum-ext4\"\u003eChecksum (ext4)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不再标记 TxBegin/TxEnd\u003c/li\u003e\n\u003cli\u003e直接标记 Tx 的长度和 checksum (顺便还检查了日志完整性)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"metadata-journaling-ext4-default\"\u003eMetadata journaling (ext4 default)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e数据占磁盘写入的绝大部分\u003cul\u003e\n\u003cli\u003e只对 inode 和 bitmap 做 journaling 可以提高性能\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e保证文件系统的目录结构是一致的；但数据可能丢失\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 应用程序的崩溃一致性\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"app_cc\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e应用程序的崩溃一致性\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e应用程序的多个写入操作也会被乱序吗？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e会！因为有 metadata journaling，下面的操作是 crash unsafe 的\u003cul\u003e\n\u003cli\u003e\u003ccode\u003ePath(\"a.txt.tmp\").write_text(...)\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003eunlink(\"a.txt\")\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003erename(\"a.txt.tmp\", \"a.txt\")\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"phd\"\u003e想起了\u003ca href=\"https://dl.acm.org/doi/10.1145/2950290.2950327\"\u003e我读 PhD 时候的工作\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e想法来自 \u003ca href=\"https://www.usenix.org/conference/osdi14/technical-sessions/presentation/pillai\"\u003eAll file systems are not created equal\u003c/a\u003e\n\u003c/li\u003e\n\u003cli\u003e能不能实现一个能 “自动检查任何软件” 的 checker？\u003cul\u003e\n\u003cli\u003eMake, sort, perl, bzip2, … 无一幸免\u003c/li\u003e\n\u003cli\u003e2016 年的 Node.js 甚至无法安全地保存文件\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sync_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"sync\"\u003esync() 系列系统调用\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e全局同步\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e同步所有文件系统中的所有数据\u003c/li\u003e\n\u003cli\u003e等于 performance bug\u003cul\u003e\n\u003cli\u003e只在关机/命令行使用\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e文件描述符同步\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003esyncfs(fd)\u003c/code\u003e: 同步 fd 对应的文件系统\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003efsync(fd)\u003c/code\u003e: 同步文件 data + 全部 metadata\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003efdatasync(fd)\u003c/code\u003e: 同步文件 data\u003cul\u003e\n\u003cli\u003e仅同步改变了的数据相关 metadata (size、索引)\u003c/li\u003e\n\u003cli\u003e最弱，但依旧可以控制 data loss\u003c/li\u003e\n\u003cli\u003e例子：实现应用程序中的 WAL (实现 bflush 的效果)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sync_api_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e《操作系统》课到底教会了我们什么？\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e学习了新的文件系统 API\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003efsync, fdatasync\u003c/li\u003e\n\u003cli\u003e有什么办法巩固学习的成果呢？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"vibe-code-a-crash-consistency-checker\"\u003eVibe code a crash consistency checker!\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e打开 Coding Agent 读一遍论文\u003c/li\u003e\n\u003cli\u003e再让他实现一个简易版本，直接开跑\u003cul\u003e\n\u003cli\u003e半天时间就可以得到一个好得多的实现\u003c/li\u003e\n\u003cli\u003e再做范围巨大的实验，提交成百上千的补丁\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"paper\"\u003e我找到了一个发 (洗) paper 的流量密码\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e找到一些有 conceptual novelty 的老 paper\u003c/li\u003e\n\u003cli\u003e用钞能力扩大 100× 实验验规模，用 LLM 替代 heuristics\u003cul\u003e\n\u003cli\u003e(不要总这么做，会伤害大家的研究品味)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/ccheck\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"crash-consistency-checker\"\u003e\u003ca href=\"/OS/demos/persistence/ccheck\"\u003eCrash Consistency Checker\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e一个 user-space 的 strace-based crash consistency checker。追踪一次程序所有对数据文件的写入，包括 fsync 系列的系统调用，生成一系列的 trace，并使用 LLM 判定是否存在数据不一致等。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e把文件系统理解成一个 “数据结构”，就不难理解经典和现代文件系统的设计理念——所有人都是在为了合适的硬件、合适的读写 workload 上，用合适的方式组织数据，维护树状 (和链接) 的目录结构和随机访问的文件操作。当然，文件系统也通过各种手段默默守护了你数据的安全和一致性。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 40 章 - File System Implementation\u003c/li\u003e\n\u003cli\u003e第 41 章 - Locality and The Fast File System\u003c/li\u003e\n\u003cli\u003e第 42 章 - Crash Consistency: FSCK and Journaling\u003c/li\u003e\n\u003cli\u003e第 43 章 - Log-Structured File Systems\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect26.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

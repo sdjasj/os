@@ -1,0 +1,463 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 并发控制：同步与条件变量
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">并发编程：入门到放弃</h2>
+<ul>
+<li>thread.h: spawn(fn), join() 实现多线程</li>
+<li>结果 1 + 1 都不会实现了</li>
+</ul>
+<h2 id="1-1">互斥：终于可以求 1 + 1 了！</h2>
+<ul>
+<li>互斥锁 lock/acquire, unlock/release</li>
+</ul>
+<h2 id="_2">互斥没能完全解决问题</h2>
+<ul>
+<li>互斥实现了 “不并发”：A → B, 或者 B → A</li>
+<li>但没有给我们实现<strong>确定性</strong>的机制：只能 A → B<ul>
+<li>没错，我们还不会实现 join()</li>
+<li>T1, T2, … 结束 → join 返回</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 同步 (Synchronization)
+ </h2>
+<div class="slideshow" name="sync_concept"><div>
+<h1 id="_1">并发控制：同步</h1>
+<h2 id="asynchronous">我们人类 (线程) 天生是异步 (asynchronous) 的</h2>
+<ul>
+<li>“各管各的”</li>
+<li>例子：点好外卖就不管了，送到了会有通知</li>
+</ul>
+<h2 id="_2">同步：“两个或两个以上随时间变化的量在变化过程中保持一定的<strong>相对关系</strong>”</h2>
+<ul>
+<li>同步电机、同步电路……</li>
+<li>物理世界有很多方式实现同步<ul>
+<li>同步电机：磁锁定</li>
+<li>同步电路：时钟信号</li>
+<li>我们：Wall-clock time 10:10 上课<ul>
+<li>时钟同步：天体力学周期 (给人用) v.s. 原子振动 (高精度)？</li>
+<li>反人类的夏时制 (Daylight Saving Time): 中国也实行过！</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="sync_1"><div>
+<h1 id="contd">并发控制：同步 (cont’d)</h1>
+<h2 id="_1">意想不到，无处不在</h2>
+<ul>
+<li>在现实世界中，我们经常期望 “同时发生”<ul>
+<li>超过 20-30ms 就能察觉到 “不齐”</li>
+<li>对计算机来说，这已经是很长的时间尺度了 (上亿条指令)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/njuorchestra.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="sync_2"><div>
+<h1 id="_1">用代码表示直觉的同步</h1>
+<h2 id="_2">同步电路</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">posedge</span><span class="p">(</span><span class="n">clk</span><span class="p">))</span><span class="w"> </span><span class="p">;</span><span class="w">  </span><span class="c1">// await posedge(clk)</span>
+<span class="n">ff_out</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ff_in</span><span class="p">;</span>
+</code></pre></div>
+
+<h2 id="join">线程 join</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">spawn</span><span class="p">(</span><span class="n">T_1</span><span class="p">);</span><span class="w"> </span><span class="n">spawn</span><span class="p">(</span><span class="n">T_2</span><span class="p">);</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="n">spawn</span><span class="p">(</span><span class="n">T_n</span><span class="p">);</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">all_threads_done</span><span class="p">())</span><span class="w"> </span><span class="p">;</span><span class="w">  </span><span class="c1">// await all_threads_done()</span>
+</code></pre></div>
+
+<h2 id="235959">今晚 23:59:59 大活门口，不见不散！</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">study_until</span><span class="p">(</span><span class="mi">23</span><span class="p">,</span><span class="w"> </span><span class="mi">50</span><span class="p">,</span><span class="w"> </span><span class="mo">00</span><span class="p">);</span><span class="w"> </span><span class="k">goto</span><span class="p">(</span><span class="s">"大活门口"</span><span class="p">);</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">freak_guy_arrived</span><span class="p">())</span><span class="w"> </span><span class="p">;</span><span class="w"> </span><span class="c1">// await freak_guy_arrived()</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="sync_3"><div>
+<h1 id="_1">同步：思考</h1>
+<h2 id="_2">这些案例的共性：实现 “握手”</h2>
+<ul>
+<li>等到某一个条件发生，然后继续分叉执行</li>
+<li>如果现在条件不发生，一定有一个操作使它发生</li>
+</ul>
+<h2 id="_3">握手的瞬间就有了一个 “全局同步” 的状态 (同步点)</h2>
+<ul>
+<li>达到同步点，就是达到 “全局意义上容易理解” 的状态</li>
+<li>确立 “Happens-before” 关系<ul>
+<li>上升沿到来 → posedge(clk)</li>
+<li>最后一个线程结束 → await all_threads_done()</li>
+<li>迟到的人到达 → await freak_guy_arrived()</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="sync_impl"><div>
+<h1 id="_1">让我们实现一个同步的乐团吧！</h1>
+<h2 id="_2">你没看错，可以用程序放音乐</h2>
+<ul>
+<li>甚至还有专门实现音乐的 DSL: <a href="https://strudel.cc/">Strudel</a>, <a href="https://www.hacklily.org/">Hacklily</a>, …<ul>
+<li>Content as Code: Coding Agent 可以生产世界上的一切</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">实际写程序的时候就要小心了</h2>
+<ul>
+<li>还记得被 sum++ 支配的恐惧吗？<ul>
+<li>共享变量的访问一定要用 mutex 保护好</li>
+<li>acquire/release 保证了共享变量的可见性</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">do</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="n">can_proceed</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">check_condition</span><span class="p">();</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">can_proceed</span><span class="p">);</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">can_proceed</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="concurrency/orchestra"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/orchestra">实现乐团同步</a></h1>
+<p>乐团指挥希望每个成员在听到指挥的信号后，才开始演奏一拍——也就是建立一个 “happens-before” 的关系。在代码中，我们可以通过 happens-after 的一方 “等待” 同步条件达成的方式来实现同步。这个想法形成了条件变量。我们可以对比使用 spin 和条件变量版本的乐团指挥。</p>
+</div></div>
+</div>
+<div class="slideshow" name="cv_api"><div>
+<h1 id="_1">发明条件变量</h1>
+<h2 id="_2">如果不希望自旋？</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">do</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="n">cond</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">check_condition</span><span class="p">();</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span><span class="w"> </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">cond</span><span class="p">);</span>
+</code></pre></div>
+
+<h2 id="api">那就让操作系统提供一个 API 来帮忙吧</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">check_condition</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>cond_wait: 释放锁，同时立即等待 (这两件事瞬间同时完成)</li>
+<li>cond_wait 等待的线程，通过 signal(&amp;cv) 或 broadcast(&amp;cv) 唤醒</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="omni_use_condvar"><div>
+<h1 id="_1">万能同步的实现方法</h1>
+<ol>
+<li>想清楚，同步的条件是什么</li>
+<li>记住下面的这段代码 (上好锁)<ul>
+<li>同步电路、线程 join、不见不散、乐团指挥，都是一样的</li>
+</ul>
+</li>
+</ol>
+<div class="codehilite"><pre><span></span><code><span class="c1">// 线程 1</span>
+<span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="c1">// 修改可能使 sync_cond() 成立的共享状态</span>
+<span class="n">cond_broadcast</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">);</span><span class="w">    </span><span class="c1">// 唤醒等待的线程</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span><span class="w">  </span><span class="c1">// Release</span>
+
+<span class="c1">// 线程 2</span>
+<span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span><span class="w">  </span><span class="c1">// Acquire</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">sync_cond</span><span class="p">())</span><span class="w"> </span><span class="p">{</span><span class="w">    </span><span class="c1">// 条件不成立时进入等待</span>
+<span class="w">    </span><span class="n">cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span><span class="w">  </span><span class="c1">// 等待并自动释放 lk, 被唤醒时重新获得 lk</span>
+<span class="p">}</span>
+<span class="c1">// ... 执行后续操作</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<h2> 2. 使用条件变量解决同步问题
+ </h2>
+<div class="slideshow" name="producer_consumer"><div>
+<h1 id="-">经典同步问题：生产者-消费者问题</h1>
+<h2 id="_1">学废你就赢了</h2>
+<ul>
+<li>99% 的实际并发问题都可以用生产者-消费者解决<ul>
+<li>Master-slave (scheduler–worker) 模式</li>
+</ul>
+</li>
+</ul>
+<h2 id="producer-consumer">Producer 和 Consumer 共享一个缓冲区</h2>
+<ul>
+<li>Producer (生产数据)：如果缓冲区有空位，放入；否则等待</li>
+<li>Consumer (消费数据)：如果缓冲区有数据，取走；否则等待<ul>
+<li>
+<strong>同步</strong>：同一个 object 的生产必须 happens-before 消费</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">produce</span><span class="p">(</span><span class="n">Object</span><span class="w"> </span><span class="n">obj</span><span class="p">);</span>
+<span class="n">Object</span><span class="w"> </span><span class="nf">consume</span><span class="p">();</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="simplify_pc"><div>
+<h1 id="-">生产者-消费者问题的简化</h1>
+<h2 id="_1">一个等价的描述</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_producer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">"("</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_consumer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">printf</span><span class="p">(</span><span class="s">")"</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>生产 = 打印左括号 (push into buffer)</li>
+<li>消费 = 打印右括号 (pop from buffer)</li>
+<li>在 printf 前后增加代码，使得打印的括号序列满足<ul>
+<li>不能输出错误的括号序列</li>
+<li>括号嵌套的深度不超过 n (buffer size)<ul>
+<li>n = 3, ((())())((( ✅</li>
+<li>n = 3, (((()))), (())) ❌</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="correct_condvar"><div>
+<h1 id="_1">条件变量的正确打开方式</h1>
+<h2 id="_2">想清楚<strong>程序继续执行的条件</strong>，剩下的抄代码模板</h2>
+<ul>
+<li>什么时候可以 produce，什么时候可以 consume？</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">cond</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// cond 可以是任意的计算</span>
+<span class="w">    </span><span class="n">cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">assert</span><span class="p">(</span><span class="n">cond</span><span class="p">);</span><span class="w">    </span><span class="c1">// 此时 cond 成立且持有锁 lk</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="n">cond</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="n">cond_broadcast</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">);</span><span class="w"> </span><span class="c1">// 唤醒所有可能继续的线程</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="use_condvar"><div>
+<h1 id="contd">使用条件变量实现同步 (cont’d)</h1>
+<h2 id="_1">生产/消费的条件是什么？</h2>
+<ul>
+<li>嵌套深度 d &lt; n 可以生产；d &gt; 0 可以消费 (然后，<strong>抄代码</strong>)</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_producer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">depth</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">assert</span><span class="p">(</span><span class="n">depth</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">);</span>
+<span class="w">    </span><span class="n">depth</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"("</span><span class="p">);</span><span class="w"> </span><span class="c1">// put object to queue</span>
+
+<span class="w">    </span><span class="n">cond_broadcast</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">);</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="concurrency/producer-consumer"><div><div>
+<h1 id="-"><a href="/OS/demos/concurrency/producer-consumer">生产者-消费者问题</a></h1>
+<p>在解决同步问题时，关键在于理解全局同步点上的同步条件是什么。然后各个线程在条件不满足时等待，直到条件满足方可继续。这个思路自然地引出了 “条件变量” 这一同步机制。</p>
+</div></div>
+</div>
+<div class="slideshow" name="caveat_concurrency"><div>
+<h1 id="caveat">Caveat: 小心并发！</h1>
+<h2 id="_1">“看起来正确” 其实很危险</h2>
+<ul>
+<li>Producer 如果唤醒了等待的 producer 就糟了……</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_producer</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">depth</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="n">assert</span><span class="p">(</span><span class="n">depth</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">);</span>
+<span class="w">    </span><span class="n">depth</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"("</span><span class="p">);</span><span class="w"> </span><span class="c1">// put object to queue</span>
+
+<span class="w">    </span><span class="n">cond_signal</span><span class="p">(</span><span class="o">&amp;</span><span class="n">cv</span><span class="p">);</span><span class="w">  </span><span class="c1">// ⚠️</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="universal_sync"><div>
+<h1 id="_1">条件变量：万能的同步方法</h1>
+<h2 id="_2">有三种线程</h2>
+<ul>
+<li>T_a 若干: 死循环打印 <code>&lt;</code>
+</li>
+<li>T_b 若干: 死循环打印 <code>&gt;</code>
+</li>
+<li>T_c 若干: 死循环打印 <code>_</code>
+</li>
+</ul>
+<h2 id="_3">任务：</h2>
+<ul>
+<li>对线程同步，使得屏幕打印出 <code>&lt;&gt;&lt;_</code> 和 <code>&gt;&lt;&gt;_</code> 的组合</li>
+</ul>
+<h2 id="_4">使用条件变量，只要回答三个问题：</h2>
+<ul>
+<li>打印 “<code>&lt;</code>” 的条件？打印 “<code>&gt;</code>” 的条件？打印 “<code>_</code>” 的条件？</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/fish"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/fish">奇怪的同步问题</a></h1>
+<p>我们可以构造出 “奇怪” 的同步条件，例如有三种线程，分别死循环打印 <code>&lt;</code>、<code>&gt;</code>、<code>_</code>。如何同步这些线程，使得屏幕上看到的总是 <code>&lt;&gt;&lt;_</code> 和 <code>&gt;&lt;&gt;_</code> 的组合？而只要我们能列出同步条件，就可以直接使用条件变量解决。</p>
+</div></div>
+</div>
+<h2> 3. 实现计算图
+ </h2>
+<div class="slideshow" name="compgraph_model"><div>
+<h1 id="_1">计算图模型</h1>
+<h2 id="gv-e-dependency-graph">G(V, E): 有向无环的 Dependency Graph</h2>
+<ul>
+<li>计算任务在节点上<ul>
+<li>(可以使用 shared memory)</li>
+</ul>
+</li>
+<li>边 (u, v) 表示 v 的计算要用到 u 产生的值<ul>
+<li>(u, v) 就代表一个 happens-before 关系</li>
+<li>v 开始的时候，必须能看到 u 对共享内存所有的修改</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">这是一个<strong>非常基础的模型</strong>
+</h2>
+<ul>
+<li><strong>几乎总是可以用这个视角去理解并行计算</strong></li>
+<li>如果节点 “独立计算时间” 足够长，算法就是可高效并行的</li>
+<li>计算图也可以是动态的<ul>
+<li>一边计算，一边产生新的节点</li>
+<li>(计算图是共享内存里的数据结构)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="examples"><div>
+<h1 id="_1">无处不在的计算图</h1>
+<h2 id="_2">我们会专门有一次课讲各类计算任务的并行方法</h2>
+<ul>
+<li>神经网络 (Pytorch autograd; fxgraph)</li>
+<li>Makefile (GNU Make 是可以自动并行化的)</li>
+<li>……</li>
+</ul>
+<p><img alt="" src="static/img/fxgraph.png"></p>
+</div></div>
+
+<div class="slideshow" name="example_lcs"><div>
+<h1 id="longest-common-subsequence">例子：Longest Common Subsequence</h1>
+<h2 id="_1">对于一个计算问题，我们可以有多种<strong>划分</strong>方法</h2>
+<ul>
+<li>Caveat: 如果为每一个 dp[i][j] 创建一个线程，就得不偿失了</li>
+</ul>
+<p><img alt="" src="static/img/lcs.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="example_circuit"><div>
+<h1 id="_1">例子：电路模拟</h1>
+<h2 id="verilator-partition">Verilator: 支持 partition 和并行仿真</h2>
+<p><img alt="" src="static/img/sync-circuit.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="implement_compgraph_1"><div>
+<h1 id="1">同步：实现任意计算图 (1)</h1>
+<h2 id="_1">为每个计算节点设置一个线程和条件变量</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_u</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// u -&gt; v</span>
+<span class="w">    </span><span class="p">...</span><span class="w"> </span><span class="c1">// u 的计算</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="n">v</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">);</span>
+<span class="w">    </span><span class="n">v</span><span class="o">-&gt;</span><span class="n">n_done</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="n">cond_signal</span><span class="p">(</span><span class="n">v</span><span class="o">-&gt;</span><span class="n">cv</span><span class="p">);</span><span class="w">  </span><span class="c1">// 这里是可以 signal 的</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="n">v</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_v</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="n">v</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">);</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">v</span><span class="o">-&gt;</span><span class="n">n_done</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">v</span><span class="o">-&gt;</span><span class="n">n_predecessors</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">cond_wait</span><span class="p">(</span><span class="n">v</span><span class="o">-&gt;</span><span class="n">cv</span><span class="p">,</span><span class="w"> </span><span class="n">v</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="n">v</span><span class="o">-&gt;</span><span class="n">lock</span><span class="p">);</span>
+<span class="w">    </span><span class="p">...</span><span class="w"> </span><span class="c1">// v 的计算</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="implement_compgraph_2"><div>
+<h1 id="2">同步：实现任意计算图 (2)</h1>
+<h2 id="_1">实现一个任务的<strong>调度器</strong>
+</h2>
+<ul>
+<li>一个生产者 (scheduler)，许多消费者 (workers) 循环：<ul>
+<li>也叫做 “Executor Pool”</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="p">(</span><span class="n">all_done</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="n">has_job</span><span class="p">(</span><span class="n">tid</span><span class="p">)))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">cond_wait</span><span class="p">(</span><span class="o">&amp;</span><span class="n">worker_cv</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span><span class="w"> </span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">all_done</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">break</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">process_job</span><span class="p">(</span><span class="n">tid</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">cond_signal</span><span class="p">(</span><span class="o">&amp;</span><span class="n">sched_cv</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="understand_compgraph"><div>
+<h1 id="_1">同步的关键：理解同步条件</h1>
+<h2 id="1">方法 (1): 为每个计算节点分配线程</h2>
+<ul>
+<li>对于 u → v<ul>
+<li>T_u: 完成后为 T_v 生产一份</li>
+<li>T_v: 消费 n_predecessors 份后才能继续</li>
+</ul>
+</li>
+</ul>
+<h2 id="2-executor-pool">方法 (2): Executor Pool</h2>
+<ul>
+<li>T_worker: 生产 ready，消费 job</li>
+<li>T_scheduler: 消费 ready，生产 job<ul>
+<li>“生产 happens-before 消费”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/cgraph-mutex"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/cgraph-mutex">使用互斥锁实现计算图</a></h1>
+<p>为每一条边分配一把互斥锁——对于 u-&gt;v 的一条边，通过在 main 函数 acquire(lock of u -&gt; v)，u release -&gt; v acquire 来实现 happens-before。注意虽然这个程序可以正常运行，但这是 pthread mutex 不允许的 undefined behavior。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>同步是并发控制中除互斥外的另一个基本问题：我们希望控制事件发生的先后顺序。条件变量 (cond_wait/cond_signal/cond_broadcast) 是万能的同步原语，配合互斥锁使用，可以实现任意 happens-before 关系。生产者-消费者是经典的同步问题，99% 的实际并发问题都可以用它来建模和解决。计算图模型是理解并行计算的通用框架——为每个节点设置条件变量，或者用调度器-工作线程模式，都可以实现任意 DAG 上的并行计算。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 30 章 - Condition Variables</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 并发控制：同步与条件变量\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e并发编程：入门到放弃\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ethread.h: spawn(fn), join() 实现多线程\u003c/li\u003e\n\u003cli\u003e结果 1 + 1 都不会实现了\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"1-1\"\u003e互斥：终于可以求 1 + 1 了！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e互斥锁 lock/acquire, unlock/release\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e互斥没能完全解决问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e互斥实现了 “不并发”：A → B, 或者 B → A\u003c/li\u003e\n\u003cli\u003e但没有给我们实现\u003cstrong\u003e确定性\u003c/strong\u003e的机制：只能 A → B\u003cul\u003e\n\u003cli\u003e没错，我们还不会实现 join()\u003c/li\u003e\n\u003cli\u003eT1, T2, … 结束 → join 返回\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 同步 (Synchronization)\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"sync_concept\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e并发控制：同步\u003c/h1\u003e\n\u003ch2 id=\"asynchronous\"\u003e我们人类 (线程) 天生是异步 (asynchronous) 的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“各管各的”\u003c/li\u003e\n\u003cli\u003e例子：点好外卖就不管了，送到了会有通知\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e同步：“两个或两个以上随时间变化的量在变化过程中保持一定的\u003cstrong\u003e相对关系\u003c/strong\u003e”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e同步电机、同步电路……\u003c/li\u003e\n\u003cli\u003e物理世界有很多方式实现同步\u003cul\u003e\n\u003cli\u003e同步电机：磁锁定\u003c/li\u003e\n\u003cli\u003e同步电路：时钟信号\u003c/li\u003e\n\u003cli\u003e我们：Wall-clock time 10:10 上课\u003cul\u003e\n\u003cli\u003e时钟同步：天体力学周期 (给人用) v.s. 原子振动 (高精度)？\u003c/li\u003e\n\u003cli\u003e反人类的夏时制 (Daylight Saving Time): 中国也实行过！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sync_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e并发控制：同步 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e意想不到，无处不在\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在现实世界中，我们经常期望 “同时发生”\u003cul\u003e\n\u003cli\u003e超过 20-30ms 就能察觉到 “不齐”\u003c/li\u003e\n\u003cli\u003e对计算机来说，这已经是很长的时间尺度了 (上亿条指令)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/njuorchestra.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sync_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e用代码表示直觉的同步\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e同步电路\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003eposedge\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eclk\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// await posedge(clk)\u003c/span\u003e\n\u003cspan class=\"n\"\u003eff_out\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eff_in\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"join\"\u003e线程 join\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eT_n\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003eall_threads_done\u003c/span\u003e\u003cspan class=\"p\"\u003e())\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// await all_threads_done()\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"235959\"\u003e今晚 23:59:59 大活门口，不见不散！\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003estudy_until\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e23\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e50\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mo\"\u003e00\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003egoto\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"大活门口\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003efreak_guy_arrived\u003c/span\u003e\u003cspan class=\"p\"\u003e())\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// await freak_guy_arrived()\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sync_3\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e同步：思考\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e这些案例的共性：实现 “握手”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e等到某一个条件发生，然后继续分叉执行\u003c/li\u003e\n\u003cli\u003e如果现在条件不发生，一定有一个操作使它发生\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e握手的瞬间就有了一个 “全局同步” 的状态 (同步点)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e达到同步点，就是达到 “全局意义上容易理解” 的状态\u003c/li\u003e\n\u003cli\u003e确立 “Happens-before” 关系\u003cul\u003e\n\u003cli\u003e上升沿到来 → posedge(clk)\u003c/li\u003e\n\u003cli\u003e最后一个线程结束 → await all_threads_done()\u003c/li\u003e\n\u003cli\u003e迟到的人到达 → await freak_guy_arrived()\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sync_impl\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e让我们实现一个同步的乐团吧！\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e你没看错，可以用程序放音乐\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e甚至还有专门实现音乐的 DSL: \u003ca href=\"https://strudel.cc/\"\u003eStrudel\u003c/a\u003e, \u003ca href=\"https://www.hacklily.org/\"\u003eHacklily\u003c/a\u003e, …\u003cul\u003e\n\u003cli\u003eContent as Code: Coding Agent 可以生产世界上的一切\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e实际写程序的时候就要小心了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e还记得被 sum++ 支配的恐惧吗？\u003cul\u003e\n\u003cli\u003e共享变量的访问一定要用 mutex 保护好\u003c/li\u003e\n\u003cli\u003eacquire/release 保证了共享变量的可见性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003edo\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ecan_proceed\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003echeck_condition\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003ecan_proceed\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003eassert\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ecan_proceed\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/orchestra\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/orchestra\"\u003e实现乐团同步\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e乐团指挥希望每个成员在听到指挥的信号后，才开始演奏一拍——也就是建立一个 “happens-before” 的关系。在代码中，我们可以通过 happens-after 的一方 “等待” 同步条件达成的方式来实现同步。这个想法形成了条件变量。我们可以对比使用 spin 和条件变量版本的乐团指挥。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"cv_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e发明条件变量\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e如果不希望自旋？\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003edo\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003echeck_condition\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003econd\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"api\"\u003e那就让操作系统提供一个 API 来帮忙吧\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003echeck_condition\u003c/span\u003e\u003cspan class=\"p\"\u003e())\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003econd_wait: 释放锁，同时立即等待 (这两件事瞬间同时完成)\u003c/li\u003e\n\u003cli\u003econd_wait 等待的线程，通过 signal(\u0026amp;cv) 或 broadcast(\u0026amp;cv) 唤醒\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"omni_use_condvar\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e万能同步的实现方法\u003c/h1\u003e\n\u003col\u003e\n\u003cli\u003e想清楚，同步的条件是什么\u003c/li\u003e\n\u003cli\u003e记住下面的这段代码 (上好锁)\u003cul\u003e\n\u003cli\u003e同步电路、线程 join、不见不散、乐团指挥，都是一样的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ol\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"c1\"\u003e// 线程 1\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 修改可能使 sync_cond() 成立的共享状态\u003c/span\u003e\n\u003cspan class=\"n\"\u003econd_broadcast\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 唤醒等待的线程\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Release\u003c/span\u003e\n\n\u003cspan class=\"c1\"\u003e// 线程 2\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Acquire\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003esync_cond\u003c/span\u003e\u003cspan class=\"p\"\u003e())\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 条件不成立时进入等待\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 等待并自动释放 lk, 被唤醒时重新获得 lk\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// ... 执行后续操作\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 使用条件变量解决同步问题\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"producer_consumer\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"-\"\u003e经典同步问题：生产者-消费者问题\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e学废你就赢了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e99% 的实际并发问题都可以用生产者-消费者解决\u003cul\u003e\n\u003cli\u003eMaster-slave (scheduler–worker) 模式\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"producer-consumer\"\u003eProducer 和 Consumer 共享一个缓冲区\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eProducer (生产数据)：如果缓冲区有空位，放入；否则等待\u003c/li\u003e\n\u003cli\u003eConsumer (消费数据)：如果缓冲区有数据，取走；否则等待\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e同步\u003c/strong\u003e：同一个 object 的生产必须 happens-before 消费\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eproduce\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eObject\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eobj\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003eObject\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003econsume\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"simplify_pc\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"-\"\u003e生产者-消费者问题的简化\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e一个等价的描述\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_producer\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"(\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_consumer\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\")\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e生产 = 打印左括号 (push into buffer)\u003c/li\u003e\n\u003cli\u003e消费 = 打印右括号 (pop from buffer)\u003c/li\u003e\n\u003cli\u003e在 printf 前后增加代码，使得打印的括号序列满足\u003cul\u003e\n\u003cli\u003e不能输出错误的括号序列\u003c/li\u003e\n\u003cli\u003e括号嵌套的深度不超过 n (buffer size)\u003cul\u003e\n\u003cli\u003en = 3, ((())())((( ✅\u003c/li\u003e\n\u003cli\u003en = 3, (((()))), (())) ❌\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"correct_condvar\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e条件变量的正确打开方式\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e想清楚\u003cstrong\u003e程序继续执行的条件\u003c/strong\u003e，剩下的抄代码模板\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e什么时候可以 produce，什么时候可以 consume？\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"n\"\u003econd\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// cond 可以是任意的计算\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"n\"\u003eassert\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003econd\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 此时 cond 成立且持有锁 lk\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003econd\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nb\"\u003etrue\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003econd_broadcast\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 唤醒所有可能继续的线程\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"use_condvar\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e使用条件变量实现同步 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e生产/消费的条件是什么？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e嵌套深度 d \u0026lt; n 可以生产；d \u0026gt; 0 可以消费 (然后，\u003cstrong\u003e抄代码\u003c/strong\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_producer\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eassert\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"(\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// put object to queue\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_broadcast\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/producer-consumer\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"-\"\u003e\u003ca href=\"/OS/demos/concurrency/producer-consumer\"\u003e生产者-消费者问题\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在解决同步问题时，关键在于理解全局同步点上的同步条件是什么。然后各个线程在条件不满足时等待，直到条件满足方可继续。这个思路自然地引出了 “条件变量” 这一同步机制。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"caveat_concurrency\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"caveat\"\u003eCaveat: 小心并发！\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“看起来正确” 其实很危险\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eProducer 如果唤醒了等待的 producer 就糟了……\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_producer\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eassert\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edepth\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"(\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// put object to queue\u003c/span\u003e\n\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_signal\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// ⚠️\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"universal_sync\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e条件变量：万能的同步方法\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e有三种线程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eT_a 若干: 死循环打印 \u003ccode\u003e\u0026lt;\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eT_b 若干: 死循环打印 \u003ccode\u003e\u0026gt;\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eT_c 若干: 死循环打印 \u003ccode\u003e_\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e任务：\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e对线程同步，使得屏幕打印出 \u003ccode\u003e\u0026lt;\u0026gt;\u0026lt;_\u003c/code\u003e 和 \u003ccode\u003e\u0026gt;\u0026lt;\u0026gt;_\u003c/code\u003e 的组合\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e使用条件变量，只要回答三个问题：\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e打印 “\u003ccode\u003e\u0026lt;\u003c/code\u003e” 的条件？打印 “\u003ccode\u003e\u0026gt;\u003c/code\u003e” 的条件？打印 “\u003ccode\u003e_\u003c/code\u003e” 的条件？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/fish\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/fish\"\u003e奇怪的同步问题\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以构造出 “奇怪” 的同步条件，例如有三种线程，分别死循环打印 \u003ccode\u003e\u0026lt;\u003c/code\u003e、\u003ccode\u003e\u0026gt;\u003c/code\u003e、\u003ccode\u003e_\u003c/code\u003e。如何同步这些线程，使得屏幕上看到的总是 \u003ccode\u003e\u0026lt;\u0026gt;\u0026lt;_\u003c/code\u003e 和 \u003ccode\u003e\u0026gt;\u0026lt;\u0026gt;_\u003c/code\u003e 的组合？而只要我们能列出同步条件，就可以直接使用条件变量解决。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 3. 实现计算图\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"compgraph_model\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e计算图模型\u003c/h1\u003e\n\u003ch2 id=\"gv-e-dependency-graph\"\u003eG(V, E): 有向无环的 Dependency Graph\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算任务在节点上\u003cul\u003e\n\u003cli\u003e(可以使用 shared memory)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e边 (u, v) 表示 v 的计算要用到 u 产生的值\u003cul\u003e\n\u003cli\u003e(u, v) 就代表一个 happens-before 关系\u003c/li\u003e\n\u003cli\u003ev 开始的时候，必须能看到 u 对共享内存所有的修改\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e这是一个\u003cstrong\u003e非常基础的模型\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e几乎总是可以用这个视角去理解并行计算\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003e如果节点 “独立计算时间” 足够长，算法就是可高效并行的\u003c/li\u003e\n\u003cli\u003e计算图也可以是动态的\u003cul\u003e\n\u003cli\u003e一边计算，一边产生新的节点\u003c/li\u003e\n\u003cli\u003e(计算图是共享内存里的数据结构)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"examples\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e无处不在的计算图\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e我们会专门有一次课讲各类计算任务的并行方法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e神经网络 (Pytorch autograd; fxgraph)\u003c/li\u003e\n\u003cli\u003eMakefile (GNU Make 是可以自动并行化的)\u003c/li\u003e\n\u003cli\u003e……\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fxgraph.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"example_lcs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"longest-common-subsequence\"\u003e例子：Longest Common Subsequence\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e对于一个计算问题，我们可以有多种\u003cstrong\u003e划分\u003c/strong\u003e方法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCaveat: 如果为每一个 dp[i][j] 创建一个线程，就得不偿失了\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/lcs.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"example_circuit\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e例子：电路模拟\u003c/h1\u003e\n\u003ch2 id=\"verilator-partition\"\u003eVerilator: 支持 partition 和并行仿真\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sync-circuit.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"implement_compgraph_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1\"\u003e同步：实现任意计算图 (1)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e为每个计算节点设置一个线程和条件变量\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_u\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// u -\u0026gt; v\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// u 的计算\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003en_done\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_signal\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 这里是可以 signal 的\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_v\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003en_done\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003en_predecessors\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecv\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ev\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003elock\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// v 的计算\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"implement_compgraph_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"2\"\u003e同步：实现任意计算图 (2)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e实现一个任务的\u003cstrong\u003e调度器\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一个生产者 (scheduler)，许多消费者 (workers) 循环：\u003cul\u003e\n\u003cli\u003e也叫做 “Executor Pool”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e!\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eall_done\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e||\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ehas_job\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e)))\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003econd_wait\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003eworker_cv\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e],\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\n\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eall_done\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ebreak\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eprocess_job\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"n\"\u003econd_signal\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003esched_cv\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"understand_compgraph\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e同步的关键：理解同步条件\u003c/h1\u003e\n\u003ch2 id=\"1\"\u003e方法 (1): 为每个计算节点分配线程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e对于 u → v\u003cul\u003e\n\u003cli\u003eT_u: 完成后为 T_v 生产一份\u003c/li\u003e\n\u003cli\u003eT_v: 消费 n_predecessors 份后才能继续\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"2-executor-pool\"\u003e方法 (2): Executor Pool\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eT_worker: 生产 ready，消费 job\u003c/li\u003e\n\u003cli\u003eT_scheduler: 消费 ready，生产 job\u003cul\u003e\n\u003cli\u003e“生产 happens-before 消费”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/cgraph-mutex\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/cgraph-mutex\"\u003e使用互斥锁实现计算图\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e为每一条边分配一把互斥锁——对于 u-\u0026gt;v 的一条边，通过在 main 函数 acquire(lock of u -\u0026gt; v)，u release -\u0026gt; v acquire 来实现 happens-before。注意虽然这个程序可以正常运行，但这是 pthread mutex 不允许的 undefined behavior。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e同步是并发控制中除互斥外的另一个基本问题：我们希望控制事件发生的先后顺序。条件变量 (cond_wait/cond_signal/cond_broadcast) 是万能的同步原语，配合互斥锁使用，可以实现任意 happens-before 关系。生产者-消费者是经典的同步问题，99% 的实际并发问题都可以用它来建模和解决。计算图模型是理解并行计算的通用框架——为每个节点设置条件变量，或者用调度器-工作线程模式，都可以实现任意 DAG 上的并行计算。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 30 章 - Condition Variables\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect15.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

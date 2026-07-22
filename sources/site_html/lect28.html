@@ -1,0 +1,463 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 计算机安全简介
+ </h1>
+<h2> 1. 什么是计算机安全
+ </h2>
+<div class="slideshow" name="naked_era"><div>
+<h1 id="_1">回到美好的 “裸奔” 时代</h1>
+<h2 id="8086-real-mode">8086, Real-Mode</h2>
+<ul>
+<li>16-bit CS, 16-bit IP, PC = (CS &lt;&lt; 4) + IP (1 MB 寻址能力)</li>
+<li>Firmware code 直接映射到地址空间中<ul>
+<li>
+<code>int $x</code> → <code>(*(void (*)() *)(4 * x))()</code> 😂</li>
+<li>16-bit 时代的 “<a href="https://wiki.osdev.org/BIOS">系统调用</a>”</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">完全没有任何安全可言</h2>
+<ul>
+<li>任何程序都可以访问<strong>任何硬件</strong><ul>
+<li>病毒：复制自己，然后感染更多的计算机 (“加壳”)</li>
+<li>例子：CIH 能破坏硬件的病毒</li>
+</ul>
+</li>
+</ul>
+<h2 id="bbs">BBS 的裸奔时代</h2>
+<ul>
+<li>
+<a href="https://xiaobao.nju.edu.cn/d4/01/c18184a316417/page.htm">南京大学小百合</a>；今天依然还有活着的 <code>newsmth.net</code>
+</li>
+</ul>
+</div></div>
+
+<h3> 1.1. 信息安全三要素
+ </h3>
+<div class="slideshow" name="confidentiality"><div>
+<h1 id="confidentiality">保密性 Confidentiality</h1>
+<h2 id="_1">不想给别人看的，别人就看不到</h2>
+<ul>
+<li>快速格式化：这个问题我懂</li>
+</ul>
+<p><img alt="" src="static/img/leaked-photo.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="integrity"><div>
+<h1 id="integrity">完整性 Integrity</h1>
+<h2 id="_1">不想让别人改的，别人就改不了</h2>
+<ul>
+<li>科创板首位 90 后 (你们的师兄)：“如何通过入侵老师邮箱拿到期末考卷和修改成绩”</li>
+</ul>
+<p><img alt="" src="static/img/ljk.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="availability"><div>
+<h1 id="availability">可用性 Availability</h1>
+<h2 id="_1">我的服务，别人不能让我用不了</h2>
+<ul>
+<li>(Distributed) “Denial-of-service” 攻击<ul>
+<li>Fork bomb: <code>:(){ :|: &amp; };:</code>
+</li>
+<li><a href="https://ocert.org/advisories/ocert-2011-003.html">Algorithmic complexity attack</a></li>
+<li>例子：<a href="https://nvd.nist.gov/vuln/detail/CVE-2011-4858">Hash table</a> (影响几乎所有语言：Java, Python, PHP, Ruby, Node.js……)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/ds-busy.png"></p>
+</div></div>
+
+<h3> 1.2. Aside: 一分钟密码学
+ </h3>
+<div class="slideshow" name="crypto_1min"><div>
+<h1 id="_1">一分钟密码学</h1>
+<h2 id="one-way-functions">One-way functions</h2>
+<ul>
+<li>有一个正向好算、逆向难算的 f(x) = y</li>
+<li>例子：密码学哈希 (SHA-256, …)，表现得近乎 “完全随机”</li>
+</ul>
+<h2 id="trapdoor-one-way-functions">Trapdoor one-way functions</h2>
+<ul>
+<li>多了个 “后门” t，有了 t 之后，f(x) = y 逆向又好算了</li>
+<li>正过来用 (confidentiality): Alice 公开 f → Bob 公开传输 f(m) → Alice 解密得到 m</li>
+<li>反过来用 (integrity): Alice 公开 f → Bob 发送一个随机的 c → Alice 用 t 求解 f(r) = c，公开 r → 任何人都可以验证 f(r) = c (证明 Alice 有 t)<ul>
+<li>把 c 换成任意文件的哈希，就实现了数字签名</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/trapdoor.png"></p>
+</div></div>
+
+<div class="slideshow" name="blockchain"><div>
+<h1 id="_1">应用：区块链</h1>
+<h2 id="append-only-log">一个全球共享的 (低效) append-only log</h2>
+<ul>
+<li>任何一只 (想 append) 的 🐶 都可以向一个随机的位置扔一个世界上独一无二的 🦴</li>
+<li>其他 🐶 听到了，只能随机去捡，谁花的时间更多，谁就能捡到 (proof-of-work)</li>
+<li>捡到 🦴 的 🐶 把 🦴 和数据一起 append 到链上，取走自己的奖励，然后广播<ul>
+<li>捡到骨头很难，使得 append 变得困难，从而减少分布式分叉</li>
+<li>这个协议可以是任何程序 (Ethereum)</li>
+</ul>
+</li>
+<li>去中心化还带来了 availability (全世界都是 replica)<ul>
+<li>不过没有 confidentiality (就是为了分布式共识而设计的)</li>
+</ul>
+</li>
+</ul>
+<h2 id="killer-application">Killer Application</h2>
+<ul>
+<li>洗钱 (当时想通这一点的人就都财富自由了)</li>
+</ul>
+<blockquote>
+<p>调查人员在释永信住处搜出了一串佛珠。佛珠上刻着 24 个英文单词——那是一个比特币冷钱包的助记词。钱包里有价值约 1.3 亿美元的比特币。</p>
+</blockquote>
+</div></div>
+
+<h2> 2. 访问控制
+ </h2>
+<div class="slideshow" name="access_control_isolation"><div>
+<h1 id="confidentiality-integrity">实现 Confidentiality 和 Integrity</h1>
+<h2 id="_1">进程 + 虚拟内存已经实现了隔离</h2>
+<ul>
+<li>进程只能以 ELF 规定的权限访问自己的虚拟地址空间</li>
+<li>一切对操作系统世界里的 “共享” 对象<strong>访问</strong>，都通过系统调用<ul>
+<li>(假设，内核没有被漏洞攻破)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">访问控制：限制程序对操作系统对象的访问</h2>
+<ul>
+<li>拒绝越权访问 → Confidentiality</li>
+<li>拒绝越权修改 → Integrity</li>
+<li>公平的系统调用实现 → Availability</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="acl_table"><div>
+<h1 id="_1">访问控制原理：一张表</h1>
+<table>
+<thead>
+<tr>
+<th>进程</th>
+<th>对象</th>
+<th>访问</th>
+<th>权限</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>/etc/passwd</td>
+<td>read</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>1</td>
+<td>/etc/passwd</td>
+<td>write</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>4132</td>
+<td>/etc/passwd</td>
+<td>write</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>4132</td>
+<td>/tmp/hello.txt</td>
+<td>write</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_2">“谁能怎么访问什么”</h2>
+<ul>
+<li>越权访问，直接返回 EACCESS (Permission denied)</li>
+<li>缺点：这个表<strong>非常大</strong>，而且很难维护<ul>
+<li>做一个 low-rank decomposition 可以吗？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="unix_uid"><div>
+<h1 id="unix">UNIX: 用整数表示身份</h1>
+<h2 id="uid-gid-mode">uid, gid, mode</h2>
+<ul>
+<li>uid = 0 → root, 其他都是 “普通用户”<ul>
+<li>root 可以访问所有对象，也可以 setuid</li>
+<li>子进程继承父进程的 uid</li>
+</ul>
+</li>
+<li>gid “完全自由” (虽然一般 0 是 root)<ul>
+<li>一个用户可以属于多个组</li>
+</ul>
+</li>
+<li>mode: r, w, x 的权限<ul>
+<li>例子：owner 只写不可读，audit 组可以读的日志文件</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">操作系统完全看不到用户名</h2>
+<ul>
+<li>通过 setuid, setgid, chmod 系统调用实现访问控制 💡</li>
+<li>Android: 每个 app 都是不同的用户</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="passwd"><div>
+<h1 id="etcpasswd">/etc/passwd: 每行一个用户</h1>
+<h2 id="usernamepassworduidgidcommenthomeshell">username:password:uid:gid:comment:home:shell</h2>
+<ul>
+<li>现代系统通常使用 shadow 文件存储密码的 hash</li>
+<li>chsh, passwd 只是直接修改了文件 😂<ul>
+<li>操作系统就真的只管 uid，不管如何解读 “用户”</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/tocttou.png"></p>
+</div></div>
+
+<div class="slideshow" name="uid_complex"><div>
+<h1 id="uid">UID：没有那么简单</h1>
+<h2 id="system-abstraction">没有 system (abstraction) 能逃脱成为 💩⛰️</h2>
+<ul>
+<li>Real uid (ruid)</li>
+<li>Saved uid (suid)<ul>
+<li>为了实现 “恢复权限” 而设计</li>
+</ul>
+</li>
+<li>Effective uid (euid)<ul>
+<li>这是实际访问控制使用的 uid</li>
+</ul>
+</li>
+<li>Filesystem uid (fsuid)<ul>
+<li>用于独立控制文件系统访问权限 (Since Linux 1.2)</li>
+<li>内核内部仍使用，但应用程序极少独立设置</li>
+</ul>
+</li>
+<li>setuid 机制：<code>chmod +s</code> (ls -l /bin/passwd)</li>
+<li><a href="https://www.usenix.org/conference/11th-usenix-security-symposium/setuid-demystified">Setuid demystified</a></li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="access_control_revisit"><div>
+<h1 id="_1">回到访问控制</h1>
+<h2 id="access-control-matrix">我们希望的是维护任意的 access control matrix</h2>
+<ul>
+<li>(进程、对象、访问) → bool</li>
+<li>uid, gid, mode 并不是实现访问控制的唯一方法</li>
+</ul>
+<h2 id="matrix">从这个 matrix 里可以 “切割” 出一部分进行控制</h2>
+<ul>
+<li>Access Control List; acl (5)<ul>
+<li>以文件为单位，支持为用户和组分别设置权限</li>
+<li>基于 xattr 实现</li>
+</ul>
+</li>
+<li>SELinux/AppArmor; apparmor (7)<ul>
+<li>更细粒度的对象级访问控制</li>
+</ul>
+</li>
+<li>Capabilities<ul>
+<li>行为类的切片</li>
+<li>
+<code>capsh --drop=cap_net_raw -- -c 'ping 127.0.0.1'</code> (注意这是 fail on execve; getcap 查看 capabilities)</li>
+</ul>
+</li>
+<li>我们能不能直接写一个 access control function?<ul>
+<li>有的：seccomp (2); <a href="https://docs.kernel.org/bpf/prog_lsm.html">LSM BPF</a>; Linux Kernel 5.7+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 3. 软件系统安全
+ </h2>
+<div class="slideshow" name="security_core"><div>
+<h1 id="_1">找到 “意外” 的行为</h1>
+<h2 id="_2">程序中隐藏着万千 “无人理解” 的路径</h2>
+<ul>
+<li><a href="https://jyywiki.cn/OS/img/drink-water-user-friendly.gif">你永远无法预期你的用户会如何使用你的产品</a></li>
+<li>更不要说 “恶意” 的使用了</li>
+</ul>
+<h2 id="fuzz-testing">Fuzz Testing: 让魔法打败魔法</h2>
+<ul>
+<li>自动生成大量 “非预期” 输入，观察程序是否你如异常状态<ul>
+<li>如果找到 memory corruption 等，也许能捡到可以利用的漏洞呢！</li>
+<li>例子：<a href="https://lcamtuf.coredump.cx/afl/">AFL</a>
+</li>
+<li>例子：<a href="https://google.github.io/oss-fuzz/">OSS-Fuzz</a>: 持续 fuzz 开源项目<ul>
+<li>已发现 10,000+ 漏洞</li>
+<li>Linux kernel, OpenSSL, Python, Chromium 等均参与</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>LLM 入场后：海量的 0day 😂</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="break_process"><div>
+<h1 id="_1">攻破一个进程</h1>
+<h2 id="corner-case">一个有趣的 corner case</h2>
+<ul>
+<li>
+<code>read(fd, buf, size);</code> 读入了比 buffer 更大的数据？</li>
+<li>如果没有 Segmentation Fault 呢？</li>
+</ul>
+<h2 id="undefined-behavior">Undefined behavior 不是和大家开玩笑的 😈</h2>
+<ul>
+<li>1996 年 <a href="https://inst.eecs.berkeley.edu/~cs161/fa08/papers/stack_smashing.pdf">Smashing The Stack For Fun And Profit</a> 开启了全新的世界<ul>
+<li><a href="https://dl.packetstormsecurity.net/papers/attack/64bit-overflow.pdf">x86-64 当然也可以</a></li>
+<li>Memory error 贡献了巨量的计算机系统漏洞</li>
+</ul>
+</li>
+<li>Return-oriented programming<ul>
+<li>可执行内存中有大量以 ret 结尾的 “gadgets”<ul>
+<li>
+<code>pop rdi; ret</code> → 控制 rdi (第一个参数)</li>
+<li>
+<code>pop rsi; ret</code> → 控制 rsi (第二个参数)</li>
+<li>最后一次返回到 execve，攻击完成</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/stackoverflow"><div><div>
+<h1 id="stack-buffer-overflow"><a href="/OS/demos/intro/stackoverflow">Stack Buffer Overflow</a></h1>
+<p>当输入的长度超过缓冲区大小时，vulnerable.c 的行为就变得危险。如果没有各类保护机制 (Stack Protector, ASLR 等)，这个程序就完全可以被利用执行任意代码。</p>
+</div></div>
+</div>
+<div class="slideshow" name="defend_process"><div>
+<h1 id="_1">防御一个进程</h1>
+<h2 id="_2">我们至少可以减少攻击面</h2>
+<ul>
+<li>访问控制 (禁止对越权对象的访问)</li>
+<li>执行保护 (使漏洞难以利用)<ul>
+<li>随机地址空间 (ASLR)、内存保护 Canary (stack protector), NX-bit (no execute), 控制流完整性 CFI/Intel CET (endbr64 = Indirect Branch Tracking), …</li>
+</ul>
+</li>
+<li>审计与阻断<ul>
+<li>auditd: 程序只能按照 “预期” 的方式访问对象; <a href="https://tetragon.io/">Tetragon</a>
+</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/canary.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="access_control_fail"><div>
+<h1 id="_1">防了，没完全防住 😭</h1>
+<h2 id="_2">所有看起来都 “合法” 的访问，也可能存在非法行为</h2>
+<ul>
+<li>Tenex: Authentication system call</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">check_password</span><span class="p">(</span><span class="n">__user</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">given_pass</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="n">strlen</span><span class="p">(</span><span class="n">correct_pass</span><span class="p">);</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">correct_pass</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="n">given_pass</span><span class="p">[</span><span class="n">i</span><span class="p">])</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">EACCESS</span><span class="p">;</span><span class="w"> </span><span class="c1">// access denied</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="clever_design"><div>
+<h1 id="_1">看似精妙的设计，实际……</h1>
+<h2 id="timing-side-channel">Timing side channel</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">raise_exception</span><span class="p">();</span><span class="w">  </span><span class="c1">// even an HTM abort</span>
+<span class="kt">uint8_t</span><span class="w"> </span><span class="k">volatile</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">probe_array</span><span class="p">[</span><span class="n">data</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">4096</span><span class="p">];</span>
+</code></pre></div>
+
+<ul>
+<li>Tenex: 天道好轮回 😊 这下惨了，只能 Page Table Isolation 了 (PTI)</li>
+</ul>
+<h2 id="meltdown">Meltdown 只是个开始</h2>
+<ul>
+<li>
+<a href="https://downfall.page">Downfall</a> (CVE-2022-40982): Intel Gather 指令优化漏洞，跨用户/内核/VM 泄露数据</li>
+<li>
+<a href="https://comsec.ethz.ch/wp-content/files/inception_sec23.pdf">Inception</a> (CVE-2023-20569): AMD Zen 分支预测器攻击</li>
+<li>
+<a href="https://www.vusec.net/projects/ghostrace/">GhostRace</a>: 利用 Speculative Race Conditions，影响 Intel/AMD/ARM</li>
+</ul>
+<p><img alt="" src="static/img/meltdown-exploit.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="invisible_1"><div>
+<h1 id="1">你甚至看不见你的对手在哪 (1)</h1>
+<h2 id="_1">超视距窃听</h2>
+<ul>
+<li>
+<a href="https://www.cl.cam.ac.uk/~mgk25/pet2004-fpd-slides.pdf">Electromagnetic eavesdropping risks of flat-panel displays</a>; 天线和显示器相距 10m，间隔三层石膏板</li>
+</ul>
+<p><img alt="" src="static/img/crt-remote.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="invisible_2"><div>
+<h1 id="2">你甚至看不见你的对手在哪 (2)</h1>
+<h2 id="cpu">不仅可以 “看” 你的屏幕，还可以 “看” 你的 CPU</h2>
+<ul>
+<li><a href="https://dl.acm.org/doi/10.1145/2851486">Physical key extraction attacks on PCs</a></li>
+</ul>
+<p><img alt="" src="static/img/sidechannel.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="invisible_3"><div>
+<h1 id="_1">或者，更暴力一点</h1>
+<h2 id="_2">把内存条冷冻以后拆下来</h2>
+<ul>
+<li><a href="https://www.usenix.org/legacy/event/sec08/tech/full_papers/halderman/halderman.pdf">Cold boot attack</a></li>
+</ul>
+<p><img alt="" src="static/img/coldboot.jpg"></p>
+</div></div>
+
+<h2> 4. Agent 时代的新安全威胁
+ </h2>
+<div class="slideshow" name="agent_security"><div>
+<h1 id="agents">Agents 时代的新安全问题</h1>
+<h2 id="prompt-injection-jailbreak">Prompt Injection (jailbreak)</h2>
+<ul>
+<li>LLM 已经被微调成安全了</li>
+<li>但总有一些 “ignore all previous instructions” 的方法<ul>
+<li>“奶奶漏洞”</li>
+</ul>
+</li>
+</ul>
+<h2 id="agent">在 Agent 能调用工具的时候就更重要了</h2>
+<ul>
+<li>像 rop 一样，每次 inject 一点，最后就成了一个可以遵循的恶意指令</li>
+<li>无法绝对防御，只能通过沙箱/访问控制解决</li>
+</ul>
+<p><img alt="" src="static/img/grandma.png"></p>
+</div></div>
+
+<div class="slideshow" name="supply_chain"><div>
+<h1 id="_1">供应链攻击：你甚至不能信任你的软件</h1>
+<h2 id="github-repo">你只需要通过社会工程学获得 Github Repo 的访问</h2>
+<ul>
+<li>直接推送攻击的版本<ul>
+<li>创建一个新的 npm package (<code>plain-crypto-js@4.2.1</code>)<ul>
+<li>(有危险的 installation hook)</li>
+</ul>
+</li>
+<li>发布一个新版本，混着 feature，加上这个依赖</li>
+</ul>
+</li>
+<li>卧薪尝胆: <a href="https://en.wikipedia.org/wiki/XZ_Utils_backdoor">xz-utils 后门</a><ul>
+<li>攻击者 “Jia Tan” 花 2-3 年建立贡献者信任</li>
+<li>在 liblzma 构建系统中注入混淆恶意代码</li>
+<li>通过 systemd 影响 sshd，Ed448 密钥实现远程代码执行<ul>
+<li>(要不是性能 bug，影响就大了)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 计算机安全简介\n \u003c/h1\u003e\n\u003ch2\u003e 1. 什么是计算机安全\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"naked_era\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e回到美好的 “裸奔” 时代\u003c/h1\u003e\n\u003ch2 id=\"8086-real-mode\"\u003e8086, Real-Mode\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e16-bit CS, 16-bit IP, PC = (CS \u0026lt;\u0026lt; 4) + IP (1 MB 寻址能力)\u003c/li\u003e\n\u003cli\u003eFirmware code 直接映射到地址空间中\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003eint $x\u003c/code\u003e → \u003ccode\u003e(*(void (*)() *)(4 * x))()\u003c/code\u003e 😂\u003c/li\u003e\n\u003cli\u003e16-bit 时代的 “\u003ca href=\"https://wiki.osdev.org/BIOS\"\u003e系统调用\u003c/a\u003e”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e完全没有任何安全可言\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e任何程序都可以访问\u003cstrong\u003e任何硬件\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e病毒：复制自己，然后感染更多的计算机 (“加壳”)\u003c/li\u003e\n\u003cli\u003e例子：CIH 能破坏硬件的病毒\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"bbs\"\u003eBBS 的裸奔时代\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://xiaobao.nju.edu.cn/d4/01/c18184a316417/page.htm\"\u003e南京大学小百合\u003c/a\u003e；今天依然还有活着的 \u003ccode\u003enewsmth.net\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. 信息安全三要素\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"confidentiality\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"confidentiality\"\u003e保密性 Confidentiality\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e不想给别人看的，别人就看不到\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e快速格式化：这个问题我懂\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/leaked-photo.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"integrity\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"integrity\"\u003e完整性 Integrity\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e不想让别人改的，别人就改不了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e科创板首位 90 后 (你们的师兄)：“如何通过入侵老师邮箱拿到期末考卷和修改成绩”\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/ljk.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"availability\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"availability\"\u003e可用性 Availability\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e我的服务，别人不能让我用不了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e(Distributed) “Denial-of-service” 攻击\u003cul\u003e\n\u003cli\u003eFork bomb: \u003ccode\u003e:(){ :|: \u0026amp; };:\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://ocert.org/advisories/ocert-2011-003.html\"\u003eAlgorithmic complexity attack\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003e例子：\u003ca href=\"https://nvd.nist.gov/vuln/detail/CVE-2011-4858\"\u003eHash table\u003c/a\u003e (影响几乎所有语言：Java, Python, PHP, Ruby, Node.js……)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/ds-busy.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.2. Aside: 一分钟密码学\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"crypto_1min\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一分钟密码学\u003c/h1\u003e\n\u003ch2 id=\"one-way-functions\"\u003eOne-way functions\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e有一个正向好算、逆向难算的 f(x) = y\u003c/li\u003e\n\u003cli\u003e例子：密码学哈希 (SHA-256, …)，表现得近乎 “完全随机”\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"trapdoor-one-way-functions\"\u003eTrapdoor one-way functions\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e多了个 “后门” t，有了 t 之后，f(x) = y 逆向又好算了\u003c/li\u003e\n\u003cli\u003e正过来用 (confidentiality): Alice 公开 f → Bob 公开传输 f(m) → Alice 解密得到 m\u003c/li\u003e\n\u003cli\u003e反过来用 (integrity): Alice 公开 f → Bob 发送一个随机的 c → Alice 用 t 求解 f(r) = c，公开 r → 任何人都可以验证 f(r) = c (证明 Alice 有 t)\u003cul\u003e\n\u003cli\u003e把 c 换成任意文件的哈希，就实现了数字签名\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/trapdoor.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"blockchain\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e应用：区块链\u003c/h1\u003e\n\u003ch2 id=\"append-only-log\"\u003e一个全球共享的 (低效) append-only log\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e任何一只 (想 append) 的 🐶 都可以向一个随机的位置扔一个世界上独一无二的 🦴\u003c/li\u003e\n\u003cli\u003e其他 🐶 听到了，只能随机去捡，谁花的时间更多，谁就能捡到 (proof-of-work)\u003c/li\u003e\n\u003cli\u003e捡到 🦴 的 🐶 把 🦴 和数据一起 append 到链上，取走自己的奖励，然后广播\u003cul\u003e\n\u003cli\u003e捡到骨头很难，使得 append 变得困难，从而减少分布式分叉\u003c/li\u003e\n\u003cli\u003e这个协议可以是任何程序 (Ethereum)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e去中心化还带来了 availability (全世界都是 replica)\u003cul\u003e\n\u003cli\u003e不过没有 confidentiality (就是为了分布式共识而设计的)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"killer-application\"\u003eKiller Application\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e洗钱 (当时想通这一点的人就都财富自由了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cblockquote\u003e\n\u003cp\u003e调查人员在释永信住处搜出了一串佛珠。佛珠上刻着 24 个英文单词——那是一个比特币冷钱包的助记词。钱包里有价值约 1.3 亿美元的比特币。\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 访问控制\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"access_control_isolation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"confidentiality-integrity\"\u003e实现 Confidentiality 和 Integrity\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e进程 + 虚拟内存已经实现了隔离\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e进程只能以 ELF 规定的权限访问自己的虚拟地址空间\u003c/li\u003e\n\u003cli\u003e一切对操作系统世界里的 “共享” 对象\u003cstrong\u003e访问\u003c/strong\u003e，都通过系统调用\u003cul\u003e\n\u003cli\u003e(假设，内核没有被漏洞攻破)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e访问控制：限制程序对操作系统对象的访问\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e拒绝越权访问 → Confidentiality\u003c/li\u003e\n\u003cli\u003e拒绝越权修改 → Integrity\u003c/li\u003e\n\u003cli\u003e公平的系统调用实现 → Availability\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"acl_table\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e访问控制原理：一张表\u003c/h1\u003e\n\u003ctable\u003e\n\u003cthead\u003e\n\u003ctr\u003e\n\u003cth\u003e进程\u003c/th\u003e\n\u003cth\u003e对象\u003c/th\u003e\n\u003cth\u003e访问\u003c/th\u003e\n\u003cth\u003e权限\u003c/th\u003e\n\u003c/tr\u003e\n\u003c/thead\u003e\n\u003ctbody\u003e\n\u003ctr\u003e\n\u003ctd\u003e1\u003c/td\u003e\n\u003ctd\u003e/etc/passwd\u003c/td\u003e\n\u003ctd\u003eread\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003e1\u003c/td\u003e\n\u003ctd\u003e/etc/passwd\u003c/td\u003e\n\u003ctd\u003ewrite\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003e4132\u003c/td\u003e\n\u003ctd\u003e/etc/passwd\u003c/td\u003e\n\u003ctd\u003ewrite\u003c/td\u003e\n\u003ctd\u003e❌\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003e4132\u003c/td\u003e\n\u003ctd\u003e/tmp/hello.txt\u003c/td\u003e\n\u003ctd\u003ewrite\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003c/tr\u003e\n\u003c/tbody\u003e\n\u003c/table\u003e\n\u003ch2 id=\"_2\"\u003e“谁能怎么访问什么”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e越权访问，直接返回 EACCESS (Permission denied)\u003c/li\u003e\n\u003cli\u003e缺点：这个表\u003cstrong\u003e非常大\u003c/strong\u003e，而且很难维护\u003cul\u003e\n\u003cli\u003e做一个 low-rank decomposition 可以吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"unix_uid\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix\"\u003eUNIX: 用整数表示身份\u003c/h1\u003e\n\u003ch2 id=\"uid-gid-mode\"\u003euid, gid, mode\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003euid = 0 → root, 其他都是 “普通用户”\u003cul\u003e\n\u003cli\u003eroot 可以访问所有对象，也可以 setuid\u003c/li\u003e\n\u003cli\u003e子进程继承父进程的 uid\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003egid “完全自由” (虽然一般 0 是 root)\u003cul\u003e\n\u003cli\u003e一个用户可以属于多个组\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003emode: r, w, x 的权限\u003cul\u003e\n\u003cli\u003e例子：owner 只写不可读，audit 组可以读的日志文件\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e操作系统完全看不到用户名\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e通过 setuid, setgid, chmod 系统调用实现访问控制 💡\u003c/li\u003e\n\u003cli\u003eAndroid: 每个 app 都是不同的用户\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"passwd\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"etcpasswd\"\u003e/etc/passwd: 每行一个用户\u003c/h1\u003e\n\u003ch2 id=\"usernamepassworduidgidcommenthomeshell\"\u003eusername:password:uid:gid:comment:home:shell\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e现代系统通常使用 shadow 文件存储密码的 hash\u003c/li\u003e\n\u003cli\u003echsh, passwd 只是直接修改了文件 😂\u003cul\u003e\n\u003cli\u003e操作系统就真的只管 uid，不管如何解读 “用户”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/tocttou.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"uid_complex\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"uid\"\u003eUID：没有那么简单\u003c/h1\u003e\n\u003ch2 id=\"system-abstraction\"\u003e没有 system (abstraction) 能逃脱成为 💩⛰️\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eReal uid (ruid)\u003c/li\u003e\n\u003cli\u003eSaved uid (suid)\u003cul\u003e\n\u003cli\u003e为了实现 “恢复权限” 而设计\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eEffective uid (euid)\u003cul\u003e\n\u003cli\u003e这是实际访问控制使用的 uid\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eFilesystem uid (fsuid)\u003cul\u003e\n\u003cli\u003e用于独立控制文件系统访问权限 (Since Linux 1.2)\u003c/li\u003e\n\u003cli\u003e内核内部仍使用，但应用程序极少独立设置\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003esetuid 机制：\u003ccode\u003echmod +s\u003c/code\u003e (ls -l /bin/passwd)\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://www.usenix.org/conference/11th-usenix-security-symposium/setuid-demystified\"\u003eSetuid demystified\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"access_control_revisit\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e回到访问控制\u003c/h1\u003e\n\u003ch2 id=\"access-control-matrix\"\u003e我们希望的是维护任意的 access control matrix\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e(进程、对象、访问) → bool\u003c/li\u003e\n\u003cli\u003euid, gid, mode 并不是实现访问控制的唯一方法\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"matrix\"\u003e从这个 matrix 里可以 “切割” 出一部分进行控制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAccess Control List; acl (5)\u003cul\u003e\n\u003cli\u003e以文件为单位，支持为用户和组分别设置权限\u003c/li\u003e\n\u003cli\u003e基于 xattr 实现\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eSELinux/AppArmor; apparmor (7)\u003cul\u003e\n\u003cli\u003e更细粒度的对象级访问控制\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eCapabilities\u003cul\u003e\n\u003cli\u003e行为类的切片\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003ecapsh --drop=cap_net_raw -- -c 'ping 127.0.0.1'\u003c/code\u003e (注意这是 fail on execve; getcap 查看 capabilities)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们能不能直接写一个 access control function?\u003cul\u003e\n\u003cli\u003e有的：seccomp (2); \u003ca href=\"https://docs.kernel.org/bpf/prog_lsm.html\"\u003eLSM BPF\u003c/a\u003e; Linux Kernel 5.7+\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 软件系统安全\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"security_core\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e找到 “意外” 的行为\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e程序中隐藏着万千 “无人理解” 的路径\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://jyywiki.cn/OS/img/drink-water-user-friendly.gif\"\u003e你永远无法预期你的用户会如何使用你的产品\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003e更不要说 “恶意” 的使用了\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"fuzz-testing\"\u003eFuzz Testing: 让魔法打败魔法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e自动生成大量 “非预期” 输入，观察程序是否你如异常状态\u003cul\u003e\n\u003cli\u003e如果找到 memory corruption 等，也许能捡到可以利用的漏洞呢！\u003c/li\u003e\n\u003cli\u003e例子：\u003ca href=\"https://lcamtuf.coredump.cx/afl/\"\u003eAFL\u003c/a\u003e\n\u003c/li\u003e\n\u003cli\u003e例子：\u003ca href=\"https://google.github.io/oss-fuzz/\"\u003eOSS-Fuzz\u003c/a\u003e: 持续 fuzz 开源项目\u003cul\u003e\n\u003cli\u003e已发现 10,000+ 漏洞\u003c/li\u003e\n\u003cli\u003eLinux kernel, OpenSSL, Python, Chromium 等均参与\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eLLM 入场后：海量的 0day 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"break_process\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e攻破一个进程\u003c/h1\u003e\n\u003ch2 id=\"corner-case\"\u003e一个有趣的 corner case\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003eread(fd, buf, size);\u003c/code\u003e 读入了比 buffer 更大的数据？\u003c/li\u003e\n\u003cli\u003e如果没有 Segmentation Fault 呢？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"undefined-behavior\"\u003eUndefined behavior 不是和大家开玩笑的 😈\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e1996 年 \u003ca href=\"https://inst.eecs.berkeley.edu/~cs161/fa08/papers/stack_smashing.pdf\"\u003eSmashing The Stack For Fun And Profit\u003c/a\u003e 开启了全新的世界\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://dl.packetstormsecurity.net/papers/attack/64bit-overflow.pdf\"\u003ex86-64 当然也可以\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003eMemory error 贡献了巨量的计算机系统漏洞\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eReturn-oriented programming\u003cul\u003e\n\u003cli\u003e可执行内存中有大量以 ret 结尾的 “gadgets”\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003epop rdi; ret\u003c/code\u003e → 控制 rdi (第一个参数)\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003epop rsi; ret\u003c/code\u003e → 控制 rsi (第二个参数)\u003c/li\u003e\n\u003cli\u003e最后一次返回到 execve，攻击完成\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/stackoverflow\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"stack-buffer-overflow\"\u003e\u003ca href=\"/OS/demos/intro/stackoverflow\"\u003eStack Buffer Overflow\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e当输入的长度超过缓冲区大小时，vulnerable.c 的行为就变得危险。如果没有各类保护机制 (Stack Protector, ASLR 等)，这个程序就完全可以被利用执行任意代码。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"defend_process\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e防御一个进程\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e我们至少可以减少攻击面\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e访问控制 (禁止对越权对象的访问)\u003c/li\u003e\n\u003cli\u003e执行保护 (使漏洞难以利用)\u003cul\u003e\n\u003cli\u003e随机地址空间 (ASLR)、内存保护 Canary (stack protector), NX-bit (no execute), 控制流完整性 CFI/Intel CET (endbr64 = Indirect Branch Tracking), …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e审计与阻断\u003cul\u003e\n\u003cli\u003eauditd: 程序只能按照 “预期” 的方式访问对象; \u003ca href=\"https://tetragon.io/\"\u003eTetragon\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/canary.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"access_control_fail\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e防了，没完全防住 😭\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e所有看起来都 “合法” 的访问，也可能存在非法行为\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eTenex: Authentication system call\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003echeck_password\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003e__user\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003egiven_pass\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003estrlen\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ecorrect_pass\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ecorrect_pass\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e!=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003egiven_pass\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"p\"\u003e])\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"n\"\u003esleep\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e3\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eEACCESS\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// access denied\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"clever_design\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e看似精妙的设计，实际……\u003c/h1\u003e\n\u003ch2 id=\"timing-side-channel\"\u003eTiming side channel\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003eraise_exception\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// even an HTM abort\u003c/span\u003e\n\u003cspan class=\"kt\"\u003euint8_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003evolatile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eprobe_array\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003edata\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e4096\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003eTenex: 天道好轮回 😊 这下惨了，只能 Page Table Isolation 了 (PTI)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"meltdown\"\u003eMeltdown 只是个开始\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://downfall.page\"\u003eDownfall\u003c/a\u003e (CVE-2022-40982): Intel Gather 指令优化漏洞，跨用户/内核/VM 泄露数据\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://comsec.ethz.ch/wp-content/files/inception_sec23.pdf\"\u003eInception\u003c/a\u003e (CVE-2023-20569): AMD Zen 分支预测器攻击\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.vusec.net/projects/ghostrace/\"\u003eGhostRace\u003c/a\u003e: 利用 Speculative Race Conditions，影响 Intel/AMD/ARM\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/meltdown-exploit.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"invisible_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1\"\u003e你甚至看不见你的对手在哪 (1)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e超视距窃听\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.cl.cam.ac.uk/~mgk25/pet2004-fpd-slides.pdf\"\u003eElectromagnetic eavesdropping risks of flat-panel displays\u003c/a\u003e; 天线和显示器相距 10m，间隔三层石膏板\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/crt-remote.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"invisible_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"2\"\u003e你甚至看不见你的对手在哪 (2)\u003c/h1\u003e\n\u003ch2 id=\"cpu\"\u003e不仅可以 “看” 你的屏幕，还可以 “看” 你的 CPU\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://dl.acm.org/doi/10.1145/2851486\"\u003ePhysical key extraction attacks on PCs\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sidechannel.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"invisible_3\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e或者，更暴力一点\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e把内存条冷冻以后拆下来\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://www.usenix.org/legacy/event/sec08/tech/full_papers/halderman/halderman.pdf\"\u003eCold boot attack\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/coldboot.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 4. Agent 时代的新安全威胁\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"agent_security\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"agents\"\u003eAgents 时代的新安全问题\u003c/h1\u003e\n\u003ch2 id=\"prompt-injection-jailbreak\"\u003ePrompt Injection (jailbreak)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLLM 已经被微调成安全了\u003c/li\u003e\n\u003cli\u003e但总有一些 “ignore all previous instructions” 的方法\u003cul\u003e\n\u003cli\u003e“奶奶漏洞”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"agent\"\u003e在 Agent 能调用工具的时候就更重要了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e像 rop 一样，每次 inject 一点，最后就成了一个可以遵循的恶意指令\u003c/li\u003e\n\u003cli\u003e无法绝对防御，只能通过沙箱/访问控制解决\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/grandma.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"supply_chain\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e供应链攻击：你甚至不能信任你的软件\u003c/h1\u003e\n\u003ch2 id=\"github-repo\"\u003e你只需要通过社会工程学获得 Github Repo 的访问\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e直接推送攻击的版本\u003cul\u003e\n\u003cli\u003e创建一个新的 npm package (\u003ccode\u003eplain-crypto-js@4.2.1\u003c/code\u003e)\u003cul\u003e\n\u003cli\u003e(有危险的 installation hook)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e发布一个新版本，混着 feature，加上这个依赖\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e卧薪尝胆: \u003ca href=\"https://en.wikipedia.org/wiki/XZ_Utils_backdoor\"\u003exz-utils 后门\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e攻击者 “Jia Tan” 花 2-3 年建立贡献者信任\u003c/li\u003e\n\u003cli\u003e在 liblzma 构建系统中注入混淆恶意代码\u003c/li\u003e\n\u003cli\u003e通过 systemd 影响 sshd，Ed448 密钥实现远程代码执行\u003cul\u003e\n\u003cli\u003e(要不是性能 bug，影响就大了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect28.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

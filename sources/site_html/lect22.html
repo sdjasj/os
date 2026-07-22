@@ -1,0 +1,432 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 输入/输出设备原理
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="virtualization-concurrency">Virtualization &amp; Concurrency: 总结</h2>
+<ul>
+<li>进程和系统调用上的应用世界 (经典 UNIX)</li>
+<li>
+<code>spawn(T_worker)</code> 打开了魔鬼的盒子 (并行计算、异步编程、异构计算)</li>
+</ul>
+<h2 id="_1">操作系统中的对象</h2>
+<ul>
+<li>文件描述符：<strong>指向操作系统对象的 “指针”</strong><ul>
+<li>Everything is a file</li>
+<li>通过指针可以访问 “一切”</li>
+</ul>
+</li>
+<li>我们直接使用了操作系统对象 (tty, disk, …)<ul>
+<li>今天开始正式展开</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. I/O 设备
+ </h2>
+<div class="slideshow" name="io_devices_today"><div>
+<h1 id="_1">今天的主角：输入输出设备</h1>
+<h2 id="_2">这是你实际上 “看到” 的计算机</h2>
+<ul>
+<li>我们花了大量时间讲解的 CPU、内存、……都是 “看不见” 的</li>
+</ul>
+<p><img alt="" src="static/img/iodevices.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="bridge_to_physical_world"><div>
+<h1 id="io">I/O 设备：“计算” 和 “物理世界” 之间的桥梁</h1>
+<h2 id="io-cpu">I/O 设备 = 一个能与 CPU 交换数据的接口/控制器</h2>
+<ul>
+<li>使计算机能<strong>感知外部状态</strong> (眼睛、耳朵)、<strong>对外实施动作</strong> (手)</li>
+<li>就是 “几组约定好功能的线” (寄存器)<ul>
+<li>通过握手信号从线上读出/写入数据</li>
+</ul>
+</li>
+<li>给寄存器 “赋予” 一个内存地址 (Address Decoder)<ul>
+<li>CPU 可以直接使用指令 (in/out/MMIO) 和设备交换数据 (是的，就这么简单)</li>
+<li>也可以向计算机发送中断 (这部分实现在操作系统内部)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/canonical-device.png"></p>
+</div></div>
+
+<h3> 1.1. 一些简单的设备
+ </h3>
+<div class="slideshow" name="gpio"><div>
+<h1 id="io">实现核弹发射：只需要 “一根线” I/O 设备</h1>
+<h2 id="gpio-general-purpose-inputoutput">GPIO (General Purpose Input/Output)</h2>
+<ul>
+<li>极简的模型：Memory-mapped I/O 直接读取/写入电平信号 (Logic 1 = 3.3V)</li>
+<li>我们甚至可以直接控制 Raspberry Pi 上的灯！</li>
+</ul>
+<p><img alt="" src="static/img/gpio-led.jpg"></p>
+</div></div>
+
+<div class="code-card" path="persistence/gpio-led"><div><div>
+<h1 id="gpio-led"><a href="/OS/demos/persistence/gpio-led">GPIO LED</a></h1>
+<p>计算机上的任何 I/O 设备都是可以通过程序控制的——只是通常并不推荐这么做：我们有丰富的应用程序抽象可以帮助我们更好地完成设备的交互。</p>
+</div></div>
+</div>
+<div class="slideshow" name="uart"><div>
+<h1 id="uart">串口 (UART)</h1>
+<h2 id="com1-communication-1">“COM1” (Communication 1)</h2>
+<ul>
+<li>Universal Asynchronous Receiver/Transmitter</li>
+<li>
+<code>/dev/ttyS0</code> 映射到了 UART (可以接真正的终端使用)</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="cp">#define COM1 0x3f8</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="nf">uart_init</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">outb</span><span class="p">(</span><span class="n">COM1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span><span class="w">   </span><span class="c1">// 控制器相关细节</span>
+<span class="w">  </span><span class="n">outb</span><span class="p">(</span><span class="n">COM1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mh">0x80</span><span class="p">);</span>
+<span class="w">  </span><span class="n">outb</span><span class="p">(</span><span class="n">COM1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">115200</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">9600</span><span class="p">);</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="p">}</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">uart_tx</span><span class="p">(</span><span class="n">AM_UART_TX_T</span><span class="w"> </span><span class="o">*</span><span class="n">send</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">outb</span><span class="p">(</span><span class="n">COM1</span><span class="p">,</span><span class="w"> </span><span class="n">send</span><span class="o">-&gt;</span><span class="n">data</span><span class="p">);</span><span class="w"> </span><span class="c1">// 写寄存器</span>
+<span class="p">}</span>
+<span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">uart_rx</span><span class="p">(</span><span class="n">AM_UART_RX_T</span><span class="w"> </span><span class="o">*</span><span class="n">recv</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">recv</span><span class="o">-&gt;</span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">inb</span><span class="p">(</span><span class="n">COM1</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">5</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x1</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="n">inb</span><span class="p">(</span><span class="n">COM1</span><span class="p">)</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="mi">-1</span><span class="p">;</span><span class="w">  </span><span class="c1">// 读寄存器</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="keyboard"><div>
+<h1 id="_1">键盘控制器</h1>
+<h2 id="ibm-pcat-8042-ps2-keyboard-controller">IBM PC/AT 8042 PS/2 (Keyboard) Controller</h2>
+<ul>
+<li>6 根线：Data, Clock, VCC, GND, 两个预留</li>
+<li>映射到 Port 0x60 (data), 0x64 (status/command)<ul>
+<li>command = 0xED → LED 灯控</li>
+<li>command = 0xF3 → 设置重复速度和重复延迟</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/ps2-ports.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="disk"><div>
+<h1 id="_1">磁盘控制器</h1>
+<h2 id="ata-advanced-technology-attachment">ATA (Advanced Technology Attachment)</h2>
+<ul>
+<li>IDE 接口磁盘 (40pin data 很 “肥” 的数据线 + 4pin 电源)<ul>
+<li>primary: 0x1f0 - 0x1f7; secondary: 0x170 - 0x177</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">readsect</span><span class="p">(</span><span class="kt">void</span><span class="w"> </span><span class="o">*</span><span class="n">dst</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">sect</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="n">waitdisk</span><span class="p">();</span>
+<span class="w">  </span><span class="n">out_byte</span><span class="p">(</span><span class="mh">0x1f2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span><span class="w">          </span><span class="c1">// sector count (1)</span>
+<span class="w">  </span><span class="n">out_byte</span><span class="p">(</span><span class="mh">0x1f3</span><span class="p">,</span><span class="w"> </span><span class="n">sect</span><span class="p">);</span><span class="w">       </span><span class="c1">// sector</span>
+<span class="w">  </span><span class="n">out_byte</span><span class="p">(</span><span class="mh">0x1f4</span><span class="p">,</span><span class="w"> </span><span class="n">sect</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">8</span><span class="p">);</span><span class="w">  </span><span class="c1">// cylinder (low)</span>
+<span class="w">  </span><span class="n">out_byte</span><span class="p">(</span><span class="mh">0x1f5</span><span class="p">,</span><span class="w"> </span><span class="n">sect</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">16</span><span class="p">);</span><span class="w"> </span><span class="c1">// cylinder (high)</span>
+<span class="w">  </span><span class="n">out_byte</span><span class="p">(</span><span class="mh">0x1f6</span><span class="p">,</span><span class="w"> </span><span class="p">(</span><span class="n">sect</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="mi">24</span><span class="p">)</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="mh">0xe0</span><span class="p">);</span><span class="w"> </span><span class="c1">// drive</span>
+<span class="w">  </span><span class="n">out_byte</span><span class="p">(</span><span class="mh">0x1f7</span><span class="p">,</span><span class="w"> </span><span class="mh">0x20</span><span class="p">);</span><span class="w">       </span><span class="c1">// command (read)</span>
+<span class="w">  </span><span class="n">waitdisk</span><span class="p">();</span>
+<span class="w">  </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">SECTSIZE</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">++</span><span class="p">)</span>
+<span class="w">    </span><span class="p">((</span><span class="kt">uint32_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="n">dst</span><span class="p">)[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">in_long</span><span class="p">(</span><span class="mh">0x1f0</span><span class="p">);</span><span class="w"> </span><span class="c1">// data</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<h3> 1.2. 更有趣的设备
+ </h3>
+<div class="slideshow" name="printer"><div>
+<h1 id="_1">打印机</h1>
+<h2 id="inputoutput-canonical-device">
+<a href="https://jyywiki.cn/OS/manuals/CalComp-Software-Reference.pdf">任何能 input/output 的东西</a>，都可以是 Canonical Device</h2>
+<ul>
+<li>打印机：将字节流描述的文字/图形打印到纸张上</li>
+</ul>
+<p><img alt="center" src="static/img/calcomp-565.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="postscript"><div>
+<h1 id="postscript">PostScript 和打印机</h1>
+<h2 id="postscript-dsl">PostScript: 一种描述页面布局的 DSL</h2>
+<ul>
+<li>类似于汇编语言 (由 “编译器”，如 latex，生成)<ul>
+<li>PDF 是 PostScript 的 “改进版”</li>
+<li>“图形状态机”：路径构造、路径着色、文本渲染、外部对象</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">打印机 = “汇编语言解释器”</h2>
+<ul>
+<li>PCL, PostScript, <a href="https://www.rfc-editor.org/rfc/rfc8011">IPP</a> (AirPrint) → 打印机机械动作<ul>
+<li>历史悠久的 lp/lpr (Line Printer Daemon)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>&lt;ESC&gt;*t300R          // PCL: Set resolution to 300 DPI
+&lt;ESC&gt;*r1A            // Start raster graphics
+&lt;ESC&gt;*b100W          // Set width of raster data (100 bytes)
+&lt;ESC&gt;*b0M            // Set compression mode (0 = uncompressed)
+&lt;ESC&gt;*b100V          // Send 100 bytes of raster data
+&lt;binary raster data&gt; // Actual image data
+&lt;ESC&gt;*rB             // End raster graphics
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="persistence/postscript"><div><div>
+<h1 id="postscript"><a href="/OS/demos/persistence/postscript">PostScript</a></h1>
+<p>PostScript是一种页面描述语言 (PDL)，由 Adobe Systems 在 1980 年代初开发。它是一种编程语言，专门用于描述图形和文本的布局和外观，主要用于打印和显示系统。PostScript 文件包含了详细的指令，告诉打印机或显示设备如何生成页面上的每一个元素，包括字体、图形、颜色和图像。</p>
+</div></div>
+</div>
+<div class="slideshow" name="uvc"><div>
+<h1 id="webcam">摄像头 (WebCam)</h1>
+<h2 id="_1">你买到的所有摄像头都是 “免驱” 的</h2>
+<ul>
+<li>要感谢 UVC (USB Video Class)</li>
+<li>一个标准化的协议：枚举设备 → 协商格式/分辨率/帧率 → 传输开始 → 逐帧读取 MJPEG/H.264<ul>
+<li>仍然是交换字节流 (canonical device model)</li>
+<li>诞生了大量衍生产品：行车记录仪、显微镜、内窥镜、平板扫描仪、眼球鼠标……</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/webcam-scanner.jpg"></p>
+</div></div>
+
+<h3> 1.3. 协处理器和总线
+ </h3>
+<div class="slideshow" name="dma"><div>
+<h1 id="io">打破 I/O 设备与内存之间的边界</h1>
+<h2 id="_1">刚才都是 “独立于计算机” 的设备</h2>
+<ul>
+<li>核弹发射器、键盘、鼠标、磁盘、打印机、摄像头……</li>
+<li>如果允许设备访问<strong>计算机内的资源</strong>？</li>
+</ul>
+<h2 id="dma-memcpy">DMA: 一个专门执行 memcpy 的协处理器</h2>
+<ul>
+<li>早期的 “多处理器系统”，协处理器只能执行 hard-wired 程序 (比 CPU 简单很多)<ul>
+<li>但可以和 I/O 端口通信，因此大幅解放了 CPU 的压力</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_i8237</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span><span class="c1">// Channel</span>
+<span class="w">            </span><span class="k">struct</span><span class="w"> </span><span class="nc">channel_t</span><span class="w"> </span><span class="o">*</span><span class="n">ch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">&amp;</span><span class="n">channels</span><span class="p">[</span><span class="n">i</span><span class="p">];</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">count</span><span class="o">--</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">mode</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="n">READ</span><span class="p">)</span><span class="w"> </span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">io</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">mem</span><span class="p">[</span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">addr</span><span class="o">++</span><span class="p">];</span>
+<span class="w">                </span><span class="k">else</span><span class="w"> </span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">mem</span><span class="p">[</span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">addr</span><span class="o">++</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ch</span><span class="o">-&gt;</span><span class="n">io</span><span class="p">;</span>
+<span class="w">                </span><span class="k">break</span><span class="p">;</span><span class="w">  </span><span class="c1">// Priority</span>
+<span class="w">            </span><span class="p">}</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="cuda_accelerator"><div>
+<h1 id="gpu-npu">异构加速器：GPU 和 NPU</h1>
+<h2 id="gpu">GPU 看起来就是 “一台完整的计算机”</h2>
+<ul>
+<li>可以执行 <code>&lt;&lt;&lt; &gt;&gt;&gt;</code> 中定义的 kernel</li>
+<li>但代码和数据都是由 CPU 送过去的 (<code>cudaMalloc</code>, <code>cudaMemcpy</code>, …)；送数据又是由 DMA 完成的；控制指令则是 canonical device model</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_worker</span><span class="p">(</span><span class="n">dim3</span><span class="w"> </span><span class="n">threadIdx</span><span class="p">,</span><span class="w"> </span><span class="n">dim3</span><span class="w"> </span><span class="n">blockIdx</span><span class="p">,</span><span class="w"> </span><span class="n">dim3</span><span class="w"> </span><span class="n">gridDim</span><span class="p">,</span><span class="w"> </span><span class="n">dim3</span><span class="w"> </span><span class="n">blockDim</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="npu">其他的加速器也是类似的 (<a href="https://docs.qualcomm.com/nav/home/index_SNPE.html">NPU</a>)</h2>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Qualcomm Neural Processing SDK for AI</span>
+<span class="c1">// Input/output maps are “zdl::DlSystem::UserBufferMap&amp;”</span>
+<span class="n">snpe</span><span class="o">-&gt;</span><span class="n">execute</span><span class="p">(</span><span class="n">inputMap</span><span class="p">,</span><span class="w"> </span><span class="n">outputMap</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="bus"><div>
+<h1 id="_1">连接万千设备：总线</h1>
+<h2 id="io">计算机硬件生态的 “扩展性”：“无穷无尽” 的 I/O 设备？</h2>
+<ul>
+<li>想卖大价钱的 “大型机”：IBM, DEC, …</li>
+<li>车库里造出来的 “微型机”：名垂青史的梦想家<ul>
+<li>IBM PC/AT: ISA (Industry Standard Architecture) 总线</li>
+<li>Apple II: 50-pin slot connector (Apple II Bus)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">总线：提供设备的注册和转发</h2>
+<ul>
+<li>把收到的地址 (总线地址) 和数据转发到相应的设备上</li>
+<li>例子: port I/O 的端口就是总线上的地址<ul>
+<li>IBM PC 的 CPU 其实只看到这一个 I/O 设备</li>
+</ul>
+</li>
+<li><a href="https://jyywiki.cn/OS/img/win98-scanner.mp4">USB 总线 P&amp;P 名场面 (Windows 98)</a></li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="pcie_cxl"><div>
+<h1 id="pcie-cxl">PCIe 和 CXL</h1>
+<h2 id="cpu">今天获得 “CPU 直连” 特殊待遇的标准设备</h2>
+<ul>
+<li>PC: “PCIe lanes”，CPU 负责内存一致性</li>
+<li>ARM SoC: 内存、PCIe 都挂在高速总线上<ul>
+<li>PCIe 6.0 x16 带宽达到 128GB/s (800Gbps 网卡)</li>
+<li>总线自带 DMA、能够发送中断 (Message-signaled Interrupts)</li>
+<li>接口支持 75W 供电 (所以我们需要 6-pin, 8-pin 的额外供电)</li>
+</ul>
+</li>
+<li>高速设备都是直插 PCIe 的：FPGA、显卡、网卡、NVMe、USB Bridge……<ul>
+<li>lspci 看一看吧</li>
+</ul>
+</li>
+</ul>
+<h2 id="pcie-cxl-compute-express-link">更进一步，基于 PCIe 物理层的 CXL (Compute Express Link)</h2>
+<ul>
+<li>CXL.io, CXL.cache, CXL.memory</li>
+<li>CXL 3.0 允许设备直接共享内存<ul>
+<li>“设备” 可以是任何东西：GPU, NPU, 甚至<strong>另一台计算机上的内存</strong>!</li>
+<li>“Disaggregated Datacenter” (Memory hierarchy 发生了变化)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 程序视角的 I/O 设备
+ </h2>
+<div class="slideshow" name="device_virtualization"><div>
+<h1 id="_1">应用程序如何访问设备？</h1>
+<h2 id="_2">操作系统设计者视角：程序不应该直接访问总线/设备寄存器</h2>
+<ul>
+<li>访问 → 共享；共享 → 同步；同步 → bug</li>
+<li>转念一想：CPU 和内存也是 “I/O 设备” 啊<ul>
+<li>CPU: 取指令，写内存</li>
+<li>内存：load/store = input/output</li>
+</ul>
+</li>
+<li>既然 CPU/内存可以虚拟化，设备也能！</li>
+</ul>
+<p><img alt="" src="static/img/canonical-device.png"></p>
+</div></div>
+
+<div class="slideshow" name="file_operations"><div>
+<h1 id="everything-is-a-file">Everything is a File</h1>
+<h2 id="file-anything">File = 实现了文件操作的「Anything」</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">file_operations</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">module</span><span class="w"> </span><span class="o">*</span><span class="n">owner</span><span class="p">;</span>
+<span class="w">    </span><span class="n">loff_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">llseek</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="n">loff_t</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">ssize_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">read</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">__user</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="p">,</span><span class="w"> </span><span class="n">loff_t</span><span class="w"> </span><span class="o">*</span><span class="p">);</span>
+<span class="w">    </span><span class="kt">ssize_t</span><span class="w"> </span><span class="p">(</span><span class="o">*</span><span class="n">write</span><span class="p">)</span><span class="w"> </span><span class="p">(</span><span class="k">struct</span><span class="w"> </span><span class="nc">file</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">__user</span><span class="w"> </span><span class="o">*</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="p">,</span><span class="w"> </span><span class="n">loff_t</span><span class="w"> </span><span class="o">*</span><span class="p">);</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>这是一个巨大的结构体，定义了设备虚拟化以后的接口<ul>
+<li>对于无法虚拟化的设备 (例如 GPIO)，就直接提供寄存器的访问</li>
+</ul>
+</li>
+<li>我们可以任意 “二次开发” 使设备变得更好用<ul>
+<li>把系统调用 “翻译” 成<strong>设备能听懂的数据</strong><ul>
+<li>就是一段普通的内核代码</li>
+<li>例如，对 canonical device 提供 mmap 功能</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>我们可以看一看 Linux source 里 /dev/ptx, /dev/null, … 的实现<ul>
+<li>我们也可以自己实现一个！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/launcher"><div><div>
+<h1 id="_1"><a href="/OS/demos/persistence/launcher">一个设备驱动程序</a></h1>
+<p>理解了设备驱动程序的职责是把系统调用 “翻译” 成与设备能听懂的数据，我们也可以实现 <code>struct file_operations</code> 中相应的操作，从而模拟一个设备。</p>
+</div></div>
+</div>
+<div class="slideshow" name="ioctl"><div>
+<h1 id="ioctl">ioctl</h1>
+<h2 id="_1">设备不仅仅是数据，还有<strong>配置</strong>
+</h2>
+<ul>
+<li>打印机的卡纸、清洁、自动装订……<ul>
+<li>一台几十万的打印机可不是那么简单 😂</li>
+</ul>
+</li>
+<li>键盘的跑马灯、重复速度、宏编程……</li>
+<li>磁盘的健康状况、缓存控制……</li>
+</ul>
+<h2 id="_2">操作系统必须提供一个设备相关的接口</h2>
+<blockquote>
+<p>The  ioctl()  system  call manipulates the underlying device parameters of special files.  In particular, many operating characteristics of character special files (e.g., terminals) may be controlled with ioctl() requests.  The argument fd must be an open file descriptor.</p>
+</blockquote>
+<ul>
+<li>“非数据” 的设备功能几乎全部依赖 ioctl<ul>
+<li>Arguments, returns, and semantics of <code>ioctl()</code> vary according to the device driver in question</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="ioctl_cont"><div>
+<h1 id="ioctl-contd">ioctl (cont’d)</h1>
+<h2 id="_1">堆叠的 💩 山</h2>
+<ul>
+<li>设备的复杂性是无法降低的<ul>
+<li>“就是有那么多功能”</li>
+<li>UNIX 的负担：复杂的 “hidden specifications”<ul>
+<li>例子：procfs</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="ioctl">ioctl 的例子</h2>
+<ul>
+<li>终端：为什么 libc 能 “智能” 实现 buffer mode？</li>
+<li>网卡，GPU，……</li>
+<li>KVM Device (代码示例)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/kvm"><div><div>
+<h1 id="kvm-device"><a href="/OS/demos/persistence/kvm">KVM Device</a></h1>
+<p>KVM 设备提供了硬件虚拟化的机制，允许我们在用户空间通过 /dev/kvm 在虚拟化的环境中运行一段代码直到 VM Exit。</p>
+</div></div>
+</div>
+<div class="slideshow" name="uvc_read"><div>
+<h1 id="_1">终于，理解了 “操作系统的对象”</h1>
+<h2 id="_2">让我们看一看程序是如何访问它的</h2>
+<ul>
+<li>我今天带了一个 UVC 设备</li>
+</ul>
+<h2 id="_3">更多的例子</h2>
+<ul>
+<li>GPU = 一个有自己内存的协处理器<ul>
+<li>通过 mmap 把内存交给设备驱动/设备</li>
+<li>通过 ioctl 提交命令 (doorbell)</li>
+</ul>
+</li>
+<li>Linux DRM (Direct Rendering Manager) 内核模块<ul>
+<li>libdrm: 用户态库，封装 ioctl</li>
+<li>Mesa: 用户态 OpenGL/Vulkan 实现，通过 libdrm 提交渲染命令</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/webcam"><div><div>
+<h1 id="webcam"><a href="/OS/demos/persistence/webcam">WebCam</a></h1>
+<p>USB Video Class (UVC) 是 USB 设备类规范，定义了视频流设备无需额外驱动即可通过标准 USB 接口传输未压缩或压缩视频数据的通信协议。Linux通过 Video for Linux 2 (V4L2) 子系统将其抽象为 /dev/videoX 设备节点，并提供标准 ioctl 接口 (如查询格式、设置帧率、申请缓冲区) 和内存映射 (mmap) 或用户指针方式获取视频帧。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>输入/输出设备可以说是五花八门，你也看到越来越多的设备上甚至 “自带电脑”。但无论如何，操作系统都把它们抽象成一个可以读写、可以控制的，实现了 struct file_operations 的文件 (操作系统对象)。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 36 章 - I/O Devices</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 输入/输出设备原理\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"virtualization-concurrency\"\u003eVirtualization \u0026amp; Concurrency: 总结\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e进程和系统调用上的应用世界 (经典 UNIX)\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003espawn(T_worker)\u003c/code\u003e 打开了魔鬼的盒子 (并行计算、异步编程、异构计算)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e操作系统中的对象\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e文件描述符：\u003cstrong\u003e指向操作系统对象的 “指针”\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003eEverything is a file\u003c/li\u003e\n\u003cli\u003e通过指针可以访问 “一切”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们直接使用了操作系统对象 (tty, disk, …)\u003cul\u003e\n\u003cli\u003e今天开始正式展开\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. I/O 设备\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"io_devices_today\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e今天的主角：输入输出设备\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e这是你实际上 “看到” 的计算机\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们花了大量时间讲解的 CPU、内存、……都是 “看不见” 的\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/iodevices.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"bridge_to_physical_world\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"io\"\u003eI/O 设备：“计算” 和 “物理世界” 之间的桥梁\u003c/h1\u003e\n\u003ch2 id=\"io-cpu\"\u003eI/O 设备 = 一个能与 CPU 交换数据的接口/控制器\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e使计算机能\u003cstrong\u003e感知外部状态\u003c/strong\u003e (眼睛、耳朵)、\u003cstrong\u003e对外实施动作\u003c/strong\u003e (手)\u003c/li\u003e\n\u003cli\u003e就是 “几组约定好功能的线” (寄存器)\u003cul\u003e\n\u003cli\u003e通过握手信号从线上读出/写入数据\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e给寄存器 “赋予” 一个内存地址 (Address Decoder)\u003cul\u003e\n\u003cli\u003eCPU 可以直接使用指令 (in/out/MMIO) 和设备交换数据 (是的，就这么简单)\u003c/li\u003e\n\u003cli\u003e也可以向计算机发送中断 (这部分实现在操作系统内部)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/canonical-device.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. 一些简单的设备\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"gpio\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"io\"\u003e实现核弹发射：只需要 “一根线” I/O 设备\u003c/h1\u003e\n\u003ch2 id=\"gpio-general-purpose-inputoutput\"\u003eGPIO (General Purpose Input/Output)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e极简的模型：Memory-mapped I/O 直接读取/写入电平信号 (Logic 1 = 3.3V)\u003c/li\u003e\n\u003cli\u003e我们甚至可以直接控制 Raspberry Pi 上的灯！\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/gpio-led.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/gpio-led\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"gpio-led\"\u003e\u003ca href=\"/OS/demos/persistence/gpio-led\"\u003eGPIO LED\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e计算机上的任何 I/O 设备都是可以通过程序控制的——只是通常并不推荐这么做：我们有丰富的应用程序抽象可以帮助我们更好地完成设备的交互。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"uart\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"uart\"\u003e串口 (UART)\u003c/h1\u003e\n\u003ch2 id=\"com1-communication-1\"\u003e“COM1” (Communication 1)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eUniversal Asynchronous Receiver/Transmitter\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003e/dev/ttyS0\u003c/code\u003e 映射到了 UART (可以接真正的终端使用)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#define COM1 0x3f8\u003c/span\u003e\n\u003cspan class=\"k\"\u003estatic\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003euart_init\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eoutb\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eCOM1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e   \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 控制器相关细节\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eoutb\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eCOM1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e3\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x80\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eoutb\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eCOM1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e115200\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e/\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e9600\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"k\"\u003estatic\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003euart_tx\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eAM_UART_TX_T\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003esend\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eoutb\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eCOM1\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esend\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003edata\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 写寄存器\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"k\"\u003estatic\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003euart_rx\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eAM_UART_RX_T\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003erecv\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003erecv\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003edata\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003einb\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eCOM1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e5\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e?\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003einb\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eCOM1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e-1\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 读寄存器\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"keyboard\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e键盘控制器\u003c/h1\u003e\n\u003ch2 id=\"ibm-pcat-8042-ps2-keyboard-controller\"\u003eIBM PC/AT 8042 PS/2 (Keyboard) Controller\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e6 根线：Data, Clock, VCC, GND, 两个预留\u003c/li\u003e\n\u003cli\u003e映射到 Port 0x60 (data), 0x64 (status/command)\u003cul\u003e\n\u003cli\u003ecommand = 0xED → LED 灯控\u003c/li\u003e\n\u003cli\u003ecommand = 0xF3 → 设置重复速度和重复延迟\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/ps2-ports.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"disk\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e磁盘控制器\u003c/h1\u003e\n\u003ch2 id=\"ata-advanced-technology-attachment\"\u003eATA (Advanced Technology Attachment)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eIDE 接口磁盘 (40pin data 很 “肥” 的数据线 + 4pin 电源)\u003cul\u003e\n\u003cli\u003eprimary: 0x1f0 - 0x1f7; secondary: 0x170 - 0x177\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ereadsect\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003edst\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esect\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ewaitdisk\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eout_byte\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1f2\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e          \u003c/span\u003e\u003cspan class=\"c1\"\u003e// sector count (1)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eout_byte\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1f3\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esect\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e       \u003c/span\u003e\u003cspan class=\"c1\"\u003e// sector\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eout_byte\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1f4\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esect\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e8\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// cylinder (low)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eout_byte\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1f5\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esect\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e16\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// cylinder (high)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eout_byte\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1f6\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esect\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e24\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0xe0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// drive\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003eout_byte\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1f7\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mh\"\u003e0x20\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e       \u003c/span\u003e\u003cspan class=\"c1\"\u003e// command (read)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ewaitdisk\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eSECTSIZE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e/\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e4\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"n\"\u003edst\u003c/span\u003e\u003cspan class=\"p\"\u003e)[\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ein_long\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mh\"\u003e0x1f0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// data\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.2. 更有趣的设备\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"printer\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e打印机\u003c/h1\u003e\n\u003ch2 id=\"inputoutput-canonical-device\"\u003e\n\u003ca href=\"https://jyywiki.cn/OS/manuals/CalComp-Software-Reference.pdf\"\u003e任何能 input/output 的东西\u003c/a\u003e，都可以是 Canonical Device\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e打印机：将字节流描述的文字/图形打印到纸张上\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"center\" src=\"static/img/calcomp-565.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"postscript\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"postscript\"\u003ePostScript 和打印机\u003c/h1\u003e\n\u003ch2 id=\"postscript-dsl\"\u003ePostScript: 一种描述页面布局的 DSL\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e类似于汇编语言 (由 “编译器”，如 latex，生成)\u003cul\u003e\n\u003cli\u003ePDF 是 PostScript 的 “改进版”\u003c/li\u003e\n\u003cli\u003e“图形状态机”：路径构造、路径着色、文本渲染、外部对象\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e打印机 = “汇编语言解释器”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ePCL, PostScript, \u003ca href=\"https://www.rfc-editor.org/rfc/rfc8011\"\u003eIPP\u003c/a\u003e (AirPrint) → 打印机机械动作\u003cul\u003e\n\u003cli\u003e历史悠久的 lp/lpr (Line Printer Daemon)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u0026lt;ESC\u0026gt;*t300R          // PCL: Set resolution to 300 DPI\n\u0026lt;ESC\u0026gt;*r1A            // Start raster graphics\n\u0026lt;ESC\u0026gt;*b100W          // Set width of raster data (100 bytes)\n\u0026lt;ESC\u0026gt;*b0M            // Set compression mode (0 = uncompressed)\n\u0026lt;ESC\u0026gt;*b100V          // Send 100 bytes of raster data\n\u0026lt;binary raster data\u0026gt; // Actual image data\n\u0026lt;ESC\u0026gt;*rB             // End raster graphics\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/postscript\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"postscript\"\u003e\u003ca href=\"/OS/demos/persistence/postscript\"\u003ePostScript\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003ePostScript是一种页面描述语言 (PDL)，由 Adobe Systems 在 1980 年代初开发。它是一种编程语言，专门用于描述图形和文本的布局和外观，主要用于打印和显示系统。PostScript 文件包含了详细的指令，告诉打印机或显示设备如何生成页面上的每一个元素，包括字体、图形、颜色和图像。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"uvc\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"webcam\"\u003e摄像头 (WebCam)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e你买到的所有摄像头都是 “免驱” 的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e要感谢 UVC (USB Video Class)\u003c/li\u003e\n\u003cli\u003e一个标准化的协议：枚举设备 → 协商格式/分辨率/帧率 → 传输开始 → 逐帧读取 MJPEG/H.264\u003cul\u003e\n\u003cli\u003e仍然是交换字节流 (canonical device model)\u003c/li\u003e\n\u003cli\u003e诞生了大量衍生产品：行车记录仪、显微镜、内窥镜、平板扫描仪、眼球鼠标……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/webcam-scanner.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.3. 协处理器和总线\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"dma\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"io\"\u003e打破 I/O 设备与内存之间的边界\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e刚才都是 “独立于计算机” 的设备\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e核弹发射器、键盘、鼠标、磁盘、打印机、摄像头……\u003c/li\u003e\n\u003cli\u003e如果允许设备访问\u003cstrong\u003e计算机内的资源\u003c/strong\u003e？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"dma-memcpy\"\u003eDMA: 一个专门执行 memcpy 的协处理器\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e早期的 “多处理器系统”，协处理器只能执行 hard-wired 程序 (比 CPU 简单很多)\u003cul\u003e\n\u003cli\u003e但可以和 I/O 端口通信，因此大幅解放了 CPU 的压力\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_i8237\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e4\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Channel\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003echannel_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003echannels\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ecount\u003c/span\u003e\u003cspan class=\"o\"\u003e--\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e                \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003emode\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eREAD\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003eio\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003emem\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003eaddr\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003cspan class=\"w\"\u003e                \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003emem\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003eaddr\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ech\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003eio\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e                \u003c/span\u003e\u003cspan class=\"k\"\u003ebreak\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Priority\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cuda_accelerator\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"gpu-npu\"\u003e异构加速器：GPU 和 NPU\u003c/h1\u003e\n\u003ch2 id=\"gpu\"\u003eGPU 看起来就是 “一台完整的计算机”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e可以执行 \u003ccode\u003e\u0026lt;\u0026lt;\u0026lt; \u0026gt;\u0026gt;\u0026gt;\u003c/code\u003e 中定义的 kernel\u003c/li\u003e\n\u003cli\u003e但代码和数据都是由 CPU 送过去的 (\u003ccode\u003ecudaMalloc\u003c/code\u003e, \u003ccode\u003ecudaMemcpy\u003c/code\u003e, …)；送数据又是由 DMA 完成的；控制指令则是 canonical device model\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_worker\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003edim3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ethreadIdx\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003edim3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eblockIdx\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003edim3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003egridDim\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003edim3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eblockDim\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"npu\"\u003e其他的加速器也是类似的 (\u003ca href=\"https://docs.qualcomm.com/nav/home/index_SNPE.html\"\u003eNPU\u003c/a\u003e)\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"c1\"\u003e// Qualcomm Neural Processing SDK for AI\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// Input/output maps are “zdl::DlSystem::UserBufferMap\u0026amp;”\u003c/span\u003e\n\u003cspan class=\"n\"\u003esnpe\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003eexecute\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003einputMap\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eoutputMap\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"bus\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e连接万千设备：总线\u003c/h1\u003e\n\u003ch2 id=\"io\"\u003e计算机硬件生态的 “扩展性”：“无穷无尽” 的 I/O 设备？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e想卖大价钱的 “大型机”：IBM, DEC, …\u003c/li\u003e\n\u003cli\u003e车库里造出来的 “微型机”：名垂青史的梦想家\u003cul\u003e\n\u003cli\u003eIBM PC/AT: ISA (Industry Standard Architecture) 总线\u003c/li\u003e\n\u003cli\u003eApple II: 50-pin slot connector (Apple II Bus)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e总线：提供设备的注册和转发\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把收到的地址 (总线地址) 和数据转发到相应的设备上\u003c/li\u003e\n\u003cli\u003e例子: port I/O 的端口就是总线上的地址\u003cul\u003e\n\u003cli\u003eIBM PC 的 CPU 其实只看到这一个 I/O 设备\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\u003ca href=\"https://jyywiki.cn/OS/img/win98-scanner.mp4\"\u003eUSB 总线 P\u0026amp;P 名场面 (Windows 98)\u003c/a\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"pcie_cxl\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"pcie-cxl\"\u003ePCIe 和 CXL\u003c/h1\u003e\n\u003ch2 id=\"cpu\"\u003e今天获得 “CPU 直连” 特殊待遇的标准设备\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ePC: “PCIe lanes”，CPU 负责内存一致性\u003c/li\u003e\n\u003cli\u003eARM SoC: 内存、PCIe 都挂在高速总线上\u003cul\u003e\n\u003cli\u003ePCIe 6.0 x16 带宽达到 128GB/s (800Gbps 网卡)\u003c/li\u003e\n\u003cli\u003e总线自带 DMA、能够发送中断 (Message-signaled Interrupts)\u003c/li\u003e\n\u003cli\u003e接口支持 75W 供电 (所以我们需要 6-pin, 8-pin 的额外供电)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e高速设备都是直插 PCIe 的：FPGA、显卡、网卡、NVMe、USB Bridge……\u003cul\u003e\n\u003cli\u003elspci 看一看吧\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"pcie-cxl-compute-express-link\"\u003e更进一步，基于 PCIe 物理层的 CXL (Compute Express Link)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCXL.io, CXL.cache, CXL.memory\u003c/li\u003e\n\u003cli\u003eCXL 3.0 允许设备直接共享内存\u003cul\u003e\n\u003cli\u003e“设备” 可以是任何东西：GPU, NPU, 甚至\u003cstrong\u003e另一台计算机上的内存\u003c/strong\u003e!\u003c/li\u003e\n\u003cli\u003e“Disaggregated Datacenter” (Memory hierarchy 发生了变化)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 程序视角的 I/O 设备\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"device_virtualization\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e应用程序如何访问设备？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e操作系统设计者视角：程序不应该直接访问总线/设备寄存器\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e访问 → 共享；共享 → 同步；同步 → bug\u003c/li\u003e\n\u003cli\u003e转念一想：CPU 和内存也是 “I/O 设备” 啊\u003cul\u003e\n\u003cli\u003eCPU: 取指令，写内存\u003c/li\u003e\n\u003cli\u003e内存：load/store = input/output\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e既然 CPU/内存可以虚拟化，设备也能！\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/canonical-device.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"file_operations\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"everything-is-a-file\"\u003eEverything is a File\u003c/h1\u003e\n\u003ch2 id=\"file-anything\"\u003eFile = 实现了文件操作的「Anything」\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003efile_operations\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003emodule\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eowner\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eloff_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ellseek\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003efile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eloff_t\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003essize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eread\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003efile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003e__user\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eloff_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003essize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ewrite\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003efile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003e__user\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eloff_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e这是一个巨大的结构体，定义了设备虚拟化以后的接口\u003cul\u003e\n\u003cli\u003e对于无法虚拟化的设备 (例如 GPIO)，就直接提供寄存器的访问\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们可以任意 “二次开发” 使设备变得更好用\u003cul\u003e\n\u003cli\u003e把系统调用 “翻译” 成\u003cstrong\u003e设备能听懂的数据\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e就是一段普通的内核代码\u003c/li\u003e\n\u003cli\u003e例如，对 canonical device 提供 mmap 功能\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们可以看一看 Linux source 里 /dev/ptx, /dev/null, … 的实现\u003cul\u003e\n\u003cli\u003e我们也可以自己实现一个！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/launcher\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/persistence/launcher\"\u003e一个设备驱动程序\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e理解了设备驱动程序的职责是把系统调用 “翻译” 成与设备能听懂的数据，我们也可以实现 \u003ccode\u003estruct file_operations\u003c/code\u003e 中相应的操作，从而模拟一个设备。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"ioctl\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ioctl\"\u003eioctl\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e设备不仅仅是数据，还有\u003cstrong\u003e配置\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e打印机的卡纸、清洁、自动装订……\u003cul\u003e\n\u003cli\u003e一台几十万的打印机可不是那么简单 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e键盘的跑马灯、重复速度、宏编程……\u003c/li\u003e\n\u003cli\u003e磁盘的健康状况、缓存控制……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e操作系统必须提供一个设备相关的接口\u003c/h2\u003e\n\u003cblockquote\u003e\n\u003cp\u003eThe  ioctl()  system  call manipulates the underlying device parameters of special files.  In particular, many operating characteristics of character special files (e.g., terminals) may be controlled with ioctl() requests.  The argument fd must be an open file descriptor.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003e“非数据” 的设备功能几乎全部依赖 ioctl\u003cul\u003e\n\u003cli\u003eArguments, returns, and semantics of \u003ccode\u003eioctl()\u003c/code\u003e vary according to the device driver in question\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ioctl_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ioctl-contd\"\u003eioctl (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e堆叠的 💩 山\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e设备的复杂性是无法降低的\u003cul\u003e\n\u003cli\u003e“就是有那么多功能”\u003c/li\u003e\n\u003cli\u003eUNIX 的负担：复杂的 “hidden specifications”\u003cul\u003e\n\u003cli\u003e例子：procfs\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ioctl\"\u003eioctl 的例子\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e终端：为什么 libc 能 “智能” 实现 buffer mode？\u003c/li\u003e\n\u003cli\u003e网卡，GPU，……\u003c/li\u003e\n\u003cli\u003eKVM Device (代码示例)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/kvm\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"kvm-device\"\u003e\u003ca href=\"/OS/demos/persistence/kvm\"\u003eKVM Device\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eKVM 设备提供了硬件虚拟化的机制，允许我们在用户空间通过 /dev/kvm 在虚拟化的环境中运行一段代码直到 VM Exit。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"uvc_read\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e终于，理解了 “操作系统的对象”\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e让我们看一看程序是如何访问它的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我今天带了一个 UVC 设备\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e更多的例子\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eGPU = 一个有自己内存的协处理器\u003cul\u003e\n\u003cli\u003e通过 mmap 把内存交给设备驱动/设备\u003c/li\u003e\n\u003cli\u003e通过 ioctl 提交命令 (doorbell)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eLinux DRM (Direct Rendering Manager) 内核模块\u003cul\u003e\n\u003cli\u003elibdrm: 用户态库，封装 ioctl\u003c/li\u003e\n\u003cli\u003eMesa: 用户态 OpenGL/Vulkan 实现，通过 libdrm 提交渲染命令\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/webcam\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"webcam\"\u003e\u003ca href=\"/OS/demos/persistence/webcam\"\u003eWebCam\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eUSB Video Class (UVC) 是 USB 设备类规范，定义了视频流设备无需额外驱动即可通过标准 USB 接口传输未压缩或压缩视频数据的通信协议。Linux通过 Video for Linux 2 (V4L2) 子系统将其抽象为 /dev/videoX 设备节点，并提供标准 ioctl 接口 (如查询格式、设置帧率、申请缓冲区) 和内存映射 (mmap) 或用户指针方式获取视频帧。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e输入/输出设备可以说是五花八门，你也看到越来越多的设备上甚至 “自带电脑”。但无论如何，操作系统都把它们抽象成一个可以读写、可以控制的，实现了 struct file_operations 的文件 (操作系统对象)。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 36 章 - I/O Devices\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect22.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

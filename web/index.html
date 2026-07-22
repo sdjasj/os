@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b6e75" />
+    <meta
+      name="description"
+      content="JYY 操作系统原理 2026：30 讲逐讲详解、主题教程与可运行实验。"
+    />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>OS/2026 · 系统实验手册</title>
+    <script>
+      ;(() => {
+        let saved = 'system'
+        try {
+          saved = localStorage.getItem('os26-theme') || 'system'
+        } catch {
+          // Storage can be unavailable in hardened or sandboxed browsers.
+        }
+        const dark = saved === 'dark' || (saved === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        document.documentElement.dataset.themeMode = saved
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

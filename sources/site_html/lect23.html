@@ -1,0 +1,480 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 存储设备的抽象
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments-1">Review &amp; Comments (1)</h1>
+<h2 id="deepseek-agent-harness">🔥🔥🔥 DeepSeek 招聘 Agent Harness 研发工程师了！</h2>
+<blockquote>
+<p>除模型本身以外的所有工作，都属于 Harness 的范畴……参与 DeepSeek 桌面端 Agent 产品研发的全过程，定义 DeepSeek 对 Harness 的理解。</p>
+</blockquote>
+<h2 id="_1">任职要求</h2>
+<ul>
+<li>……能够在 AI 辅助下，<strong>在没有直接经验的领域（如语言、技术、框架等）进行有质量保证的编程工作</strong>
+</li>
+<li>……对 Agent Harness 的开发有极大的热情，对模型行为有品味有判断力，对开发者体验有强感知。深度使用过代码类及通用类 Agent 产品，并将相关产品的使用融入到自己的工作和生活中……</li>
+</ul>
+<h2 id="ai">这不就是招<strong>AI 原生时代的超级个体</strong>吗 😂</h2>
+<ul>
+<li>写这个 JD 的人：“这年头还有不拥抱 AI 的学生啊”</li>
+<li>传统的学习方法可以说是出生即死亡了 🤔</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="review_1"><div>
+<h1 id="review-comments-2">Review &amp; Comments (2)</h1>
+<h2 id="_1">输入/输出设备</h2>
+<ul>
+<li>设备 = Canonical Device Model (总线上的寄存器)<ul>
+<li>从 LED 灯到打印机、GPU，都遵循这个模型</li>
+</ul>
+</li>
+<li>设备驱动程序：把 file operations 翻译成设备能听懂的命令<ul>
+<li>读、写、控制 (<code>ioctl</code>)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">我们终于进入 “持久化”</h2>
+<ul>
+<li>“持久化” 的数据保存在存储设备上<ul>
+<li>存储设备就是 “字节序列” 的抽象</li>
+<li>今天展开这部分内容</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="persistence_intro"><div>
+<h1 id="_1">正式进入 “持久化” 部分</h1>
+<blockquote>
+<p>Persistence: “A firm or obstinate continuance in a course of action in spite of difficulty or opposition.”</p>
+</blockquote>
+<ul>
+<li>我们的祖先就就希望<strong>数据能永久留存</strong> (在石头上刻字就行啦)</li>
+</ul>
+<p><img alt="" src="static/img/rosetta-stone.jpg"></p>
+</div></div>
+
+<h2> 1. 数据的持久化
+ </h2>
+<h3> 1.1. 正 v.s. 反
+ </h3>
+<div class="slideshow" name="mag_easy"><div>
+<h1 id="_1">“持久化” 可能没有想象的那么困难</h1>
+<h2 id="_2">一个 “能反复改写的状态”</h2>
+<ul>
+<li>为了让计算机能访问，一个 bit 必须能<strong>用电路读写</strong>
+</li>
+</ul>
+<p><img alt="" src="static/img/mag-draw-board.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="electromagnetic"><div>
+<h1 id="_1">电磁感应：物理和数字世界的桥梁</h1>
+<h2 id="1d-bits-1928">1D 存储设备：把 Bits “卷起来” (磁带：1928)</h2>
+<ul>
+<li>纸带上均匀粘上铁磁体</li>
+<li>只需要一个机械部件 (转动) 定位<ul>
+<li>读取：磁通量变化产生电动势，放大感应电流</li>
+<li>写入：强磁场下电子自旋方向翻转 (不是磁针物理翻转)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/fritz.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="tape_density"><div>
+<h1 id="_1">磁带：密度可以高得离谱！</h1>
+<h2 id="_2">和集成电路同级别的制程</h2>
+<ul>
+<li>但结构要简单得多 (存储部分只需要结晶)</li>
+<li>离谱的 300 Gb/in² (30TB/磁带)</li>
+</ul>
+<p><img alt="" src="static/img/mag-tape.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="tape_analysis"><div>
+<h1 id="_1">磁带：作为存储设备的分析</h1>
+<h2 id="_2">存储特性</h2>
+<ul>
+<li>价格<strong>低</strong> (比电路容易制造)、容量<strong>高</strong>、可靠性<strong>高</strong> (适当封装)</li>
+</ul>
+<h2 id="_3">读写性能</h2>
+<ul>
+<li>顺序读写<strong>勉强</strong> (需要等待定位)、随机读写<strong>几乎完全不行</strong><ul>
+<li>这是致命的缺陷</li>
+</ul>
+</li>
+</ul>
+<h2 id="_4">应用场景</h2>
+<ul>
+<li>冷数据的存档和备份；只需要顺序读 (写) 的场景：音频/视频！</li>
+</ul>
+<p><img alt="" src="static/img/video-tape.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="drum"><div>
+<h1 id="magnetic-drum-1932">磁鼓 (Magnetic Drum, 1932)</h1>
+<h2 id="1d-15d-1d-x-n">1D → 1.5D (1D x n)</h2>
+<ul>
+<li>用旋转的二维平面存储数据 (无法内卷，容量变小)</li>
+<li>读写延迟不会超过旋转周期 (随机读写速度大幅提升)</li>
+</ul>
+<p><img alt="" src="static/img/mag-drum.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="hard_disk"><div>
+<h1 id="hard-disk-1956">疯狂内卷：磁盘 (Hard Disk, 1956)</h1>
+<h2 id="15d-25d-2d-x-n">1.5D → 2.5D (2D x n)</h2>
+<ul>
+<li>在二维平面上放置许多磁带</li>
+</ul>
+<p><img alt="" src="static/img/disk-mechanism.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="disk_engineering"><div>
+<h1 id="_1">磁盘：克服各种工程挑战</h1>
+<p><img alt="" src="static/img/perpendicular.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="disk_engineering_cont"><div>
+<h1 id="contd">磁盘：克服各种工程挑战 (cont’d)</h1>
+<p><img alt="" src="static/img/disk-microscope.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="disk_analysis"><div>
+<h1 id="_1">磁盘：作为存储设备的分析</h1>
+<h2 id="_2">存储特性</h2>
+<ul>
+<li>价格<strong>低</strong>：高密度、低成本</li>
+<li>容量<strong>高</strong>：2.5D，上万磁道</li>
+<li>可靠性<strong>高</strong> (高速运转的机械部件是潜在的威胁)</li>
+</ul>
+<h2 id="_3">读写性能</h2>
+<ul>
+<li>顺序读写：<strong>较高</strong>
+</li>
+<li>随机读写：<strong>勉强</strong> (需要等待定位)</li>
+</ul>
+<h2 id="_4">应用场景</h2>
+<ul>
+<li>计算机系统的主力数据存储 (便宜；甚至坏了还有可能修)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="disk_tuning"><div>
+<h1 id="_1">磁盘：性能调优</h1>
+<h2 id="_2">为了读/写一个扇区</h2>
+<ol>
+<li>读写头需要到对应的磁道<ul>
+<li>7200rpm → 120rps → “寻道” 时间 8.3ms</li>
+</ul>
+</li>
+<li>转轴将盘片旋转到读写头的位置<ul>
+<li>读写头移动时间通常也需要几个 ms</li>
+</ul>
+</li>
+</ol>
+<h2 id="_3">通过缓存/调度等缓解</h2>
+<ul>
+<li>例如著名的 “电梯” 调度算法<ul>
+<li>成为了历史的尘埃</li>
+</ul>
+</li>
+<li>Advanced Host Controller Interface (AHCI); Native Command Queuing (NCQ)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="floppy"><div>
+<h1 id="floppy-disk-1971">软盘 (Floppy Disk, 1971)</h1>
+<h2 id="_1">把读写头和盘片分开——实现数据移动</h2>
+<ul>
+<li>计算机上的软盘驱动器 (<a href="https://www.bilibili.com/video/BV1BS4y1X76n">drive</a>) + 可移动的盘片<ul>
+<li>8″ (1971), 5.25″ (1975), 3.5″ (1981)<ul>
+<li>最初的软盘成本很低，就是个纸壳子</li>
+<li>3.5 英寸软盘为了提高可靠性，已经是 “硬” 的了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/floppy-disk.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="floppy_software"><div>
+<h1 id="_1">曾经，软件是通过“软盘”发行的！</h1>
+<p><img alt="" src="static/img/pal-floppy.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="floppy_analysis"><div>
+<h1 id="_1">软盘：作为存储设备的分析</h1>
+<h2 id="_2">存储特性</h2>
+<ul>
+<li>价格<strong>低</strong>：极低成本</li>
+<li>容量<strong>低</strong>：裸露介质，密度受限</li>
+<li>可靠性<strong>低</strong>：不要抱有太大的期望</li>
+</ul>
+<h2 id="_3">读写性能</h2>
+<ul>
+<li>顺序读写：<strong>低</strong>
+</li>
+<li>随机读写：<strong>低</strong>
+</li>
+</ul>
+<h2 id="_4">应用场景</h2>
+<ul>
+<li>当年可是把整个操作系统带着走的<ul>
+<li>(几十 KB 的 BASIC 代码其实就可以很复杂了)</li>
+</ul>
+</li>
+<li>今天作为吉祥物存在的按钮 💾</li>
+</ul>
+</div></div>
+
+<h3> 1.2. 坑 v.s. 平
+ </h3>
+<div class="slideshow" name="pits_and_flat"><div>
+<h1 id="_1">坑：天然容易 “阅读” 的数据存储</h1>
+<h2 id="_2">跨越千年的持久化存储方法</h2>
+<p><img alt="" src="static/img/rosetta-stone.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="modern_pits"><div>
+<h1 id="_1">现代工业：我们可以挖出更精细的坑！</h1>
+<p><img alt="" src="static/img/compactdisc.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="compact_disc"><div>
+<h1 id="compact-disk-cd-1980">Compact Disk (CD, 1980)</h1>
+<h2 id="1-0">在反射平面 (1) 上挖上粗糙的坑 (0)</h2>
+<ul>
+<li>激光扫过表面，就能读出坑的信息来<ul>
+<li>44.1kHz, 16-bit, 2 声道贝多芬第九交响曲 (74 分钟, ~700MB)，飞利浦 (碟片) 和索尼 (数字音频) 发明</li>
+<li>Eight-to-Fourteen Modulation 编码 (8 bit 编码到 14 bit)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/cdplay.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="cd_copy"><div>
+<h1 id="_1">光盘最有趣的特性：容易复制！</h1>
+<h2 id="_2">光盘的坑是挖在透明塑料上的</h2>
+<ul>
+<li>“压盘” 后镀上反射膜</li>
+<li>3s 生产一张 Blue Ray 100GB (33,000MB/s 写入速度)</li>
+</ul>
+<p><img alt="" src="static/img/cd-build.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="cd_analysis"><div>
+<h1 id="_1">光盘：作为存储设备的分析</h1>
+<h2 id="_2">存储特性</h2>
+<ul>
+<li>价格<green>极低</green>
+</li>
+<li>容量<green>高</green> (当然，也没有那么高)</li>
+<li>可靠性<green>高</green> (你划伤的是没有数据的那一面)</li>
+</ul>
+<h2 id="_3">读写性能</h2>
+<ul>
+<li>顺序读：<blue>一般</blue>
+</li>
+<li>随机读：<red>低</red>；很难写入 (CD/R &amp; <a href="https://www.scientificamerican.com/article/how-do-rewriteable-cds-wo/">CD/RW</a>)</li>
+</ul>
+<h2 id="_4">应用场景</h2>
+<ul>
+<li>数字内容分发</li>
+<li>(逐渐被互联网的速度优势取代)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="project_silica"><div>
+<h1 id="_1">挖坑：还有别的用处吗？</h1>
+<h2 id="project-silica-rosetta-stone">Project Silica: 回归 Rosetta Stone</h2>
+<ul>
+<li>Random read + Append-only write = 任何数据结构</li>
+<li>
+<a href="https://www.nature.com/articles/s41586-025-10042-w">Nature Paper</a>; <a href="https://www.bilibili.com/video/BV1Wu4y187Dh/">视频</a>
+</li>
+</ul>
+<p><img alt="" src="static/img/project-silica.jpg"></p>
+</div></div>
+
+<h3> 1.3. 充电 v.s. 放电
+ </h3>
+<div class="slideshow" name="ssd_intro"><div>
+<h1 id="solid-state-drive-1991">Solid State Drive (1991)</h1>
+<h2 id="_1">磁和坑都不太完美</h2>
+<ul>
+<li>磁：机械部件 (无法避免的 ms 级延迟)</li>
+<li>坑 (光)：挖坑效率低、填坑很困难</li>
+</ul>
+<h2 id="_2">“完美” = 电子的密度、电路的速度</h2>
+<ul>
+<li>Flash Memory “闪存”</li>
+<li>如何在电路中持久 1-bit？<ul>
+<li>挖个坑</li>
+<li>把电子填进去 = 一个状态</li>
+<li>把电子放跑 = 另一个状态</li>
+</ul>
+</li>
+<li>甚至可以 MLC/TLC/QLC<ul>
+<li>精确控制电压来实现更多 bits</li>
+<li>MLC: 2 bits, TLC: 3 bits, QLC: 4 bits</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="nand_flash"><div>
+<h1 id="1-bit-flash-memory">1-Bit Flash Memory</h1>
+<h2 id="floating-gate">Floating Gate 的充电/放电</h2>
+<p><img alt="" src="static/img/nand-flash.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="flash_analysis"><div>
+<h1 id="_1">闪存：作为存储设备的分析</h1>
+<h2 id="_2">存储特性</h2>
+<ul>
+<li>价格<strong>低</strong>：大规模集成电路</li>
+<li>容量<strong>高</strong>
+</li>
+<li>可靠性<strong>高</strong>：集成电路封装，不怕摔</li>
+</ul>
+<h2 id="_3">读写性能</h2>
+<ul>
+<li>
+<strong>极高</strong>，而且有极高的扩展性 (电路是天然并行的)<ul>
+<li>极为离谱的优点：<strong>容量越大，速度越快</strong>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_4">应用场景</h2>
+<ul>
+<li>Tape is Dead, Disk is Tape, Flash is Disk, RAM Locality is King (Jim Gray, 2006)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="usb_drive"><div>
+<h1 id="1999">开启 “优盘” 时代 (1999)</h1>
+<p><img alt="" src="static/img/upan.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="flash_wear"><div>
+<h1 id="flash-memory">Flash Memory 有一个致命的缺陷</h1>
+<h2 id="erase-100">放电 (erase) 做不到 100% 放干净</h2>
+<ul>
+<li>放电<strong>数千/数万次</strong>以后，就好像是 “充电” 状态了 (Erase Saturation)</li>
+<li>Dead cell; “wear out”<ul>
+<li>QLC: 大约只有 1,000 次写入寿命</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">有没有感到很害怕？</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000</span><span class="p">):</span>
+    <span class="n">Path</span><span class="p">(</span><span class="s2">"a.txt"</span><span class="p">)</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">))</span>
+</code></pre></div>
+
+<ul>
+<li>这个文件就该要损坏了？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="software_defined_disk"><div>
+<h1 id="_1">软件定义磁盘</h1>
+<h2 id="ssd-tf">你的 SSD、优盘，甚至是 TF 卡里都藏了完整的计算机系统</h2>
+<ul>
+<li>FTL: Flash Translation Layer</li>
+<li>“Wear Leveling”: 用软件使写入变得 “均匀” (虚拟内存)<ul>
+<li>维护一个 Logical-to-Physical Table (L2P Table)</li>
+<li>再一次：Random Read + Append-only Write = 任何数据结构</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/m2ssd.png"></p>
+</div></div>
+
+<div class="slideshow" name="software_defined_disk_1"><div>
+<h1 id="flash-translation-layer-ftl">Flash Translation Layer (FTL)</h1>
+<p><img alt="" src="static/img/ftl-slide.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="nand_flash_products"><div>
+<h1 id="flash-disk-nand-flash">Flash Disk 与 NAND Flash</h1>
+<h2 id="sd-ssd-nand-flash">优盘, SD 卡, SSD 都是 NAND Flash</h2>
+<ul>
+<li>但软件/硬件系统的复杂程度不同，效率/寿命也不同<ul>
+<li>典型的 SSD：CPU, RAM, 缓存, store buffer, 操作系统 …</li>
+<li>SD 卡/TF 卡标准没有规定必须内置 FTL，但实际上都有<a href="https://www.bunniestudios.com/blog/?p=898">计算机系统</a>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">不要买过度便宜的优盘</h2>
+<ul>
+<li>设备 = 一组寄存器 → 设备可以 “伪造”</li>
+<li>(今天优盘的应用场景越来越少了)</li>
+</ul>
+<p><img alt="" src="static/img/fake-ssd.jpg"></p>
+</div></div>
+
+<h2> 2. 操作系统视角的存储设备
+ </h2>
+<div class="slideshow" name="block_devices"><div>
+<h1 id="_1">存储设备的抽象</h1>
+<h2 id="random-access">Random Access 的代价：寻址</h2>
+<ul>
+<li>磁盘/磁带/光盘需要物理旋转 (Project Silica 就更复杂了)</li>
+<li>电路也需要选通信号 Die → Plane → Block → Page (16KB)</li>
+</ul>
+<h2 id="_2">减少寻址的代价：按块访问</h2>
+<ul>
+<li>SSD Page 内的独立选通信号就是浪费电路<ul>
+<li>整个 Page 是同步并行读写的</li>
+</ul>
+</li>
+<li>存储设备 = 随机读写的 block array<ul>
+<li><code>struct block disk[NUM_BLOCKS]</code></li>
+</ul>
+</li>
+</ul>
+<h2 id="block-devices">Block devices</h2>
+<ul>
+<li>按块访问的字节序列 (可以直接 mmap 到进程的地址空间)</li>
+<li>但这个抽象不是没有代价的<ul>
+<li>不经意间的读/写放大 (read/write amplifications)</li>
+<li>需要极致性能的场景，NVMe ZNS (Zoned Namespaces) 直接操纵 append-only 的 Zone</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="linux_bio"><div>
+<h1 id="linux-bio">Linux Bio</h1>
+<h2 id="_1">一个应用程序 “看不见” 的接口</h2>
+<ul>
+<li>为你的存储设备实现 <code>struct block_device_operations</code> 和 <code>struct request_queue</code>，剩下的 read/write/mmap/… 都是文件系统的事了</li>
+<li>(凭什么不能看到看不见的接口？)</li>
+</ul>
+<p><img alt="" src="static/img/blk-mq.jpg"></p>
+</div></div>
+
+<div class="code-card" path="persistence/bio"><div><div>
+<h1 id="linux-block-io"><a href="/OS/demos/persistence/bio">打开 Linux Block I/O</a></h1>
+<p>让我们借助 Coding Agent，“在没有直接经验的领域（如语言、技术、框架等）进行一些编程工作” 吧！虽然我作为《操作系统》的教师，知道 Linux 内核内部的机制，但我决定在对话时假装自己对系统内的这些机制一无所知。模型：deepseek-v4-pro (high)，成本：¥ 0.72。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>无论是内存还是持久存储，最终胜出的仍然是电——它的密度和速度是其他介质难以比拟的。但同时我们也看到，NAND Flash 作为持久存储时有着巨大的缺陷——写入寿命。但我们也看到了工业界竟然敢于试制这样跨时代的产品，在十多年的争议中终究成为了今天存储的主角。如果更快的 non-volatile memory 到来又退场，我们的计算机系统是否会发生翻天覆地的变化？欢迎到大家在 AI 的帮助下扩展自己的知识面，例如 <a href="https://github.com/mikeroyal/SSD-Guide">SSD Guide</a> 和 <a href="https://codecapsule.com/2014/02/12/coding-for-ssds-part-1-introduction-and-table-of-contents/">Coding for SSDs</a>。海量的阅读帮助你形成正确的 “计算机科学世界观”，用计算机科学的方式处理问题。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 37 章 - Hard Disk Drives</li>
+<li>第 44 章 - Flash-based SSDs</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 存储设备的抽象\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments-1\"\u003eReview \u0026amp; Comments (1)\u003c/h1\u003e\n\u003ch2 id=\"deepseek-agent-harness\"\u003e🔥🔥🔥 DeepSeek 招聘 Agent Harness 研发工程师了！\u003c/h2\u003e\n\u003cblockquote\u003e\n\u003cp\u003e除模型本身以外的所有工作，都属于 Harness 的范畴……参与 DeepSeek 桌面端 Agent 产品研发的全过程，定义 DeepSeek 对 Harness 的理解。\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e任职要求\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e……能够在 AI 辅助下，\u003cstrong\u003e在没有直接经验的领域（如语言、技术、框架等）进行有质量保证的编程工作\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e……对 Agent Harness 的开发有极大的热情，对模型行为有品味有判断力，对开发者体验有强感知。深度使用过代码类及通用类 Agent 产品，并将相关产品的使用融入到自己的工作和生活中……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai\"\u003e这不就是招\u003cstrong\u003eAI 原生时代的超级个体\u003c/strong\u003e吗 😂\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e写这个 JD 的人：“这年头还有不拥抱 AI 的学生啊”\u003c/li\u003e\n\u003cli\u003e传统的学习方法可以说是出生即死亡了 🤔\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"review_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments-2\"\u003eReview \u0026amp; Comments (2)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e输入/输出设备\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e设备 = Canonical Device Model (总线上的寄存器)\u003cul\u003e\n\u003cli\u003e从 LED 灯到打印机、GPU，都遵循这个模型\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e设备驱动程序：把 file operations 翻译成设备能听懂的命令\u003cul\u003e\n\u003cli\u003e读、写、控制 (\u003ccode\u003eioctl\u003c/code\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e我们终于进入 “持久化”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“持久化” 的数据保存在存储设备上\u003cul\u003e\n\u003cli\u003e存储设备就是 “字节序列” 的抽象\u003c/li\u003e\n\u003cli\u003e今天展开这部分内容\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"persistence_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e正式进入 “持久化” 部分\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003ePersistence: “A firm or obstinate continuance in a course of action in spite of difficulty or opposition.”\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003e我们的祖先就就希望\u003cstrong\u003e数据能永久留存\u003c/strong\u003e (在石头上刻字就行啦)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/rosetta-stone.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 数据的持久化\n \u003c/h2\u003e\n\u003ch3\u003e 1.1. 正 v.s. 反\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"mag_easy\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e“持久化” 可能没有想象的那么困难\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e一个 “能反复改写的状态”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e为了让计算机能访问，一个 bit 必须能\u003cstrong\u003e用电路读写\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mag-draw-board.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"electromagnetic\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e电磁感应：物理和数字世界的桥梁\u003c/h1\u003e\n\u003ch2 id=\"1d-bits-1928\"\u003e1D 存储设备：把 Bits “卷起来” (磁带：1928)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e纸带上均匀粘上铁磁体\u003c/li\u003e\n\u003cli\u003e只需要一个机械部件 (转动) 定位\u003cul\u003e\n\u003cli\u003e读取：磁通量变化产生电动势，放大感应电流\u003c/li\u003e\n\u003cli\u003e写入：强磁场下电子自旋方向翻转 (不是磁针物理翻转)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fritz.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"tape_density\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e磁带：密度可以高得离谱！\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e和集成电路同级别的制程\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e但结构要简单得多 (存储部分只需要结晶)\u003c/li\u003e\n\u003cli\u003e离谱的 300 Gb/in² (30TB/磁带)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mag-tape.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"tape_analysis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e磁带：作为存储设备的分析\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e存储特性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e价格\u003cstrong\u003e低\u003c/strong\u003e (比电路容易制造)、容量\u003cstrong\u003e高\u003c/strong\u003e、可靠性\u003cstrong\u003e高\u003c/strong\u003e (适当封装)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e读写性能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e顺序读写\u003cstrong\u003e勉强\u003c/strong\u003e (需要等待定位)、随机读写\u003cstrong\u003e几乎完全不行\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e这是致命的缺陷\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e应用场景\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e冷数据的存档和备份；只需要顺序读 (写) 的场景：音频/视频！\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/video-tape.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"drum\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"magnetic-drum-1932\"\u003e磁鼓 (Magnetic Drum, 1932)\u003c/h1\u003e\n\u003ch2 id=\"1d-15d-1d-x-n\"\u003e1D → 1.5D (1D x n)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e用旋转的二维平面存储数据 (无法内卷，容量变小)\u003c/li\u003e\n\u003cli\u003e读写延迟不会超过旋转周期 (随机读写速度大幅提升)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mag-drum.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"hard_disk\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hard-disk-1956\"\u003e疯狂内卷：磁盘 (Hard Disk, 1956)\u003c/h1\u003e\n\u003ch2 id=\"15d-25d-2d-x-n\"\u003e1.5D → 2.5D (2D x n)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在二维平面上放置许多磁带\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/disk-mechanism.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"disk_engineering\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e磁盘：克服各种工程挑战\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/perpendicular.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"disk_engineering_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e磁盘：克服各种工程挑战 (cont’d)\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/disk-microscope.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"disk_analysis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e磁盘：作为存储设备的分析\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e存储特性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e价格\u003cstrong\u003e低\u003c/strong\u003e：高密度、低成本\u003c/li\u003e\n\u003cli\u003e容量\u003cstrong\u003e高\u003c/strong\u003e：2.5D，上万磁道\u003c/li\u003e\n\u003cli\u003e可靠性\u003cstrong\u003e高\u003c/strong\u003e (高速运转的机械部件是潜在的威胁)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e读写性能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e顺序读写：\u003cstrong\u003e较高\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e随机读写：\u003cstrong\u003e勉强\u003c/strong\u003e (需要等待定位)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e应用场景\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机系统的主力数据存储 (便宜；甚至坏了还有可能修)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"disk_tuning\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e磁盘：性能调优\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e为了读/写一个扇区\u003c/h2\u003e\n\u003col\u003e\n\u003cli\u003e读写头需要到对应的磁道\u003cul\u003e\n\u003cli\u003e7200rpm → 120rps → “寻道” 时间 8.3ms\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e转轴将盘片旋转到读写头的位置\u003cul\u003e\n\u003cli\u003e读写头移动时间通常也需要几个 ms\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ol\u003e\n\u003ch2 id=\"_3\"\u003e通过缓存/调度等缓解\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例如著名的 “电梯” 调度算法\u003cul\u003e\n\u003cli\u003e成为了历史的尘埃\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eAdvanced Host Controller Interface (AHCI); Native Command Queuing (NCQ)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"floppy\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"floppy-disk-1971\"\u003e软盘 (Floppy Disk, 1971)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e把读写头和盘片分开——实现数据移动\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算机上的软盘驱动器 (\u003ca href=\"https://www.bilibili.com/video/BV1BS4y1X76n\"\u003edrive\u003c/a\u003e) + 可移动的盘片\u003cul\u003e\n\u003cli\u003e8″ (1971), 5.25″ (1975), 3.5″ (1981)\u003cul\u003e\n\u003cli\u003e最初的软盘成本很低，就是个纸壳子\u003c/li\u003e\n\u003cli\u003e3.5 英寸软盘为了提高可靠性，已经是 “硬” 的了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/floppy-disk.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"floppy_software\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e曾经，软件是通过“软盘”发行的！\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/pal-floppy.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"floppy_analysis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e软盘：作为存储设备的分析\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e存储特性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e价格\u003cstrong\u003e低\u003c/strong\u003e：极低成本\u003c/li\u003e\n\u003cli\u003e容量\u003cstrong\u003e低\u003c/strong\u003e：裸露介质，密度受限\u003c/li\u003e\n\u003cli\u003e可靠性\u003cstrong\u003e低\u003c/strong\u003e：不要抱有太大的期望\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e读写性能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e顺序读写：\u003cstrong\u003e低\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e随机读写：\u003cstrong\u003e低\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e应用场景\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e当年可是把整个操作系统带着走的\u003cul\u003e\n\u003cli\u003e(几十 KB 的 BASIC 代码其实就可以很复杂了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e今天作为吉祥物存在的按钮 💾\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.2. 坑 v.s. 平\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"pits_and_flat\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e坑：天然容易 “阅读” 的数据存储\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e跨越千年的持久化存储方法\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/rosetta-stone.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"modern_pits\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e现代工业：我们可以挖出更精细的坑！\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/compactdisc.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"compact_disc\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"compact-disk-cd-1980\"\u003eCompact Disk (CD, 1980)\u003c/h1\u003e\n\u003ch2 id=\"1-0\"\u003e在反射平面 (1) 上挖上粗糙的坑 (0)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e激光扫过表面，就能读出坑的信息来\u003cul\u003e\n\u003cli\u003e44.1kHz, 16-bit, 2 声道贝多芬第九交响曲 (74 分钟, ~700MB)，飞利浦 (碟片) 和索尼 (数字音频) 发明\u003c/li\u003e\n\u003cli\u003eEight-to-Fourteen Modulation 编码 (8 bit 编码到 14 bit)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/cdplay.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cd_copy\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e光盘最有趣的特性：容易复制！\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e光盘的坑是挖在透明塑料上的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e“压盘” 后镀上反射膜\u003c/li\u003e\n\u003cli\u003e3s 生产一张 Blue Ray 100GB (33,000MB/s 写入速度)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/cd-build.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cd_analysis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e光盘：作为存储设备的分析\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e存储特性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e价格\u003cgreen\u003e极低\u003c/green\u003e\n\u003c/li\u003e\n\u003cli\u003e容量\u003cgreen\u003e高\u003c/green\u003e (当然，也没有那么高)\u003c/li\u003e\n\u003cli\u003e可靠性\u003cgreen\u003e高\u003c/green\u003e (你划伤的是没有数据的那一面)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e读写性能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e顺序读：\u003cblue\u003e一般\u003c/blue\u003e\n\u003c/li\u003e\n\u003cli\u003e随机读：\u003cred\u003e低\u003c/red\u003e；很难写入 (CD/R \u0026amp; \u003ca href=\"https://www.scientificamerican.com/article/how-do-rewriteable-cds-wo/\"\u003eCD/RW\u003c/a\u003e)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e应用场景\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e数字内容分发\u003c/li\u003e\n\u003cli\u003e(逐渐被互联网的速度优势取代)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"project_silica\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e挖坑：还有别的用处吗？\u003c/h1\u003e\n\u003ch2 id=\"project-silica-rosetta-stone\"\u003eProject Silica: 回归 Rosetta Stone\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eRandom read + Append-only write = 任何数据结构\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.nature.com/articles/s41586-025-10042-w\"\u003eNature Paper\u003c/a\u003e; \u003ca href=\"https://www.bilibili.com/video/BV1Wu4y187Dh/\"\u003e视频\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/project-silica.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.3. 充电 v.s. 放电\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"ssd_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"solid-state-drive-1991\"\u003eSolid State Drive (1991)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e磁和坑都不太完美\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e磁：机械部件 (无法避免的 ms 级延迟)\u003c/li\u003e\n\u003cli\u003e坑 (光)：挖坑效率低、填坑很困难\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e“完美” = 电子的密度、电路的速度\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFlash Memory “闪存”\u003c/li\u003e\n\u003cli\u003e如何在电路中持久 1-bit？\u003cul\u003e\n\u003cli\u003e挖个坑\u003c/li\u003e\n\u003cli\u003e把电子填进去 = 一个状态\u003c/li\u003e\n\u003cli\u003e把电子放跑 = 另一个状态\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e甚至可以 MLC/TLC/QLC\u003cul\u003e\n\u003cli\u003e精确控制电压来实现更多 bits\u003c/li\u003e\n\u003cli\u003eMLC: 2 bits, TLC: 3 bits, QLC: 4 bits\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"nand_flash\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1-bit-flash-memory\"\u003e1-Bit Flash Memory\u003c/h1\u003e\n\u003ch2 id=\"floating-gate\"\u003eFloating Gate 的充电/放电\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/nand-flash.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"flash_analysis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e闪存：作为存储设备的分析\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e存储特性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e价格\u003cstrong\u003e低\u003c/strong\u003e：大规模集成电路\u003c/li\u003e\n\u003cli\u003e容量\u003cstrong\u003e高\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e可靠性\u003cstrong\u003e高\u003c/strong\u003e：集成电路封装，不怕摔\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e读写性能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e极高\u003c/strong\u003e，而且有极高的扩展性 (电路是天然并行的)\u003cul\u003e\n\u003cli\u003e极为离谱的优点：\u003cstrong\u003e容量越大，速度越快\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e应用场景\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eTape is Dead, Disk is Tape, Flash is Disk, RAM Locality is King (Jim Gray, 2006)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"usb_drive\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"1999\"\u003e开启 “优盘” 时代 (1999)\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/upan.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"flash_wear\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"flash-memory\"\u003eFlash Memory 有一个致命的缺陷\u003c/h1\u003e\n\u003ch2 id=\"erase-100\"\u003e放电 (erase) 做不到 100% 放干净\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e放电\u003cstrong\u003e数千/数万次\u003c/strong\u003e以后，就好像是 “充电” 状态了 (Erase Saturation)\u003c/li\u003e\n\u003cli\u003eDead cell; “wear out”\u003cul\u003e\n\u003cli\u003eQLC: 大约只有 1,000 次写入寿命\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e有没有感到很害怕？\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e \u003cspan class=\"n\"\u003ei\u003c/span\u003e \u003cspan class=\"ow\"\u003ein\u003c/span\u003e \u003cspan class=\"nb\"\u003erange\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1000\u003c/span\u003e\u003cspan class=\"p\"\u003e):\u003c/span\u003e\n    \u003cspan class=\"n\"\u003ePath\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"a.txt\"\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ewrite_text\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nb\"\u003estr\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e这个文件就该要损坏了？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"software_defined_disk\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e软件定义磁盘\u003c/h1\u003e\n\u003ch2 id=\"ssd-tf\"\u003e你的 SSD、优盘，甚至是 TF 卡里都藏了完整的计算机系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFTL: Flash Translation Layer\u003c/li\u003e\n\u003cli\u003e“Wear Leveling”: 用软件使写入变得 “均匀” (虚拟内存)\u003cul\u003e\n\u003cli\u003e维护一个 Logical-to-Physical Table (L2P Table)\u003c/li\u003e\n\u003cli\u003e再一次：Random Read + Append-only Write = 任何数据结构\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/m2ssd.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"software_defined_disk_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"flash-translation-layer-ftl\"\u003eFlash Translation Layer (FTL)\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/ftl-slide.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"nand_flash_products\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"flash-disk-nand-flash\"\u003eFlash Disk 与 NAND Flash\u003c/h1\u003e\n\u003ch2 id=\"sd-ssd-nand-flash\"\u003e优盘, SD 卡, SSD 都是 NAND Flash\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e但软件/硬件系统的复杂程度不同，效率/寿命也不同\u003cul\u003e\n\u003cli\u003e典型的 SSD：CPU, RAM, 缓存, store buffer, 操作系统 …\u003c/li\u003e\n\u003cli\u003eSD 卡/TF 卡标准没有规定必须内置 FTL，但实际上都有\u003ca href=\"https://www.bunniestudios.com/blog/?p=898\"\u003e计算机系统\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e不要买过度便宜的优盘\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e设备 = 一组寄存器 → 设备可以 “伪造”\u003c/li\u003e\n\u003cli\u003e(今天优盘的应用场景越来越少了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fake-ssd.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 操作系统视角的存储设备\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"block_devices\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e存储设备的抽象\u003c/h1\u003e\n\u003ch2 id=\"random-access\"\u003eRandom Access 的代价：寻址\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e磁盘/磁带/光盘需要物理旋转 (Project Silica 就更复杂了)\u003c/li\u003e\n\u003cli\u003e电路也需要选通信号 Die → Plane → Block → Page (16KB)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e减少寻址的代价：按块访问\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSSD Page 内的独立选通信号就是浪费电路\u003cul\u003e\n\u003cli\u003e整个 Page 是同步并行读写的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e存储设备 = 随机读写的 block array\u003cul\u003e\n\u003cli\u003e\u003ccode\u003estruct block disk[NUM_BLOCKS]\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"block-devices\"\u003eBlock devices\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e按块访问的字节序列 (可以直接 mmap 到进程的地址空间)\u003c/li\u003e\n\u003cli\u003e但这个抽象不是没有代价的\u003cul\u003e\n\u003cli\u003e不经意间的读/写放大 (read/write amplifications)\u003c/li\u003e\n\u003cli\u003e需要极致性能的场景，NVMe ZNS (Zoned Namespaces) 直接操纵 append-only 的 Zone\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"linux_bio\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"linux-bio\"\u003eLinux Bio\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e一个应用程序 “看不见” 的接口\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e为你的存储设备实现 \u003ccode\u003estruct block_device_operations\u003c/code\u003e 和 \u003ccode\u003estruct request_queue\u003c/code\u003e，剩下的 read/write/mmap/… 都是文件系统的事了\u003c/li\u003e\n\u003cli\u003e(凭什么不能看到看不见的接口？)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/blk-mq.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/bio\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"linux-block-io\"\u003e\u003ca href=\"/OS/demos/persistence/bio\"\u003e打开 Linux Block I/O\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e让我们借助 Coding Agent，“在没有直接经验的领域（如语言、技术、框架等）进行一些编程工作” 吧！虽然我作为《操作系统》的教师，知道 Linux 内核内部的机制，但我决定在对话时假装自己对系统内的这些机制一无所知。模型：deepseek-v4-pro (high)，成本：¥ 0.72。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e无论是内存还是持久存储，最终胜出的仍然是电——它的密度和速度是其他介质难以比拟的。但同时我们也看到，NAND Flash 作为持久存储时有着巨大的缺陷——写入寿命。但我们也看到了工业界竟然敢于试制这样跨时代的产品，在十多年的争议中终究成为了今天存储的主角。如果更快的 non-volatile memory 到来又退场，我们的计算机系统是否会发生翻天覆地的变化？欢迎到大家在 AI 的帮助下扩展自己的知识面，例如 \u003ca href=\"https://github.com/mikeroyal/SSD-Guide\"\u003eSSD Guide\u003c/a\u003e 和 \u003ca href=\"https://codecapsule.com/2014/02/12/coding-for-ssds-part-1-introduction-and-table-of-contents/\"\u003eCoding for SSDs\u003c/a\u003e。海量的阅读帮助你形成正确的 “计算机科学世界观”，用计算机科学的方式处理问题。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 37 章 - Hard Disk Drives\u003c/li\u003e\n\u003cli\u003e第 44 章 - Flash-based SSDs\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect23.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

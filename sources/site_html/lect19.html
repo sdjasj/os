@@ -1,0 +1,490 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 异步编程模型
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">计算图</h2>
+<ul>
+<li>理解并行计算的关键</li>
+<li>(这是一个非常核心的概念)</li>
+</ul>
+<h2 id="_2">并行算法</h2>
+<ul>
+<li>大规模数值计算问题</li>
+<li>Mandelbrot set 那样的 “embarrassingly parallel”</li>
+<li>……</li>
+</ul>
+<h2 id="_3">并行数据结构</h2>
+<ul>
+<li>数据结构通常具有访问局部性</li>
+<li>尽可能把计算留在线程本地 (thread-local)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="implement_malloc"><div>
+<h1 id="mallocfree">例子：实现 malloc/free</h1>
+<blockquote>
+<p>Premature optimization is the root of all evil.</p>
+<p>——D. E. Knuth</p>
+</blockquote>
+<h2 id="_1">重要的事情说三遍：</h2>
+<ul>
+<li>
+<strong>脱离 workload 做优化就是耍流氓</strong><ul>
+<li>在实际系统中，我们通常不考虑 adversarial worst case (和算法题不同)，而是要在真实的分布下 “表现好” (但也有了 Denial of Service 的机会)</li>
+<li>在开始考虑性能之前，理解你需要考虑什么样的性能</li>
+</ul>
+</li>
+</ul>
+<h2 id="malloc">malloc() 的观察</h2>
+<ul>
+<li>
+<strong>大对象分配后，读写数量应当远大于它的大小</strong><ul>
+<li>否则就是 performance bug</li>
+<li>申请 16MB 内存，扫了一遍就释放了😂</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="implement_malloc_observation"><div>
+<h1 id="mallocfree">实现 malloc/free: 观察</h1>
+<h2 id="_1">推论：越小的对象创建/分配越频繁</h2>
+<ul>
+<li>小对象：字符串、临时对象等；生存周期可长可短 </li>
+<li>中对象：容器、复杂的对象；更长的生存周期</li>
+<li>大对象：巨大的容器、分配器；很长的生存周期</li>
+</ul>
+<h2 id="_2">通过实验：几乎只要管好小对象就好了</h2>
+<ul>
+<li>小对象分配/回收的 <strong>scalability</strong> 是主要瓶颈<ul>
+<li>和 <code>sum++</code> 一样，小对象的分配尽可能在本地完成</li>
+</ul>
+</li>
+<li>(glibc 直接用 mmap 分配大对象)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="slabs"><div>
+<h1 id="fastslow-paths">区分 Fast/Slow Paths</h1>
+<h2 id="segregated-lists-slab">分配: Segregated Lists (Slab)</h2>
+<ul>
+<li>每个 slab 里的每个对象都<strong>一样大</strong><ul>
+<li>每个线程本地都持有一些 slabs</li>
+<li>Fast path → 立即在线程本地分配完成<ul>
+<li>类比 sloppy counter，我们甚至没有全局的读者</li>
+</ul>
+</li>
+<li>Slow path → mmap()</li>
+</ul>
+</li>
+</ul>
+<h2 id="o1">回收: O(1)</h2>
+<p><img alt="" src="static/img/slabs.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="malloc_research"><div>
+<h1 id="_1">年轻的你们对现实的恐怖一无所知</h1>
+<h2 id="1995-research">早在 1995 年：<a href="http://jyywiki.cn/OS/manuals/malloc-survey.pdf">这才叫 research</a>
+</h2>
+<ul>
+<li>Segregated free lists 在 1964 年就提出了</li>
+<li>停止无意义的 “科研实践”，去做真正有价值的事情</li>
+</ul>
+<blockquote>
+<p>Understanding real program behavior still remains the most important first step in formulating a theory of memory management. Without doing that, we cannot hope to develop the science of memory management; we can only fumble around doing ad hoc engineering, in the too-often-used pejorative sense of the word. At this point, the needs of good science and of good engineering in this area are the same—a deeper qualitative understanding. We must try to discern what is relevant and characterize it; this is necessary before formal techniques can be applied usefully.</p>
+</blockquote>
+</div></div>
+
+<h2> 1. 线程的代价
+ </h2>
+<div class="slideshow" name="thread_cost"><div>
+<h1 id="_1">线程的代价</h1>
+<h2 id="_2">线程是需要占用资源的</h2>
+<ul>
+<li>首先，需要内存 (线程栈、操作系统里的各种数据结构……)<ul>
+<li>/proc/[pid]/ 下的文件都是操作系统内数据结构的投射</li>
+</ul>
+</li>
+<li>还有一些分配的 “资源”，例如 pid (用完就要循环)<ul>
+<li>线程的切换需要进入操作系统内核代码 → 这都是开销</li>
+</ul>
+</li>
+</ul>
+<h2 id="linux">Linux 下的一个线程到底要占用多少资源？</h2>
+<ul>
+<li>上了那么多年，我甚至都没有提过这个问题</li>
+<li>但既然提了，就让 AI 给个答案吧<ul>
+<li>找到一个可以计数的 “资源” 集合</li>
+<li>重复实验：创建足够多线程，统计资源的变化</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/thread-cost"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/thread-cost">线程的代价</a></h1>
+<p>我们可以通过创建线程、统计系统的资源变化，来估算创建线程所占用的资源。</p>
+</div></div>
+</div>
+<div class="slideshow" name="thread_cost_1"><div>
+<h1 id="_1">我们想要 “随时随地” 的并行计算</h1>
+<h2 id="_2">然而，启动线程的代价远大于函数调用</h2>
+<ul>
+<li>Approach I: 轻量化线程<ul>
+<li>让 spawn 和 join 的代价接近函数调用</li>
+<li>Coroutine, goroutine, …</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">t1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">spawn</span><span class="p">(</span><span class="n">f</span><span class="p">);</span><span class="w"> </span><span class="n">t2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">spawn</span><span class="p">(</span><span class="n">g</span><span class="p">);</span><span class="w"> </span><span class="n">t3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">spawn</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
+<span class="n">join</span><span class="p">(</span><span class="n">t1</span><span class="p">);</span><span class="w"> </span><span class="n">join</span><span class="p">(</span><span class="n">t2</span><span class="p">);</span><span class="w"> </span><span class="n">join</span><span class="p">(</span><span class="n">t3</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>Approach II: 异步编程<ul>
+<li>改变程序的执行模型，允许描述并行/并发的计算图</li>
+<li>Promise/Future, async/await, …</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">j1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">enqueue_job</span><span class="p">(</span><span class="n">f</span><span class="p">);</span><span class="w"> </span><span class="n">j2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">enqueue_job</span><span class="p">(</span><span class="n">g</span><span class="p">);</span><span class="w"> </span><span class="n">j3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">enqueue_job</span><span class="p">(</span><span class="n">h</span><span class="p">);</span>
+<span class="n">wait_job_complete</span><span class="p">(</span><span class="n">j1</span><span class="p">);</span><span class="w"> </span><span class="n">wait_job_complete</span><span class="p">(</span><span class="n">j2</span><span class="p">);</span><span class="w"> </span><span class="n">wait_job_complete</span><span class="p">(</span><span class="n">j3</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<h2> 2. 方案一：线程的轻量化
+ </h2>
+<div class="slideshow" name="coroutine"><div>
+<h1 id="_1">在用户空间实现 “线程”</h1>
+<h2 id="_2">放弃中断驱动的上下文切换</h2>
+<ul>
+<li>依然保持 spawn, join</li>
+<li>但只在 yield 的时候切换到其他线程<ul>
+<li>多线程 SimpleC 的 “直接实现”</li>
+<li>甚至只要编译器能封存函数运行时状态就行 (类似闭包)<ul>
+<li>Python generator, C++20 coroutine</li>
+<li>(但这使 nested yield 实现变得很麻烦)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">就像一个小 “操作系统” 模拟器</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">threads</span> <span class="o">=</span> <span class="p">[</span><span class="n">T_worker</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1000000</span><span class="p">)]</span>
+<span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+    <span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">threads</span><span class="p">)</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+<ul>
+<li>但有一个致命的缺点：长时间等待的系统调用无法并行<ul>
+<li>sleep, read, … 都会阻塞所有线程</li>
+<li>我们有办法让轻量级线程真正并行起来吗？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/coroutine"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/coroutine">轻量级线程的实现</a></h1>
+<p>我们可以不在操作系统中分配额外的资源，而是仅用进程自身的地址空间和指令集实现多个执行流的切换。既可以在编程语言的帮助下实现无栈的轻量级线程，也可以实现栈切换。</p>
+</div></div>
+</div>
+<div class="slideshow" name="coroutine_pitfall"><div>
+<h1 id="_1">协程：缺陷与解决方法</h1>
+<h2 id="1000000">一个协程等待，1,000,000 个都等待</h2>
+<ul>
+<li>操作系统里只有一个执行流</li>
+<li>mutex_lock + yield = AA 型死锁</li>
+</ul>
+<h2 id="io">解决方法：异步 I/O</h2>
+<ul>
+<li>man 2 open: <code>O_NONBLOCK</code> “非阻塞”<ul>
+<li>系统调用不与 I/O 操作完成同步</li>
+<li>
+<code>read</code> 可能返回 nread 或者 EAGAIN → 这时候就可以 yield 了！</li>
+</ul>
+</li>
+<li>一些额外的 APIs<ul>
+<li>man -P cat 7 epoll | claude -p Explain</li>
+<li>还有 eventfd, timerfd, io_uring, …<ul>
+<li>设计成 fd 就可以被 epoll 监听了！</li>
+<li>主循环 epoll，创建协程工作，eventfd 同步</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><strong>站在操作系统设计者的视角，设计就显得很自然了</strong></li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="goroutine"><div>
+<h1 id="programming-language-trick">一个 Programming-Language Trick</h1>
+<h2 id="_1">如果允许我设计自己的编程语言</h2>
+<ul>
+<li>程序员脑子里就是线程和 blocking 的 I/O 最舒服</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="w">  </span><span class="c1">// wait_until(T &gt;= cur + 1s);</span>
+<span class="n">read</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">);</span><span class="w">  </span><span class="c1">// wait_until(fd has data);</span>
+</code></pre></div>
+
+<ul>
+<li>让编译器帮我 hack 一下</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">put_my_self_into_sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span><span class="w"> </span><span class="n">yield</span><span class="p">();</span>
+<span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">read_async</span><span class="p">(</span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="n">buf</span><span class="p">,</span><span class="w"> </span><span class="n">size</span><span class="p">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="o">-</span><span class="n">EAGAIN</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">yield</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="goroutine">恭喜你，你发明了 goroutine！</h2>
+<ul>
+<li>每个 CPU 上有一个 Go Worker Thread (协程调度器)</li>
+<li>像线程一样使用，像协程一样轻量</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="go_sync"><div>
+<h1 id="go">Go 语言中的同步与通信</h1>
+<blockquote>
+<p>Do not communicate by sharing memory; instead, share memory by communicating. ——<em>Effective Go</em></p>
+</blockquote>
+<h2 id="_1">共享内存 = 万恶之源</h2>
+<ul>
+<li>信号量/条件变量：实现了同步，但没有实现 “通信”<ul>
+<li>数据传递完全靠手工 (没上锁就错了)</li>
+</ul>
+</li>
+</ul>
+<h2 id="unix">但 UNIX 时代就有一个非常棒的并发编程机制了</h2>
+<ul>
+<li>
+<code>(cat *.txt; cat *.cpp) | wc -l</code><ul>
+<li>这不就是计算图、生产者/消费者同步吗？</li>
+<li>为什么不用 “管道” (Channels in Go) 实现线程间的同步 + 通信呢？</li>
+</ul>
+</li>
+</ul>
+<h2 id="golang-unix-philosophy">Golang 真正继承了 UNIX Philosophy</h2>
+<ul>
+<li>因为它的发明人是 Rob Pike, Ken Thompson, Russ Cox 😊</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/mandelbrot-go"><div><div>
+<h1 id="mandelbrot-go"><a href="/OS/demos/concurrency/mandelbrot-go">Mandelbrot-Go</a></h1>
+<p>多个 goroutine 按行分块并行计算 Mandelbrot 集，通过 channel (<code>done</code>) 汇报完成，monitor 用 <code>select</code> 同时监听完成信号和定时器实现实时预览，最终由 <code>finish</code> channel 通知主线程退出。</p>
+</div></div>
+</div>
+<h2> 3. 方案二：描述计算图
+ </h2>
+<div class="slideshow" name="another_timeline"><div>
+<h1 id="_1">另一条平行的世界线</h1>
+<h2 id="1995-brendan-eich-netscape">1995 年 Brendan Eich 加入了 Netscape</h2>
+<ul>
+<li>委以重任设计未来的网页脚本语言<ul>
+<li>他的主要兴趣是<strong>函数式编程</strong> (应该感谢这个机缘巧合 😊)</li>
+</ul>
+</li>
+<li>花了 10 天，糅合了 C, Java, Scheme, Self<ul>
+<li>人类命运的齿轮开始转动</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/js-goodpart.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="another_timeline_contd"><div>
+<h1 id="contd">另一条平行的世界线 (cont’d)</h1>
+<h2 id="_1">这是一个怎样的语言呢……</h2>
+<ul>
+<li>
+<code>this</code> 不是 C++/Python/Java 的那个 “this”——是在调用时动态绑定的</li>
+<li>无数意外脱离对象调用时的 <code>undefined</code>
+</li>
+</ul>
+<p><img alt="" src="static/img/js-trinity.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="web1"><div>
+<h1 id="web-10">互联网时代的序幕：Web 1.0</h1>
+<h2 id="pc-1990s">从 PC 时代到互联网时代 (1990s)</h2>
+<ul>
+<li>Amazon (1994), Yahoo (1994), eBay (1995), Google (1998)</li>
+<li>
+<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Evolution_of_HTTP">HTTP</a>, HTML，甚至没有 CSS<ul>
+<li>比大家想象得简单 (curl -i); 以及我们有一个实验</li>
+<li>中国互联网初代 “三巨头”：新浪、搜狐、网易诞生</li>
+<li>
+<code>&lt;font&gt;</code>, <code>&lt;table&gt;</code> 和切图工程师一统天下</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/yahoo.jpg"></p>
+</div></div>
+
+<div class="code-card" path="concurrency/web"><div><div>
+<h1 id="web"><a href="/OS/demos/concurrency/web">Web 和事件编程</a></h1>
+<p>这里展示了如何从 <code>shopper.html</code> 充满了 <code>setInterval</code>、DOM 操作和事件驱动的动画，到 <code>modernize.js</code> 将其瞬间改造为今天的页面风格。</p>
+</div></div>
+</div>
+<div class="slideshow" name="web1_to_web2"><div>
+<h1 id="web-10-web-20">从 Web 1.0 到 Web 2.0</h1>
+<h2 id="asynchronous-javascript-and-xml-xmlhttprequest-1999">Asynchronous JavaScript and XML (XMLHttpRequest; ~1999)</h2>
+<ul>
+<li>(你没看错，竟然不是 JSON)<ul>
+<li>原因：当时的后端 (Java) 应用广泛使用 XML</li>
+</ul>
+</li>
+<li>网页终于可以实现 “后台刷新”<ul>
+<li>随时请求后端，更新 DOMTree: MVC 分离架构</li>
+<li>任何 “应用” 可以做的，网页也都可以做了！</li>
+</ul>
+</li>
+</ul>
+<h2 id="jquery-2006-a-dom-query-language">jQuery $ (2006): A DOM Query Language (编程抽象)</h2>
+<div class="codehilite"><pre><span></span><code><span class="nx">$</span><span class="p">(</span><span class="nb">document</span><span class="p">).</span><span class="nx">ready</span><span class="p">(</span><span class="kd">function</span><span class="p">(){</span><span class="w"> </span><span class="cm">/* code */</span><span class="w"> </span><span class="p">});</span>
+<span class="nx">$</span><span class="p">(</span><span class="s2">"#myElement"</span><span class="p">).</span><span class="nx">text</span><span class="p">(</span><span class="s2">"新内容"</span><span class="p">).</span><span class="nx">css</span><span class="p">(</span><span class="s2">"color"</span><span class="p">,</span><span class="w"> </span><span class="s2">"red"</span><span class="p">);</span>
+</code></pre></div>
+
+<ul>
+<li>现代浏览器：$ 就是 <code>document.querySelector</code>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="browser_everything"><div>
+<h1 id="_1">从此，做 “任何事” 都只要浏览器就行</h1>
+<h2 id="chromeos">甚至诞生了 ChromeOS</h2>
+<ul>
+<li>HTML + CSS 构建应用的方便程度超过传统 GUI 编程</li>
+<li>GTK, Qt, MFC 谁用谁知道 😂<ul>
+<li>ChromeOS/Chromebook 没能成功</li>
+<li>微信小程序继承了 ChromeOS 的遗志 😂</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/gdocs.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="web2_concurrency"><div>
+<h1 id="javascript">JavaScript 并发编程</h1>
+<h2 id="_1">线程？协程？</h2>
+<ul>
+<li>零门槛的编程语言，让大家并发编程？<ul>
+<li>Data race, atomicity violation, … 分分钟教你做人</li>
+</ul>
+</li>
+<li>我们需要一个更简单的<strong>描述计算图</strong>的模型</li>
+</ul>
+<h2 id="event-based-concurrency-in-javascript">Event-based concurrency in JavaScript</h2>
+<ul>
+<li><strong>禁止任何计算节点并行</strong></li>
+<li>
+<strong>没有任何 Blocking I/O</strong><ul>
+<li>按顺序执行所有 event handlers; run to completion</li>
+<li>网络请求、sleep 都在队列里插入一个新的事件 (计算图中的节点)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="callback_hell"><div>
+<h1 id="_1">事件编程、计算图与回调</h1>
+<h2 id="callback">异步回调 (callback)</h2>
+<ul>
+<li>在事件完成后排队调用 (success, error)</li>
+<li>创建了计算图中的<strong>动态节点</strong>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="nx">$</span><span class="p">.</span><span class="nx">ajax</span><span class="p">({</span>
+<span class="w">    </span><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="s1">'/api/user'</span><span class="p">,</span>
+<span class="w">    </span><span class="nx">success</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">user</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nx">$</span><span class="p">.</span><span class="nx">ajax</span><span class="p">({</span>
+<span class="w">            </span><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="sb">`/api/user/</span><span class="si">${</span><span class="nx">user</span><span class="p">.</span><span class="nx">id</span><span class="si">}</span><span class="sb">/friends`</span><span class="p">,</span>
+<span class="w">            </span><span class="nx">success</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">friends</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">                </span><span class="nx">$</span><span class="p">.</span><span class="nx">ajax</span><span class="p">({</span><span class="nx">url</span><span class="o">:</span><span class="w"> </span><span class="sb">`/api/friend/</span><span class="si">${</span><span class="nx">friends</span><span class="p">[</span><span class="mf">0</span><span class="p">].</span><span class="nx">id</span><span class="si">}</span><span class="sb">`</span><span class="p">,</span><span class="w"> </span><span class="p">...});</span>
+<span class="w">            </span><span class="p">},</span>
+<span class="w">            </span><span class="nx">error</span><span class="o">:</span><span class="w"> </span><span class="kd">function</span><span class="p">(</span><span class="nx">err</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">}</span>
+<span class="w">        </span><span class="p">});</span>
+<span class="w">    </span><span class="p">},</span><span class="w"> </span><span class="p">...</span>
+<span class="p">});</span>
+</code></pre></div>
+
+<h2 id="callback-hell">“Callback hell (回调地狱)”</h2>
+<ul>
+<li>A → B → C 的顺序逻辑硬生生被拆分成了几个部分，极容易写出屎山代码</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="promise"><div>
+<h1 id="_1">回归 “描述计算图”</h1>
+<h2 id="promise">Promise (“承诺”、“契约”): 生成 “未来将会完成” 的计算图节点</h2>
+<div class="codehilite"><pre><span></span><code><span class="nx">useEffect</span><span class="p">(()</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nx">fetch</span><span class="p">(</span><span class="sb">`/api/localhost/?action=demo&amp;path=</span><span class="si">${</span><span class="nx">path</span><span class="si">}</span><span class="sb">`</span><span class="p">)</span>
+<span class="w">        </span><span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">response</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">response</span><span class="p">.</span><span class="nx">json</span><span class="p">())</span>
+<span class="w">        </span><span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">fetchedData</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">setData</span><span class="p">(</span><span class="nx">fetchedData</span><span class="p">))</span>
+<span class="p">},</span><span class="w"> </span><span class="p">[]);</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="nb">Promise</span><span class="p">.</span><span class="nx">all</span><span class="p">([</span>
+<span class="w">    </span><span class="nx">fetch</span><span class="p">(...).</span><span class="nx">then</span><span class="p">(...),</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(...).</span><span class="nx">then</span><span class="p">(...),</span><span class="w"> </span><span class="p">...</span>
+<span class="p">]).</span><span class="nx">then</span><span class="p">(</span>
+<span class="w">    </span><span class="c1">// succeeded</span>
+<span class="p">).</span><span class="k">catch</span><span class="p">(</span>
+<span class="w">    </span><span class="c1">// error handling (catches exceptions in the fetch)</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<ul>
+<li>特别注意：<code>Promise.all()</code> 会立即返回一个新的 Promise</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="more_syntax_sugar"><div>
+<h1 id="asyncawait">Async/Await 语法糖</h1>
+<h2 id="promisethen">Promise.then 还是没有解决顺序逻辑断裂的问题</h2>
+<ul>
+<li>还能再简单一点吗？</li>
+<li>编译器/编程语言设计在我，有什么办不到的呢？<ul>
+<li>
+<strong>同步的写法表达异步的流程</strong>，剩下的让编译器去头疼吧</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">async</span><span class="w"> </span><span class="kd">function</span><span class="w"> </span><span class="nx">fetchData</span><span class="p">(</span><span class="nx">token</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="kd">const</span><span class="w"> </span><span class="nx">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">fetch</span><span class="p">(</span>
+<span class="w">    </span><span class="sb">`/api/submissions/?token={token}`</span>
+<span class="w">  </span><span class="p">)</span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="nx">response</span><span class="p">.</span><span class="nx">json</span><span class="p">()</span>
+<span class="p">}</span>
+<span class="k">await</span><span class="w"> </span><span class="nb">Promise</span><span class="p">.</span><span class="nx">all</span><span class="p">([</span><span class="nx">fetchData</span><span class="p">(</span><span class="s1">'1234'</span><span class="p">),</span><span class="w"> </span><span class="nx">fetchData</span><span class="p">(</span><span class="s1">'5678'</span><span class="p">)])</span>
+</code></pre></div>
+
+<ul>
+<li>async function f() → function f() { return new Promise(…) }</li>
+<li>await f() → return Promise.resolve(f()).then(…)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="frontend_to_fullstack"><div>
+<h1 id="_1">从前端到全栈</h1>
+<h2 id="ecmascript-2015-es6">ECMAScript 2015 (ES6)</h2>
+<ul>
+<li>一统第三方库 “军阀混战” 的局面</li>
+<li>开源生态开始起飞</li>
+</ul>
+<h2 id="_2">操作系统上的另一个应用生态</h2>
+<ul>
+<li>Angular, React, Vue, Bootstrap, Tailwindcss</li>
+<li>Express, Next, Nest</li>
+<li>Electron 和 vscode; <a href="https://github.com/vadimdemedes/ink">Ink</a> 和 Claude code; React Native</li>
+<li>asm.js (和之后的 <a href="https://webassembly.org/docs/faq/">WebAssembly</a>)</li>
+<li>Mermaid, TensorFlow, Three, …</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>从 malloc 的设计到异步编程模型，核心思想都是：理解真实 workload，再用合适的抽象（slab 分配、协程、计算图）来降低代价；当单机不够时，这个思想延伸到分布式系统，就催生了 Serverless。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 异步编程模型\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e计算图\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e理解并行计算的关键\u003c/li\u003e\n\u003cli\u003e(这是一个非常核心的概念)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e并行算法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e大规模数值计算问题\u003c/li\u003e\n\u003cli\u003eMandelbrot set 那样的 “embarrassingly parallel”\u003c/li\u003e\n\u003cli\u003e……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e并行数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e数据结构通常具有访问局部性\u003c/li\u003e\n\u003cli\u003e尽可能把计算留在线程本地 (thread-local)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"implement_malloc\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"mallocfree\"\u003e例子：实现 malloc/free\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003ePremature optimization is the root of all evil.\u003c/p\u003e\n\u003cp\u003e——D. E. Knuth\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e重要的事情说三遍：\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e脱离 workload 做优化就是耍流氓\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e在实际系统中，我们通常不考虑 adversarial worst case (和算法题不同)，而是要在真实的分布下 “表现好” (但也有了 Denial of Service 的机会)\u003c/li\u003e\n\u003cli\u003e在开始考虑性能之前，理解你需要考虑什么样的性能\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"malloc\"\u003emalloc() 的观察\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e大对象分配后，读写数量应当远大于它的大小\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e否则就是 performance bug\u003c/li\u003e\n\u003cli\u003e申请 16MB 内存，扫了一遍就释放了😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"implement_malloc_observation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"mallocfree\"\u003e实现 malloc/free: 观察\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e推论：越小的对象创建/分配越频繁\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e小对象：字符串、临时对象等；生存周期可长可短 \u003c/li\u003e\n\u003cli\u003e中对象：容器、复杂的对象；更长的生存周期\u003c/li\u003e\n\u003cli\u003e大对象：巨大的容器、分配器；很长的生存周期\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e通过实验：几乎只要管好小对象就好了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e小对象分配/回收的 \u003cstrong\u003escalability\u003c/strong\u003e 是主要瓶颈\u003cul\u003e\n\u003cli\u003e和 \u003ccode\u003esum++\u003c/code\u003e 一样，小对象的分配尽可能在本地完成\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e(glibc 直接用 mmap 分配大对象)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"slabs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"fastslow-paths\"\u003e区分 Fast/Slow Paths\u003c/h1\u003e\n\u003ch2 id=\"segregated-lists-slab\"\u003e分配: Segregated Lists (Slab)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每个 slab 里的每个对象都\u003cstrong\u003e一样大\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e每个线程本地都持有一些 slabs\u003c/li\u003e\n\u003cli\u003eFast path → 立即在线程本地分配完成\u003cul\u003e\n\u003cli\u003e类比 sloppy counter，我们甚至没有全局的读者\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eSlow path → mmap()\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"o1\"\u003e回收: O(1)\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/slabs.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"malloc_research\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e年轻的你们对现实的恐怖一无所知\u003c/h1\u003e\n\u003ch2 id=\"1995-research\"\u003e早在 1995 年：\u003ca href=\"http://jyywiki.cn/OS/manuals/malloc-survey.pdf\"\u003e这才叫 research\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSegregated free lists 在 1964 年就提出了\u003c/li\u003e\n\u003cli\u003e停止无意义的 “科研实践”，去做真正有价值的事情\u003c/li\u003e\n\u003c/ul\u003e\n\u003cblockquote\u003e\n\u003cp\u003eUnderstanding real program behavior still remains the most important first step in formulating a theory of memory management. Without doing that, we cannot hope to develop the science of memory management; we can only fumble around doing ad hoc engineering, in the too-often-used pejorative sense of the word. At this point, the needs of good science and of good engineering in this area are the same—a deeper qualitative understanding. We must try to discern what is relevant and characterize it; this is necessary before formal techniques can be applied usefully.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 线程的代价\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"thread_cost\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e线程的代价\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e线程是需要占用资源的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e首先，需要内存 (线程栈、操作系统里的各种数据结构……)\u003cul\u003e\n\u003cli\u003e/proc/[pid]/ 下的文件都是操作系统内数据结构的投射\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e还有一些分配的 “资源”，例如 pid (用完就要循环)\u003cul\u003e\n\u003cli\u003e线程的切换需要进入操作系统内核代码 → 这都是开销\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"linux\"\u003eLinux 下的一个线程到底要占用多少资源？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e上了那么多年，我甚至都没有提过这个问题\u003c/li\u003e\n\u003cli\u003e但既然提了，就让 AI 给个答案吧\u003cul\u003e\n\u003cli\u003e找到一个可以计数的 “资源” 集合\u003c/li\u003e\n\u003cli\u003e重复实验：创建足够多线程，统计资源的变化\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/thread-cost\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/thread-cost\"\u003e线程的代价\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以通过创建线程、统计系统的资源变化，来估算创建线程所占用的资源。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"thread_cost_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e我们想要 “随时随地” 的并行计算\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e然而，启动线程的代价远大于函数调用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eApproach I: 轻量化线程\u003cul\u003e\n\u003cli\u003e让 spawn 和 join 的代价接近函数调用\u003c/li\u003e\n\u003cli\u003eCoroutine, goroutine, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003et1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et2\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eg\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003espawn\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eh\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003ejoin\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003et1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ejoin\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003et2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ejoin\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003et3\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003eApproach II: 异步编程\u003cul\u003e\n\u003cli\u003e改变程序的执行模型，允许描述并行/并发的计算图\u003c/li\u003e\n\u003cli\u003ePromise/Future, async/await, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003ej1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eenqueue_job\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ej2\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eenqueue_job\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eg\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ej3\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eenqueue_job\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eh\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003ewait_job_complete\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ej1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ewait_job_complete\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ej2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ewait_job_complete\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ej3\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 方案一：线程的轻量化\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"coroutine\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e在用户空间实现 “线程”\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e放弃中断驱动的上下文切换\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e依然保持 spawn, join\u003c/li\u003e\n\u003cli\u003e但只在 yield 的时候切换到其他线程\u003cul\u003e\n\u003cli\u003e多线程 SimpleC 的 “直接实现”\u003c/li\u003e\n\u003cli\u003e甚至只要编译器能封存函数运行时状态就行 (类似闭包)\u003cul\u003e\n\u003cli\u003ePython generator, C++20 coroutine\u003c/li\u003e\n\u003cli\u003e(但这使 nested yield 实现变得很麻烦)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e就像一个小 “操作系统” 模拟器\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003ethreads\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003eT_worker\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e \u003cspan class=\"k\"\u003efor\u003c/span\u003e \u003cspan class=\"n\"\u003ei\u003c/span\u003e \u003cspan class=\"ow\"\u003ein\u003c/span\u003e \u003cspan class=\"nb\"\u003erange\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1000000\u003c/span\u003e\u003cspan class=\"p\"\u003e)]\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e \u003cspan class=\"kc\"\u003eTrue\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\n    \u003cspan class=\"n\"\u003erandom\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003echoice\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ethreads\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003esend\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kc\"\u003eNone\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e但有一个致命的缺点：长时间等待的系统调用无法并行\u003cul\u003e\n\u003cli\u003esleep, read, … 都会阻塞所有线程\u003c/li\u003e\n\u003cli\u003e我们有办法让轻量级线程真正并行起来吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/coroutine\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/coroutine\"\u003e轻量级线程的实现\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以不在操作系统中分配额外的资源，而是仅用进程自身的地址空间和指令集实现多个执行流的切换。既可以在编程语言的帮助下实现无栈的轻量级线程，也可以实现栈切换。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"coroutine_pitfall\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e协程：缺陷与解决方法\u003c/h1\u003e\n\u003ch2 id=\"1000000\"\u003e一个协程等待，1,000,000 个都等待\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e操作系统里只有一个执行流\u003c/li\u003e\n\u003cli\u003emutex_lock + yield = AA 型死锁\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"io\"\u003e解决方法：异步 I/O\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eman 2 open: \u003ccode\u003eO_NONBLOCK\u003c/code\u003e “非阻塞”\u003cul\u003e\n\u003cli\u003e系统调用不与 I/O 操作完成同步\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003eread\u003c/code\u003e 可能返回 nread 或者 EAGAIN → 这时候就可以 yield 了！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e一些额外的 APIs\u003cul\u003e\n\u003cli\u003eman -P cat 7 epoll | claude -p Explain\u003c/li\u003e\n\u003cli\u003e还有 eventfd, timerfd, io_uring, …\u003cul\u003e\n\u003cli\u003e设计成 fd 就可以被 epoll 监听了！\u003c/li\u003e\n\u003cli\u003e主循环 epoll，创建协程工作，eventfd 同步\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\u003cstrong\u003e站在操作系统设计者的视角，设计就显得很自然了\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"goroutine\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"programming-language-trick\"\u003e一个 Programming-Language Trick\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e如果允许我设计自己的编程语言\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e程序员脑子里就是线程和 blocking 的 I/O 最舒服\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003esleep\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// wait_until(T \u0026gt;= cur + 1s);\u003c/span\u003e\n\u003cspan class=\"n\"\u003eread\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esize\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// wait_until(fd has data);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e让编译器帮我 hack 一下\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003eput_my_self_into_sleep\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eyield\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eread_async\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esize\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"n\"\u003eEAGAIN\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eyield\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"goroutine\"\u003e恭喜你，你发明了 goroutine！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每个 CPU 上有一个 Go Worker Thread (协程调度器)\u003c/li\u003e\n\u003cli\u003e像线程一样使用，像协程一样轻量\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"go_sync\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"go\"\u003eGo 语言中的同步与通信\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eDo not communicate by sharing memory; instead, share memory by communicating. ——\u003cem\u003eEffective Go\u003c/em\u003e\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e共享内存 = 万恶之源\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e信号量/条件变量：实现了同步，但没有实现 “通信”\u003cul\u003e\n\u003cli\u003e数据传递完全靠手工 (没上锁就错了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"unix\"\u003e但 UNIX 时代就有一个非常棒的并发编程机制了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003e(cat *.txt; cat *.cpp) | wc -l\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e这不就是计算图、生产者/消费者同步吗？\u003c/li\u003e\n\u003cli\u003e为什么不用 “管道” (Channels in Go) 实现线程间的同步 + 通信呢？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"golang-unix-philosophy\"\u003eGolang 真正继承了 UNIX Philosophy\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e因为它的发明人是 Rob Pike, Ken Thompson, Russ Cox 😊\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/mandelbrot-go\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"mandelbrot-go\"\u003e\u003ca href=\"/OS/demos/concurrency/mandelbrot-go\"\u003eMandelbrot-Go\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e多个 goroutine 按行分块并行计算 Mandelbrot 集，通过 channel (\u003ccode\u003edone\u003c/code\u003e) 汇报完成，monitor 用 \u003ccode\u003eselect\u003c/code\u003e 同时监听完成信号和定时器实现实时预览，最终由 \u003ccode\u003efinish\u003c/code\u003e channel 通知主线程退出。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 3. 方案二：描述计算图\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"another_timeline\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e另一条平行的世界线\u003c/h1\u003e\n\u003ch2 id=\"1995-brendan-eich-netscape\"\u003e1995 年 Brendan Eich 加入了 Netscape\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e委以重任设计未来的网页脚本语言\u003cul\u003e\n\u003cli\u003e他的主要兴趣是\u003cstrong\u003e函数式编程\u003c/strong\u003e (应该感谢这个机缘巧合 😊)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e花了 10 天，糅合了 C, Java, Scheme, Self\u003cul\u003e\n\u003cli\u003e人类命运的齿轮开始转动\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/js-goodpart.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"another_timeline_contd\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e另一条平行的世界线 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e这是一个怎样的语言呢……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003ethis\u003c/code\u003e 不是 C++/Python/Java 的那个 “this”——是在调用时动态绑定的\u003c/li\u003e\n\u003cli\u003e无数意外脱离对象调用时的 \u003ccode\u003eundefined\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/js-trinity.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"web1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"web-10\"\u003e互联网时代的序幕：Web 1.0\u003c/h1\u003e\n\u003ch2 id=\"pc-1990s\"\u003e从 PC 时代到互联网时代 (1990s)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAmazon (1994), Yahoo (1994), eBay (1995), Google (1998)\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Evolution_of_HTTP\"\u003eHTTP\u003c/a\u003e, HTML，甚至没有 CSS\u003cul\u003e\n\u003cli\u003e比大家想象得简单 (curl -i); 以及我们有一个实验\u003c/li\u003e\n\u003cli\u003e中国互联网初代 “三巨头”：新浪、搜狐、网易诞生\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003e\u0026lt;font\u0026gt;\u003c/code\u003e, \u003ccode\u003e\u0026lt;table\u0026gt;\u003c/code\u003e 和切图工程师一统天下\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/yahoo.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/web\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"web\"\u003e\u003ca href=\"/OS/demos/concurrency/web\"\u003eWeb 和事件编程\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e这里展示了如何从 \u003ccode\u003eshopper.html\u003c/code\u003e 充满了 \u003ccode\u003esetInterval\u003c/code\u003e、DOM 操作和事件驱动的动画，到 \u003ccode\u003emodernize.js\u003c/code\u003e 将其瞬间改造为今天的页面风格。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"web1_to_web2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"web-10-web-20\"\u003e从 Web 1.0 到 Web 2.0\u003c/h1\u003e\n\u003ch2 id=\"asynchronous-javascript-and-xml-xmlhttprequest-1999\"\u003eAsynchronous JavaScript and XML (XMLHttpRequest; ~1999)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e(你没看错，竟然不是 JSON)\u003cul\u003e\n\u003cli\u003e原因：当时的后端 (Java) 应用广泛使用 XML\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e网页终于可以实现 “后台刷新”\u003cul\u003e\n\u003cli\u003e随时请求后端，更新 DOMTree: MVC 分离架构\u003c/li\u003e\n\u003cli\u003e任何 “应用” 可以做的，网页也都可以做了！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"jquery-2006-a-dom-query-language\"\u003ejQuery $ (2006): A DOM Query Language (编程抽象)\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"nx\"\u003e$\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nb\"\u003edocument\u003c/span\u003e\u003cspan class=\"p\"\u003e).\u003c/span\u003e\u003cspan class=\"nx\"\u003eready\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kd\"\u003efunction\u003c/span\u003e\u003cspan class=\"p\"\u003e(){\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"cm\"\u003e/* code */\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e});\u003c/span\u003e\n\u003cspan class=\"nx\"\u003e$\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"#myElement\"\u003c/span\u003e\u003cspan class=\"p\"\u003e).\u003c/span\u003e\u003cspan class=\"nx\"\u003etext\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"新内容\"\u003c/span\u003e\u003cspan class=\"p\"\u003e).\u003c/span\u003e\u003cspan class=\"nx\"\u003ecss\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"color\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"red\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e现代浏览器：$ 就是 \u003ccode\u003edocument.querySelector\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"browser_everything\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e从此，做 “任何事” 都只要浏览器就行\u003c/h1\u003e\n\u003ch2 id=\"chromeos\"\u003e甚至诞生了 ChromeOS\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eHTML + CSS 构建应用的方便程度超过传统 GUI 编程\u003c/li\u003e\n\u003cli\u003eGTK, Qt, MFC 谁用谁知道 😂\u003cul\u003e\n\u003cli\u003eChromeOS/Chromebook 没能成功\u003c/li\u003e\n\u003cli\u003e微信小程序继承了 ChromeOS 的遗志 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/gdocs.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"web2_concurrency\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"javascript\"\u003eJavaScript 并发编程\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e线程？协程？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e零门槛的编程语言，让大家并发编程？\u003cul\u003e\n\u003cli\u003eData race, atomicity violation, … 分分钟教你做人\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们需要一个更简单的\u003cstrong\u003e描述计算图\u003c/strong\u003e的模型\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"event-based-concurrency-in-javascript\"\u003eEvent-based concurrency in JavaScript\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e禁止任何计算节点并行\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003e没有任何 Blocking I/O\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e按顺序执行所有 event handlers; run to completion\u003c/li\u003e\n\u003cli\u003e网络请求、sleep 都在队列里插入一个新的事件 (计算图中的节点)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"callback_hell\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e事件编程、计算图与回调\u003c/h1\u003e\n\u003ch2 id=\"callback\"\u003e异步回调 (callback)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在事件完成后排队调用 (success, error)\u003c/li\u003e\n\u003cli\u003e创建了计算图中的\u003cstrong\u003e动态节点\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"nx\"\u003e$\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eajax\u003c/span\u003e\u003cspan class=\"p\"\u003e({\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"nx\"\u003eurl\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'/api/user'\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"nx\"\u003esuccess\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kd\"\u003efunction\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003euser\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"nx\"\u003e$\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eajax\u003c/span\u003e\u003cspan class=\"p\"\u003e({\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"nx\"\u003eurl\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sb\"\u003e`/api/user/\u003c/span\u003e\u003cspan class=\"si\"\u003e${\u003c/span\u003e\u003cspan class=\"nx\"\u003euser\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eid\u003c/span\u003e\u003cspan class=\"si\"\u003e}\u003c/span\u003e\u003cspan class=\"sb\"\u003e/friends`\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"nx\"\u003esuccess\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kd\"\u003efunction\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003efriends\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e                \u003c/span\u003e\u003cspan class=\"nx\"\u003e$\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eajax\u003c/span\u003e\u003cspan class=\"p\"\u003e({\u003c/span\u003e\u003cspan class=\"nx\"\u003eurl\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sb\"\u003e`/api/friend/\u003c/span\u003e\u003cspan class=\"si\"\u003e${\u003c/span\u003e\u003cspan class=\"nx\"\u003efriends\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mf\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e].\u003c/span\u003e\u003cspan class=\"nx\"\u003eid\u003c/span\u003e\u003cspan class=\"si\"\u003e}\u003c/span\u003e\u003cspan class=\"sb\"\u003e`\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...});\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"p\"\u003e},\u003c/span\u003e\n\u003cspan class=\"w\"\u003e            \u003c/span\u003e\u003cspan class=\"nx\"\u003eerror\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kd\"\u003efunction\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003eerr\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"p\"\u003e});\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e},\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e});\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"callback-hell\"\u003e“Callback hell (回调地狱)”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eA → B → C 的顺序逻辑硬生生被拆分成了几个部分，极容易写出屎山代码\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"promise\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e回归 “描述计算图”\u003c/h1\u003e\n\u003ch2 id=\"promise\"\u003ePromise (“承诺”、“契约”): 生成 “未来将会完成” 的计算图节点\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"nx\"\u003euseEffect\u003c/span\u003e\u003cspan class=\"p\"\u003e(()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e=\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"nx\"\u003efetch\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"sb\"\u003e`/api/localhost/?action=demo\u0026amp;path=\u003c/span\u003e\u003cspan class=\"si\"\u003e${\u003c/span\u003e\u003cspan class=\"nx\"\u003epath\u003c/span\u003e\u003cspan class=\"si\"\u003e}\u003c/span\u003e\u003cspan class=\"sb\"\u003e`\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003ethen\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003eresponse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e=\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eresponse\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003ejson\u003c/span\u003e\u003cspan class=\"p\"\u003e())\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003ethen\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003efetchedData\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e=\u0026gt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003esetData\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003efetchedData\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\n\u003cspan class=\"p\"\u003e},\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e[]);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"nb\"\u003ePromise\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eall\u003c/span\u003e\u003cspan class=\"p\"\u003e([\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"nx\"\u003efetch\u003c/span\u003e\u003cspan class=\"p\"\u003e(...).\u003c/span\u003e\u003cspan class=\"nx\"\u003ethen\u003c/span\u003e\u003cspan class=\"p\"\u003e(...),\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003efetch\u003c/span\u003e\u003cspan class=\"p\"\u003e(...).\u003c/span\u003e\u003cspan class=\"nx\"\u003ethen\u003c/span\u003e\u003cspan class=\"p\"\u003e(...),\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e]).\u003c/span\u003e\u003cspan class=\"nx\"\u003ethen\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// succeeded\u003c/span\u003e\n\u003cspan class=\"p\"\u003e).\u003c/span\u003e\u003cspan class=\"k\"\u003ecatch\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// error handling (catches exceptions in the fetch)\u003c/span\u003e\n\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e特别注意：\u003ccode\u003ePromise.all()\u003c/code\u003e 会立即返回一个新的 Promise\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"more_syntax_sugar\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"asyncawait\"\u003eAsync/Await 语法糖\u003c/h1\u003e\n\u003ch2 id=\"promisethen\"\u003ePromise.then 还是没有解决顺序逻辑断裂的问题\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e还能再简单一点吗？\u003c/li\u003e\n\u003cli\u003e编译器/编程语言设计在我，有什么办不到的呢？\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e同步的写法表达异步的流程\u003c/strong\u003e，剩下的让编译器去头疼吧\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003easync\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kd\"\u003efunction\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003efetchData\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"nx\"\u003etoken\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"kd\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eresponse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eawait\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003efetch\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"sb\"\u003e`/api/submissions/?token={token}`\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003eresponse\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003ejson\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"k\"\u003eawait\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nb\"\u003ePromise\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"nx\"\u003eall\u003c/span\u003e\u003cspan class=\"p\"\u003e([\u003c/span\u003e\u003cspan class=\"nx\"\u003efetchData\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s1\"\u003e'1234'\u003c/span\u003e\u003cspan class=\"p\"\u003e),\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nx\"\u003efetchData\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s1\"\u003e'5678'\u003c/span\u003e\u003cspan class=\"p\"\u003e)])\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003easync function f() → function f() { return new Promise(…) }\u003c/li\u003e\n\u003cli\u003eawait f() → return Promise.resolve(f()).then(…)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"frontend_to_fullstack\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e从前端到全栈\u003c/h1\u003e\n\u003ch2 id=\"ecmascript-2015-es6\"\u003eECMAScript 2015 (ES6)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一统第三方库 “军阀混战” 的局面\u003c/li\u003e\n\u003cli\u003e开源生态开始起飞\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e操作系统上的另一个应用生态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAngular, React, Vue, Bootstrap, Tailwindcss\u003c/li\u003e\n\u003cli\u003eExpress, Next, Nest\u003c/li\u003e\n\u003cli\u003eElectron 和 vscode; \u003ca href=\"https://github.com/vadimdemedes/ink\"\u003eInk\u003c/a\u003e 和 Claude code; React Native\u003c/li\u003e\n\u003cli\u003easm.js (和之后的 \u003ca href=\"https://webassembly.org/docs/faq/\"\u003eWebAssembly\u003c/a\u003e)\u003c/li\u003e\n\u003cli\u003eMermaid, TensorFlow, Three, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e从 malloc 的设计到异步编程模型，核心思想都是：理解真实 workload，再用合适的抽象（slab 分配、协程、计算图）来降低代价；当单机不够时，这个思想延伸到分布式系统，就催生了 Serverless。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect19.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

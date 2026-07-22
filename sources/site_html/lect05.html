@@ -1,0 +1,450 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 程序和进程
+ </h1>
+<h2> 1. Review & Comments
+ </h2>
+<div class="slideshow" name="clarifications"><div>
+<h1 id="clarifications">Clarifications</h1>
+<h2 id="_1">上节课到底用了什么模型？</h2>
+<ul>
+<li>日志告诉我了：doubao-seed-2.0-code<ul>
+<li>上次课是第一次使用 (各家就属他最快了)</li>
+<li>后续使用体验：智力极低，各种不听指令<ul>
+<li>细思恐极啊 🤔</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/doubao-fat.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="content_review"><div>
+<h1 id="_1">内容回顾</h1>
+<h2 id="_2">应用视角的操作系统</h2>
+<ul>
+<li>操作系统 = 对象 + API</li>
+</ul>
+<h2 id="_3">硬件视角的操作系统</h2>
+<ul>
+<li>操作系统 = 程序</li>
+</ul>
+<h2 id="_4">它们都有非常明确的 “数学模型”</h2>
+<ul>
+<li>应用程序从 main(argc, argv) 开始执行语句</li>
+<li>机器从 CPU Reset 开始执行固件指令</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="main_content"><div>
+<h1 id="_1">《操作系统》正片开始</h1>
+<h2 id="_2">虚拟化</h2>
+<ul>
+<li>One of the most fundamental abstractions that the OS provides to users: the <strong>process</strong>
+</li>
+<li>把物理计算机 “抽象” 成 “虚拟计算机”<ul>
+<li>程序好像独占计算机运行</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">进入 “每一讲都实现一点什么” 的模式</h2>
+<ul>
+<li>每次课都感到编程 “能力边界” 的扩展</li>
+</ul>
+</div></div>
+
+<h2> 2. 程序和进程
+ </h2>
+<div class="slideshow" name="two_programs"><div>
+<h1 id="_1">虚拟化：一个疯狂的想法</h1>
+<h2 id="tower-of-hanoi">还记得 Tower of Hanoi 的非递归版本？</h2>
+<ul>
+<li>我们可以在程序里模拟任何 “另一个程序” 执行<ul>
+<li>选一个程序，执行一条语句</li>
+<li>我们不就实现了 “操作系统” 吗？</li>
+</ul>
+</li>
+</ul>
+<h2 id="crazyos">CrazyOS</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">p</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pickup_one</span><span class="p">();</span>
+<span class="w">    </span><span class="n">p</span><span class="o">-&gt;</span><span class="n">single_step</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>没错，<strong>这就是操作系统的主循环</strong><ul>
+<li>只不过实际的操作系统是 “p-&gt;run_sometime_on_cpu()”</li>
+<li>Code is cheap; show me the talk! 我们不是有 riscv32ima 吗？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/crazy-os"><div><div>
+<h1 id="crazy-os"><a href="/OS/demos/virtualization/crazy-os">Crazy OS</a></h1>
+<p>我们希望 “模拟” 一个操作系统：crazy-os.c 能加载 argv 指定的 binary (p1, p2, …)，基于 mini-rv32ima.h 模拟单步执行 (RISC-V 指令)，并能够处理 syscall。</p>
+</div></div>
+</div>
+<div class="slideshow" name="program_vs_process"><div>
+<h1 id="vs">程序 v.s. 进程</h1>
+<div class="codehilite"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;unistd.h&gt;</span>
+
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">write</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s">"Hello, World!</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span><span class="w"> </span><span class="mi">13</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="_1">程序是语义 (状态机) 的<strong>静态描述</strong>
+</h2>
+<ul>
+<li>描述了<strong>初始状态</strong>和<strong>迁移规则</strong>
+</li>
+<li>程序运行起来，就成了<strong>进程</strong> (进行中的状态机实例)<ul>
+<li>(同一个程序可以同时运行多份)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="os_process"><div>
+<h1 id="_1">操作系统上的进程</h1>
+<h2 id="_2">进程：程序的<strong>运行时状态</strong>随时间的演进</h2>
+<ul>
+<li>除了程序状态，操作系统还会保存一些应用不直接可见的额外状态<ul>
+<li>CrazyOS 里的 buf</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">问出正确的问题，就有最好的答案</h2>
+<ul>
+<li>真实的操作系统，进程到底有哪些状态？<ul>
+<li>试着去<strong>探索</strong>：试图获取进程的各种信息</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="c1">// Author: Claude Opus 4.6</span>
+<span class="c1">// 不知道说什么好 (绿导师该退休了)</span>
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="virtualization/proc-info"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/proc-info">展示进程信息</a></h1>
+<p>操作系统为每个进程都维护了二进制文件之外 “操作系统” 意义上的状态。实现一个 C 语言工具 (假设 Linux 系统)，不调用外部工具，尽可能地获取并展示出进程自身不直接可见的操作系统状态。</p>
+</div></div>
+</div>
+<div class="slideshow" name="query_process_state"><div>
+<h1 id="os-api">[OS API] 查询进程状态</h1>
+<h2 id="procfs">procfs</h2>
+<ul>
+<li>/proc/[pid]/<ul>
+<li>通过 readdir, open, read 访问进程信息</li>
+<li>一座宝库 (claude code 启动)</li>
+</ul>
+</li>
+</ul>
+<h2 id="syscalls">各式各样的 syscalls</h2>
+<ul>
+<li>getpid(), getppid(), getpgrp(), getsid(), getuid(), geteuid(), getgid(), getegid(), ……<ul>
+<li>涉及到各个 subsystem; 会在用到的时候介绍</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 3. 进程管理
+ </h2>
+<h3> 3.1. 创建进程
+ </h3>
+<div class="slideshow" name="process_management_syscalls"><div>
+<h1 id="_1">进程管理系统调用</h1>
+<h2 id="_2">操作系统 = 状态机的管理者</h2>
+<ul>
+<li>进程管理 = 状态机管理</li>
+</ul>
+<h2 id="_3">一个直观的想法</h2>
+<ul>
+<li>创建状态机：spawn(path, argv)</li>
+<li>销毁状态机: _exit()<ul>
+<li>这是一个合理的设计 (例子：Windows)</li>
+</ul>
+</li>
+</ul>
+<h2 id="unix">UNIX 的答案</h2>
+<ul>
+<li>复制状态机: fork()</li>
+<li>复位状态机: execve()</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="create_state_machine"><div>
+<h1 id="os-api">[OS API] 创建状态机</h1>
+<div class="codehilite"><pre><span></span><code>pid_t fork(void);
+</code></pre></div>
+
+<h2 id="_1">现在我们已经有 “一个状态机” 了</h2>
+<ul>
+<li>只需要 “创建状态机” 的 API 即可</li>
+<li>UNIX 的答案: <em>fork</em><ul>
+<li>做一份状态机完整的复制 (内存、寄存器现场)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/2-fork.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="fork_behavior"><div>
+<h1 id="fork">fork() 的行为</h1>
+<h2 id="_1">立即复制状态机</h2>
+<ul>
+<li>包括<strong>所有状态</strong>的完整拷贝<ul>
+<li>寄存器 &amp; 每一个字节的内存</li>
+<li>Caveat: 进程在操作系统里也有状态: ppid, 文件, 信号, …<ul>
+<li><strong>小心这些状态的复制行为</strong></li>
+</ul>
+</li>
+<li>复制失败返回 -1<ul>
+<li>errno 会返回错误原因 (man fork)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">如何区分两个状态机？</h2>
+<ul>
+<li>新创建进程返回 0</li>
+<li>执行 fork 的进程返回子进程的进程号——“父子关系”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="process_tree"><div>
+<h1 id="_1">进程树</h1>
+<h2 id="_2">进程的创建关系形成了进程树</h2>
+<ul>
+<li>A → B → C，如果 B 终止了……C 的 ppid 是什么？<ul>
+<li>看似简单：我们 “往上提” 一层就行</li>
+<li>实际复杂：<ul>
+<li>子进程结束会通知父进程<ul>
+<li>通过 SIGCHLD 信号</li>
+<li>父进程可以捕获这个信号</li>
+</ul>
+</li>
+<li>“往上提” 就发错人了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">如何验证这个行为？</h2>
+<ul>
+<li>让 AI 帮我们写程序！</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/pstree"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/pstree">创建一棵进程子树</a></h1>
+<p>创建一棵 5 层的进程树，并随机退出其中的一些进程——我们可以观察进程退出前后父子进程的关系。</p>
+</div></div>
+</div>
+<h4> 3.1.1. fork() 的用处
+ </h4>
+<div class="slideshow" name="fork_bomb"><div>
+<h1 id="fork-bomb">Fork Bomb</h1>
+<h2 id="_1">刚才的示例程序</h2>
+<ul>
+<li>1 变 2, 2 变 4, 指数级增长</li>
+<li>“核裂变” 使快资源迅速消耗殆尽<ul>
+<li>曾经会使系统彻底卡死，但现在 Linux 有 OOM 保护</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/fork-bomb-bash.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="fork_dfs"><div>
+<h1 id="fork">fork() 的全量内存快照：应用</h1>
+<h2 id="_1">共享信息预处理</h2>
+<ul>
+<li>计算 prime_table，然后 fork 进程分段处理<ul>
+<li>更酷的例子：Android Zygote Process，完成 “冷启动”</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">并行搜索</h2>
+<ul>
+<li>Depth-first search 中，为每个分支创建一个进程</li>
+</ul>
+<h2 id="_3">沙箱隔离</h2>
+<ul>
+<li>定期做一个 checkpoint，如果程序 crash 了就从 checkpoint 恢复</li>
+</ul>
+<p><img alt="" src="static/img/zygote.jpg"></p>
+</div></div>
+
+<div class="code-card" path="virtualization/fork-dfs"><div><div>
+<h1 id="fork-based-dfs"><a href="/OS/demos/virtualization/fork-dfs">fork-based DFS</a></h1>
+<p>如果我们使用深度优先搜索，总是需要维护当前的 “搜索状态”。通常这是通过将状态作为参数传递实现的 (当然，也可以用维护全局状态的方式实现)。借助 fork()，我们可以在每个搜索分支创建一个当前状态的快照，实现并行搜索。</p>
+</div></div>
+</div>
+<h4> 3.1.2. 软件系统的复杂性
+ </h4>
+<div class="slideshow" name="fork_exercise"><div>
+<h1 id="fork">理解 fork: 习题</h1>
+<h2 id="_1">阅读程序，写出运行结果</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">fork</span><span class="p">();</span>
+<span class="w">    </span><span class="n">printf</span><span class="p">(</span><span class="s">"Hello</span><span class="se">\n</span><span class="s">"</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="_2">计算机系统里没有魔法</h2>
+<ul>
+<li>./a.out</li>
+<li>./a.out | cat<ul>
+<li>(无情执行指令的) 机器永远是对的，以及，我们甚至可以在 CrazyOS 里实现它！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/fork-demo"><div><div>
+<h1 id="fork"><a href="/OS/demos/virtualization/fork-demo">理解 fork()</a></h1>
+<p>fork() 会完整复制状态机；新创建的状态机返回值为 0，执行 fork() 的进程会返回子进程的进程号。同时，操作系统中的进程是并行执行的。程序的精确行为并不显然——model checker 可以帮助我们理解它。在这个例子中，我们还发现执行 <code>./a.out</code> 打印的行数和 <code>./a.out | wc -l</code> 得到的行数不同。根据 “机器永远是对的” 的原则，我们可以通过提出假设 (libc 缓冲区影响) 求证、对比 strace 系统调用序列等方式，最终理解背后的原因。标准输入输出的缓冲控制可以通过 setbuf(3) 和 stdbuf(1) 实现。</p>
+</div></div>
+</div>
+<h3> 3.2. 重置进程
+ </h3>
+<div class="slideshow" name="reset_state_machine"><div>
+<h1 id="os-api">[OS API] 复位状态机</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">execve</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">filename</span><span class="p">,</span>
+<span class="w">           </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">argv</span><span class="p">[],</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">envp</span><span class="p">[]);</span>
+</code></pre></div>
+
+<h2 id="unix-api">UNIX 选择只给一个复位状态机的 API</h2>
+<ul>
+<li>将当前进程<strong>重置</strong>成一个可执行文件描述状态机的初始状态</li>
+<li>
+<strong>操作系统维护的状态不变</strong>：进程号、目录、打开的文件……<ul>
+<li>(程序员总犯错，因此打开文件有了 O_CLOEXEC)</li>
+</ul>
+</li>
+</ul>
+<h2 id="execve">execve 是<strong>唯一能够 “执行程序” 的系统调用</strong>
+</h2>
+<ul>
+<li>因此也是一切进程 strace 的第一个系统调用</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="execve_initial_state"><div>
+<h1 id="execve">execve() 设置了进程的初始状态</h1>
+<h2 id="argc-argv">argc &amp; argv: 命令行参数</h2>
+<ul>
+<li>困扰多年的疑问得到解答：main 的参数是 execve 给的！</li>
+</ul>
+<h2 id="envp">envp: 环境变量</h2>
+<ul>
+<li>使用 env 命令查看<ul>
+<li>PATH, PWD, HOME, DISPLAY, PS1, …</li>
+</ul>
+</li>
+<li>export: 告诉 shell 在创建子进程时设置环境变量</li>
+</ul>
+<h2 id="_1">程序被正确加载到内存</h2>
+<ul>
+<li>代码、数据、PC 位于程序入口</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/execve-demo"><div><div>
+<h1 id="execve"><a href="/OS/demos/virtualization/execve-demo">理解 execve</a></h1>
+<p>execve 有三个参数：path, argv, envp，分别是可执行文件的路径、传递给 main 函数的参数和环境变量。execve 是一个 “底层” 的系统调用，而 POISX 额外提供了 execl 等库函数便于我们使用。请搜索互联网或询问人工智能理解它们的区别。</p>
+</div></div>
+</div>
+<div class="slideshow" name="path_environment_variable"><div>
+<h1 id="path">例子：PATH 环境变量</h1>
+<h2 id="_1">可执行文件搜索路径</h2>
+<ul>
+<li>还记得 gcc 的 strace 结果吗？</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>[pid 28369] execve("/usr/local/sbin/as", ["as", "--64", ...
+[pid 28369] execve("/usr/local/bin/as", ["as", "--64", ...
+[pid 28369] execve("/usr/sbin/as", ["as", "--64", ...
+[pid 28369] execve("/usr/bin/as", ["as", "--64", ...
+</code></pre></div>
+
+<ul>
+<li>这个搜索顺序恰好是 PATH 里指定的顺序</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>$ PATH="" /usr/bin/gcc a.c
+gcc: error trying to exec 'as': execvp: No such file or directory
+$ PATH="/usr/bin/" gcc a.c
+</code></pre></div>
+
+<ul>
+<li><strong>计算机系统里没有魔法。机器永远是对的。</strong></li>
+</ul>
+</div></div>
+
+<h3> 3.3. 销毁进程
+ </h3>
+<div class="slideshow" name="destroy_state_machine"><div>
+<h1 id="os-api">[OS API] 销毁状态机</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">_exit</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">status</span><span class="p">);</span>
+</code></pre></div>
+
+<h2 id="_1">这个没有争议</h2>
+<ul>
+<li>立即摧毁状态机，允许有一个返回值<ul>
+<li>返回值可以被父进程获取</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">实际的退出要复杂一些</h2>
+<ul>
+<li>有了线程以后，就有了两种退出方式 (exit, exit_group)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="unix_process_lifecycle"><div>
+<h1 id="unix">UNIX 进程的生存周期</h1>
+<h2 id="unix_1">UNIX 中实现 “创建新状态机” 的方式</h2>
+<ul>
+<li>Spawn = fork + execve</li>
+<li>我们会在之后介绍这些系统调用的灵活应用</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">pid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fork</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">-1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// 错误</span>
+<span class="w">    </span><span class="n">perror</span><span class="p">(</span><span class="s">"fork"</span><span class="p">);</span><span class="w"> </span><span class="k">goto</span><span class="w"> </span><span class="n">fail</span><span class="p">;</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">pid</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// 子进程</span>
+<span class="w">    </span><span class="n">execve</span><span class="p">(...);</span>
+<span class="w">    </span><span class="n">perror</span><span class="p">(</span><span class="s">"execve"</span><span class="p">);</span><span class="w"> </span><span class="n">exit</span><span class="p">(</span><span class="n">EXIT_FAILURE</span><span class="p">);</span>
+<span class="p">}</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// 父进程</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">status</span><span class="p">;</span>
+<span class="w">    </span><span class="n">waitpid</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">);</span><span class="w"> </span><span class="c1">// testkit.c 中有</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="virtualization/exit-demo"><div><div>
+<h1 id="exit"><a href="/OS/demos/virtualization/exit-demo">理解 exit</a></h1>
+<p>除了 libc 为我们提供的 <code>exit</code> 函数之外，Linux 提供了两个系统调用：<code>exit</code> 和 <code>exit_group</code>，它们可以在 syscalls(2) 的手册中看到。同时，你也可以在这份手册中看到 Linux 肩负的 “历史包袱”。strace 可以查看应用程序是如何 “退出” 的。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>操作系统通过进程抽象为应用程序提供了独立的执行环境。进程是操作系统中最基本的资源分配单位，它包含程序本身的状态和操作系统内部的状态。操作系统提供了一系列系统调用 (如 Linux 中的 fork、exec、wait 和 exit，Windows 中的 CreateProcess 和TerminateProcess) 来创建、管理和终止进程。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>课程网站 (首页上的信息、课程概述、参考书与参考资料、生存指南)；教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 3 章 - Dialogue</li>
+<li>第 4 章 - Processes</li>
+<li>第 5 章 - Process API</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 程序和进程\n \u003c/h1\u003e\n\u003ch2\u003e 1. Review \u0026 Comments\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"clarifications\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"clarifications\"\u003eClarifications\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e上节课到底用了什么模型？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e日志告诉我了：doubao-seed-2.0-code\u003cul\u003e\n\u003cli\u003e上次课是第一次使用 (各家就属他最快了)\u003c/li\u003e\n\u003cli\u003e后续使用体验：智力极低，各种不听指令\u003cul\u003e\n\u003cli\u003e细思恐极啊 🤔\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/doubao-fat.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"content_review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e内容回顾\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e应用视角的操作系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e操作系统 = 对象 + API\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e硬件视角的操作系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e操作系统 = 程序\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e它们都有非常明确的 “数学模型”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e应用程序从 main(argc, argv) 开始执行语句\u003c/li\u003e\n\u003cli\u003e机器从 CPU Reset 开始执行固件指令\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"main_content\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e《操作系统》正片开始\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e虚拟化\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eOne of the most fundamental abstractions that the OS provides to users: the \u003cstrong\u003eprocess\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e把物理计算机 “抽象” 成 “虚拟计算机”\u003cul\u003e\n\u003cli\u003e程序好像独占计算机运行\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e进入 “每一讲都实现一点什么” 的模式\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每次课都感到编程 “能力边界” 的扩展\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 程序和进程\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"two_programs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e虚拟化：一个疯狂的想法\u003c/h1\u003e\n\u003ch2 id=\"tower-of-hanoi\"\u003e还记得 Tower of Hanoi 的非递归版本？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们可以在程序里模拟任何 “另一个程序” 执行\u003cul\u003e\n\u003cli\u003e选一个程序，执行一条语句\u003c/li\u003e\n\u003cli\u003e我们不就实现了 “操作系统” 吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"crazyos\"\u003eCrazyOS\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ep\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003epickup_one\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ep\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003esingle_step\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e没错，\u003cstrong\u003e这就是操作系统的主循环\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e只不过实际的操作系统是 “p-\u0026gt;run_sometime_on_cpu()”\u003c/li\u003e\n\u003cli\u003eCode is cheap; show me the talk! 我们不是有 riscv32ima 吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/crazy-os\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"crazy-os\"\u003e\u003ca href=\"/OS/demos/virtualization/crazy-os\"\u003eCrazy OS\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们希望 “模拟” 一个操作系统：crazy-os.c 能加载 argv 指定的 binary (p1, p2, …)，基于 mini-rv32ima.h 模拟单步执行 (RISC-V 指令)，并能够处理 syscall。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"program_vs_process\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"vs\"\u003e程序 v.s. 进程\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#include\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"cpf\"\u003e\u0026lt;unistd.h\u0026gt;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003emain\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003ewrite\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s\"\u003e\"Hello, World!\u003c/span\u003e\u003cspan class=\"se\"\u003e\\n\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e13\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_1\"\u003e程序是语义 (状态机) 的\u003cstrong\u003e静态描述\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e描述了\u003cstrong\u003e初始状态\u003c/strong\u003e和\u003cstrong\u003e迁移规则\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e程序运行起来，就成了\u003cstrong\u003e进程\u003c/strong\u003e (进行中的状态机实例)\u003cul\u003e\n\u003cli\u003e(同一个程序可以同时运行多份)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"os_process\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e操作系统上的进程\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e进程：程序的\u003cstrong\u003e运行时状态\u003c/strong\u003e随时间的演进\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e除了程序状态，操作系统还会保存一些应用不直接可见的额外状态\u003cul\u003e\n\u003cli\u003eCrazyOS 里的 buf\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e问出正确的问题，就有最好的答案\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e真实的操作系统，进程到底有哪些状态？\u003cul\u003e\n\u003cli\u003e试着去\u003cstrong\u003e探索\u003c/strong\u003e：试图获取进程的各种信息\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"c1\"\u003e// Author: Claude Opus 4.6\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 不知道说什么好 (绿导师该退休了)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/proc-info\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/proc-info\"\u003e展示进程信息\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e操作系统为每个进程都维护了二进制文件之外 “操作系统” 意义上的状态。实现一个 C 语言工具 (假设 Linux 系统)，不调用外部工具，尽可能地获取并展示出进程自身不直接可见的操作系统状态。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"query_process_state\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"os-api\"\u003e[OS API] 查询进程状态\u003c/h1\u003e\n\u003ch2 id=\"procfs\"\u003eprocfs\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e/proc/[pid]/\u003cul\u003e\n\u003cli\u003e通过 readdir, open, read 访问进程信息\u003c/li\u003e\n\u003cli\u003e一座宝库 (claude code 启动)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"syscalls\"\u003e各式各样的 syscalls\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003egetpid(), getppid(), getpgrp(), getsid(), getuid(), geteuid(), getgid(), getegid(), ……\u003cul\u003e\n\u003cli\u003e涉及到各个 subsystem; 会在用到的时候介绍\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 进程管理\n \u003c/h2\u003e\n\u003ch3\u003e 3.1. 创建进程\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"process_management_syscalls\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e进程管理系统调用\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e操作系统 = 状态机的管理者\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e进程管理 = 状态机管理\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e一个直观的想法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e创建状态机：spawn(path, argv)\u003c/li\u003e\n\u003cli\u003e销毁状态机: _exit()\u003cul\u003e\n\u003cli\u003e这是一个合理的设计 (例子：Windows)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"unix\"\u003eUNIX 的答案\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e复制状态机: fork()\u003c/li\u003e\n\u003cli\u003e复位状态机: execve()\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"create_state_machine\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"os-api\"\u003e[OS API] 创建状态机\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003epid_t fork(void);\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_1\"\u003e现在我们已经有 “一个状态机” 了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e只需要 “创建状态机” 的 API 即可\u003c/li\u003e\n\u003cli\u003eUNIX 的答案: \u003cem\u003efork\u003c/em\u003e\u003cul\u003e\n\u003cli\u003e做一份状态机完整的复制 (内存、寄存器现场)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/2-fork.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fork_behavior\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"fork\"\u003efork() 的行为\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e立即复制状态机\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e包括\u003cstrong\u003e所有状态\u003c/strong\u003e的完整拷贝\u003cul\u003e\n\u003cli\u003e寄存器 \u0026amp; 每一个字节的内存\u003c/li\u003e\n\u003cli\u003eCaveat: 进程在操作系统里也有状态: ppid, 文件, 信号, …\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e小心这些状态的复制行为\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e复制失败返回 -1\u003cul\u003e\n\u003cli\u003eerrno 会返回错误原因 (man fork)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e如何区分两个状态机？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e新创建进程返回 0\u003c/li\u003e\n\u003cli\u003e执行 fork 的进程返回子进程的进程号——“父子关系”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"process_tree\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e进程树\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e进程的创建关系形成了进程树\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eA → B → C，如果 B 终止了……C 的 ppid 是什么？\u003cul\u003e\n\u003cli\u003e看似简单：我们 “往上提” 一层就行\u003c/li\u003e\n\u003cli\u003e实际复杂：\u003cul\u003e\n\u003cli\u003e子进程结束会通知父进程\u003cul\u003e\n\u003cli\u003e通过 SIGCHLD 信号\u003c/li\u003e\n\u003cli\u003e父进程可以捕获这个信号\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“往上提” 就发错人了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e如何验证这个行为？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e让 AI 帮我们写程序！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/pstree\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/pstree\"\u003e创建一棵进程子树\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e创建一棵 5 层的进程树，并随机退出其中的一些进程——我们可以观察进程退出前后父子进程的关系。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch4\u003e 3.1.1. fork() 的用处\n \u003c/h4\u003e\n\u003cdiv class=\"slideshow\" name=\"fork_bomb\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"fork-bomb\"\u003eFork Bomb\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e刚才的示例程序\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e1 变 2, 2 变 4, 指数级增长\u003c/li\u003e\n\u003cli\u003e“核裂变” 使快资源迅速消耗殆尽\u003cul\u003e\n\u003cli\u003e曾经会使系统彻底卡死，但现在 Linux 有 OOM 保护\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fork-bomb-bash.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fork_dfs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"fork\"\u003efork() 的全量内存快照：应用\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e共享信息预处理\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e计算 prime_table，然后 fork 进程分段处理\u003cul\u003e\n\u003cli\u003e更酷的例子：Android Zygote Process，完成 “冷启动”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e并行搜索\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eDepth-first search 中，为每个分支创建一个进程\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e沙箱隔离\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e定期做一个 checkpoint，如果程序 crash 了就从 checkpoint 恢复\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/zygote.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/fork-dfs\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"fork-based-dfs\"\u003e\u003ca href=\"/OS/demos/virtualization/fork-dfs\"\u003efork-based DFS\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e如果我们使用深度优先搜索，总是需要维护当前的 “搜索状态”。通常这是通过将状态作为参数传递实现的 (当然，也可以用维护全局状态的方式实现)。借助 fork()，我们可以在每个搜索分支创建一个当前状态的快照，实现并行搜索。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch4\u003e 3.1.2. 软件系统的复杂性\n \u003c/h4\u003e\n\u003cdiv class=\"slideshow\" name=\"fork_exercise\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"fork\"\u003e理解 fork: 习题\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e阅读程序，写出运行结果\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003efork\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eprintf\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"Hello\u003c/span\u003e\u003cspan class=\"se\"\u003e\\n\u003c/span\u003e\u003cspan class=\"s\"\u003e\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_2\"\u003e计算机系统里没有魔法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e./a.out\u003c/li\u003e\n\u003cli\u003e./a.out | cat\u003cul\u003e\n\u003cli\u003e(无情执行指令的) 机器永远是对的，以及，我们甚至可以在 CrazyOS 里实现它！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/fork-demo\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"fork\"\u003e\u003ca href=\"/OS/demos/virtualization/fork-demo\"\u003e理解 fork()\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003efork() 会完整复制状态机；新创建的状态机返回值为 0，执行 fork() 的进程会返回子进程的进程号。同时，操作系统中的进程是并行执行的。程序的精确行为并不显然——model checker 可以帮助我们理解它。在这个例子中，我们还发现执行 \u003ccode\u003e./a.out\u003c/code\u003e 打印的行数和 \u003ccode\u003e./a.out | wc -l\u003c/code\u003e 得到的行数不同。根据 “机器永远是对的” 的原则，我们可以通过提出假设 (libc 缓冲区影响) 求证、对比 strace 系统调用序列等方式，最终理解背后的原因。标准输入输出的缓冲控制可以通过 setbuf(3) 和 stdbuf(1) 实现。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch3\u003e 3.2. 重置进程\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"reset_state_machine\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"os-api\"\u003e[OS API] 复位状态机\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eexecve\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003efilename\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e           \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eargv\u003c/span\u003e\u003cspan class=\"p\"\u003e[],\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eenvp\u003c/span\u003e\u003cspan class=\"p\"\u003e[]);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"unix-api\"\u003eUNIX 选择只给一个复位状态机的 API\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e将当前进程\u003cstrong\u003e重置\u003c/strong\u003e成一个可执行文件描述状态机的初始状态\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003e操作系统维护的状态不变\u003c/strong\u003e：进程号、目录、打开的文件……\u003cul\u003e\n\u003cli\u003e(程序员总犯错，因此打开文件有了 O_CLOEXEC)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"execve\"\u003eexecve 是\u003cstrong\u003e唯一能够 “执行程序” 的系统调用\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e因此也是一切进程 strace 的第一个系统调用\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"execve_initial_state\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"execve\"\u003eexecve() 设置了进程的初始状态\u003c/h1\u003e\n\u003ch2 id=\"argc-argv\"\u003eargc \u0026amp; argv: 命令行参数\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e困扰多年的疑问得到解答：main 的参数是 execve 给的！\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"envp\"\u003eenvp: 环境变量\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e使用 env 命令查看\u003cul\u003e\n\u003cli\u003ePATH, PWD, HOME, DISPLAY, PS1, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eexport: 告诉 shell 在创建子进程时设置环境变量\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e程序被正确加载到内存\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e代码、数据、PC 位于程序入口\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/execve-demo\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"execve\"\u003e\u003ca href=\"/OS/demos/virtualization/execve-demo\"\u003e理解 execve\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eexecve 有三个参数：path, argv, envp，分别是可执行文件的路径、传递给 main 函数的参数和环境变量。execve 是一个 “底层” 的系统调用，而 POISX 额外提供了 execl 等库函数便于我们使用。请搜索互联网或询问人工智能理解它们的区别。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"path_environment_variable\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"path\"\u003e例子：PATH 环境变量\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e可执行文件搜索路径\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e还记得 gcc 的 strace 结果吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e[pid 28369] execve(\"/usr/local/sbin/as\", [\"as\", \"--64\", ...\n[pid 28369] execve(\"/usr/local/bin/as\", [\"as\", \"--64\", ...\n[pid 28369] execve(\"/usr/sbin/as\", [\"as\", \"--64\", ...\n[pid 28369] execve(\"/usr/bin/as\", [\"as\", \"--64\", ...\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e这个搜索顺序恰好是 PATH 里指定的顺序\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e$ PATH=\"\" /usr/bin/gcc a.c\ngcc: error trying to exec 'as': execvp: No such file or directory\n$ PATH=\"/usr/bin/\" gcc a.c\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e计算机系统里没有魔法。机器永远是对的。\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.3. 销毁进程\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"destroy_state_machine\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"os-api\"\u003e[OS API] 销毁状态机\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003e_exit\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003estatus\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_1\"\u003e这个没有争议\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e立即摧毁状态机，允许有一个返回值\u003cul\u003e\n\u003cli\u003e返回值可以被父进程获取\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e实际的退出要复杂一些\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e有了线程以后，就有了两种退出方式 (exit, exit_group)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"unix_process_lifecycle\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix\"\u003eUNIX 进程的生存周期\u003c/h1\u003e\n\u003ch2 id=\"unix_1\"\u003eUNIX 中实现 “创建新状态机” 的方式\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSpawn = fork + execve\u003c/li\u003e\n\u003cli\u003e我们会在之后介绍这些系统调用的灵活应用\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efork\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e-1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 错误\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eperror\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"fork\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003egoto\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efail\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 子进程\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eexecve\u003c/span\u003e\u003cspan class=\"p\"\u003e(...);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eperror\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s\"\u003e\"execve\"\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eexit\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eEXIT_FAILURE\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eelse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 父进程\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003estatus\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003ewaitpid\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003estatus\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// testkit.c 中有\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/exit-demo\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"exit\"\u003e\u003ca href=\"/OS/demos/virtualization/exit-demo\"\u003e理解 exit\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e除了 libc 为我们提供的 \u003ccode\u003eexit\u003c/code\u003e 函数之外，Linux 提供了两个系统调用：\u003ccode\u003eexit\u003c/code\u003e 和 \u003ccode\u003eexit_group\u003c/code\u003e，它们可以在 syscalls(2) 的手册中看到。同时，你也可以在这份手册中看到 Linux 肩负的 “历史包袱”。strace 可以查看应用程序是如何 “退出” 的。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e操作系统通过进程抽象为应用程序提供了独立的执行环境。进程是操作系统中最基本的资源分配单位，它包含程序本身的状态和操作系统内部的状态。操作系统提供了一系列系统调用 (如 Linux 中的 fork、exec、wait 和 exit，Windows 中的 CreateProcess 和TerminateProcess) 来创建、管理和终止进程。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e课程网站 (首页上的信息、课程概述、参考书与参考资料、生存指南)；教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 3 章 - Dialogue\u003c/li\u003e\n\u003cli\u003e第 4 章 - Processes\u003c/li\u003e\n\u003cli\u003e第 5 章 - Process API\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect5.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

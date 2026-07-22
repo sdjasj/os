@@ -1,0 +1,345 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 并行算法与数据结构
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="_1">期中测验选讲</h1>
+<h2 id="_2">我直接选择逃课</h2>
+<ul>
+<li>Claude Code 启动</li>
+<li>(还要我做什么用？)</li>
+</ul>
+<h2 id="_3">统计数据</h2>
+<ul>
+<li>一共收到了 49 份有名字的试卷 (交卷率约 50%)</li>
+<li>我会 normalize 成绩 (放弃的同学理论上说吃亏了)</li>
+</ul>
+<h2 id="_4">感想</h2>
+<ul>
+<li>AI 在训练阶段经历了无数的 “考试”</li>
+<li>我们怎么 “考试”，才能培养出能驾驭 AI 的超级个体？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="concurrent_increment"><div>
+<h1 id="sum">并发编程：回到 sum++</h1>
+<h2 id="sum_1">
+<code>sum++</code> 在并发编程中非常常见</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">T_sum</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">    </span><span class="n">sum</span><span class="o">++</span><span class="p">;</span>
+<span class="w">    </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li><code>buf[len++] = elem;</code></li>
+<li><code>mapping[key] = value;</code></li>
+</ul>
+<h2 id="ai">AI 已经帮我们做了定量性能观测</h2>
+<ul>
+<li>完全的 searializability (release → acquire，且确保可见)</li>
+<li>导致了很差的 scalability：性能无法随 CPU/线程/机器增加而增长<ul>
+<li>如何 scale up (单机) &amp; scale out (多机)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/sum-experiment"><div><div>
+<h1 id="_1"><a href="/OS/demos/concurrency/sum-experiment">使用不同方式求和</a></h1>
+<p>我们对比使用自旋锁 (手工实现)、互斥锁和原子指令在求和上的性能，做一个基础的控制变量的对比实验：确定总的 sum++ 次数不变，分布在 T = 1, 2, 4, 8, 16 个线程，分别为三种实现实验重复 5 次，统计一次 sum++ 的平均时间。保存原始数据的列表 (csv)，并且在 Jupyter Notebook 里生成带 error bar 的 plot。</p>
+</div></div>
+</div>
+<h2> 1. 并行算法
+ </h2>
+<div class="slideshow" name="motivation"><div>
+<h1 id="scale-up-scale-out">Scale Up &amp; Scale Out: 分解问题</h1>
+<div class="codehilite"><pre><span></span><code><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="n">job</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">get</span><span class="p">();</span>
+<span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+
+<span class="n">job</span><span class="o">-&gt;</span><span class="n">run</span><span class="p">();</span><span class="w">   </span><span class="c1">// mostly thread-local computation</span>
+<span class="n">job</span><span class="o">-&gt;</span><span class="n">done</span><span class="p">();</span><span class="w">  </span><span class="c1">// enable other jobs</span>
+</code></pre></div>
+
+<ul>
+<li>
+<code>job-&gt;run()</code> 的同步条件：等待所有 predecessors 执行完毕<ul>
+<li>条件变量：直接等待这个条件</li>
+<li>信号量：需要 predecessor 那么多把 🔑</li>
+</ul>
+</li>
+</ul>
+<h2 id="scale-up-scale-out_1">Scale up &amp; scale out</h2>
+<ul>
+<li>只要 <code>job-&gt;run()</code> 的时间 &gt;&gt; 互斥的时间，就可以 scale<ul>
+<li>例子：计算图 (DAG) 的深度 v.s. 宽度</li>
+<li>许多问题天生适合这个结构 (例子：LCS)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="classic_hpc"><div>
+<h1 id="_1">(经典) 高性能计算</h1>
+<blockquote>
+<p>“A technology that harnesses the power of supercomputers or computer clusters to solve complex problems requiring massive computation.” (IBM)</p>
+</blockquote>
+<h2 id="_2">源自数值密集型科学计算任务</h2>
+<ul>
+<li>物理系统模拟<ul>
+<li><strong>大到宇宙小到量子，有模型就能模拟</strong></li>
+<li>核爆炸、有限元……渗透天气预报、航天、制造、能源、制药等一切领域</li>
+</ul>
+</li>
+<li>矿厂 (proof-of-work)</li>
+<li>AI 推理 (智力)；我们专门花两节课来讲</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="cray1"><div>
+<h1 id="cray-1">CRAY-1 超级计算机</h1>
+<h2 id="the-worlds-most-expensive-love-seat-1976-138-mflops-115kw">“<a href="https://dl.acm.org/doi/10.1145/359327.359336">The world’s most expensive love-seat</a>” (1976), 138 MFLOPS @ 115kW</h2>
+<ul>
+<li>对比：(Apple M4 iPad Pro: 3.8 TFLOPS; <a href="https://chatjimmy.ai/">Taalas</a>: ~300 TOPS; <a href="https://hpc100.top/top100/24/">HPC-China 100</a>)<ul>
+<li>~2,000,000 台 CRAY-1 的计算能力</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/cray-1.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="hpc_characteristics"><div>
+<h1 id="_1">高性能计算程序：特点</h1>
+<h2 id="_2">可以大规模并行</h2>
+<ul>
+<li>物理世界具有的 “空间局部性”<ul>
+<li>划分网格，除去边界都可以独立计算</li>
+</ul>
+</li>
+<li>留意细节：HPC-China 100 使用的测试基准是 Linpack<ul>
+<li>求解稠密矩阵的 Ax = b</li>
+<li>同样，这也是一个可以分块计算的任务</li>
+</ul>
+</li>
+<li>Newton’s Method 把非线性系统转为稀疏线性系统求解 (FEM)</li>
+</ul>
+<h2 id="embarrassingly-parallel">甚至是 “Embarrassingly parallel” (几乎不需要同步/通信)</h2>
+<ul>
+<li>Tree search (fork-based dfs)</li>
+<li>Monte Carlo 模拟</li>
+<li>视频逐帧处理……</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="hpc_example"><div>
+<h1 id="embarrassingly-parallel">Embarrassingly Parallel: 例子</h1>
+<h2 id="mandelbrot-set">计算 <a href="https://cn.mathigon.org/course/fractals/mandelbrot">Mandelbrot set</a>
+</h2>
+<ul>
+<li>每一个像素的计算都是完全独立的</li>
+<li>(这就是为什么我觉得大学要完蛋了)</li>
+</ul>
+<p><img alt="" src="static/img/mandelbrot.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="hpc_parallel_programming"><div>
+<h1 id="_1">高性能计算中的并行编程</h1>
+<h2 id="-">通常计算图容易静态切分 (机器-线程两级任务分解)</h2>
+<ul>
+<li>生产者-消费者就能实现 “按轮同步” (每次计算一个 Δt)<ul>
+<li>
+<a href="https://hpc-tutorials.llnl.gov/mpi/">MPI</a>: “message passing libraries”</li>
+<li>
+<a href="https://www.openmp.org/">OpenMP</a>: “multi-platform shared-memory parallel programming” (C/C++ and Fortran)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="cp">#pragma omp parallel num_threads(128)</span>
+<span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">1024</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="_2">真正困难的地方</h2>
+<ul>
+<li>网络通信、功耗管理、稳定性和容错、软件和工具链 (很遗憾，无法在课堂上展开)</li>
+<li>但大家完全可以去试试</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/mandelbrot"><div><div>
+<h1 id="mandelbrot-set"><a href="/OS/demos/concurrency/mandelbrot">绘制 Mandelbrot Set</a></h1>
+<p>Mandelbrot set 描绘了函数 f(z) = z^2 + c 的轨迹是否有界。对于复平面上每一个点，求值都是完全独立的，因此对计算图的静态划分也是显然的。我们混用了 OpenMP 和我们的线程库。我们的线程库仅限于隔一段时间将当前渲染的结果显示在屏幕上，并在所有线程结束后输出渲染图。</p>
+</div></div>
+</div>
+<div class="slideshow" name="gpt_experiment"><div>
+<h1 id="gptc">实验 (gpt.c) 通关密码</h1>
+<h2 id="llmc">大家不要偷看 <a href="https://github.com/karpathy/llm.c/blob/master/train_gpt2.c">llm.c</a>
+</h2>
+<ul>
+<li>但可以看一下头</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="cp">#ifdef OMP</span>
+<span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;omp.h&gt;</span>
+<span class="cp">#endif</span>
+</code></pre></div>
+
+<ul>
+<li>整个代码和并行计算相关的就只有 5 行<ul>
+<li>如果没有 -fopenmp 编译选项，#pragma 会被直接忽略</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="cp">#pragma omp parallel for</span>
+<span class="cp">#pragma omp parallel for collapse(2)</span>
+</code></pre></div>
+
+<ul>
+<li>曾经：这个机制对非计算机专业的人实在太友好了</li>
+<li>现在：直接交给 AI Agent 做并行化 &amp; 性能调优就行<ul>
+<li>sperf 实验的意义：让大家理解性能调优的底层逻辑</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 并行数据结构
+ </h2>
+<div class="slideshow" name="try_optimize"><div>
+<h1 id="sum">再次回到 sum++</h1>
+<h2 id="_1">“高性能计算” 的场景</h2>
+<ul>
+<li>问题规模大、<code>sum++</code> 相对足够少，不成为瓶颈</li>
+</ul>
+<h2 id="sum_1">但如果就是有很多的并行数据结构操作 (<code>sum++</code>) 呢？</h2>
+<ul>
+<li>例子：操作系统内核、数据库、网络游戏服务器、HFT、……</li>
+<li>对于 <code>sum++</code>，我们可以不需要完全严格的顺序执行<ul>
+<li>允许 load 看到 “不太离谱” 的旧值，但仍然保持 “最终一致性”</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">sum_local</span><span class="p">[</span><span class="n">MAX_TID</span><span class="p">];</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_sum</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">tid</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">++</span><span class="n">sum_local</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">mutex_lock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">        </span><span class="n">sum</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">sum_local</span><span class="p">[</span><span class="n">tid</span><span class="p">];</span><span class="w">  </span><span class="c1">// “Sloppy” counter</span>
+<span class="w">        </span><span class="n">mutex_unlock</span><span class="p">(</span><span class="o">&amp;</span><span class="n">lk</span><span class="p">);</span>
+<span class="w">        </span><span class="n">sum_local</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<h3> 2.1. Aside: thread_local
+ </h3>
+<div class="slideshow" name="tls"><div>
+<h1 id="thread-local-storage">Thread-local Storage</h1>
+<h2 id="int-sum_local">我们都不喜欢 <code>int sum_local[]</code>
+</h2>
+<ul>
+<li>语言机制的设计者也不喜欢</li>
+<li>于是我们有了 <code>thread_local</code> keyword (C++11/C23)<ul>
+<li>每个线程会 “自动” 得到一份拷贝</li>
+<li>允许是任何类型 (也可以赋初值)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">thread_local</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">sum_local</span><span class="p">;</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">T_sum</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">thread_local</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">t</span><span class="p">;</span><span class="w">  </span><span class="c1">// Compile error</span>
+<span class="w">    </span><span class="n">sum_local</span><span class="o">++</span><span class="p">;</span><span class="w">  </span><span class="c1">// 每个线程有自己的 sum_local</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="tls_impl"><div>
+<h1 id="thread-local-storage">Thread-local Storage: 实现</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">;</span><span class="w">  </span><span class="c1">// x(%rip)</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">foo</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">int</span><span class="w"> </span><span class="n">y</span><span class="p">;</span><span class="w">  </span><span class="c1">// y(%rsp)</span>
+<span class="p">}</span>
+
+<span class="k">thread_local</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">z</span><span class="p">;</span><span class="w">  </span><span class="c1">// z(%fs)</span>
+</code></pre></div>
+
+<h2 id="thread-local">编译 thread-local 访问</h2>
+<ul>
+<li>不同的线程 &amp;sum_local 必须得到<strong>不同的地址</strong>
+</li>
+<li>让 AI 解释一下编译器是如何实现它的吧<ul>
+<li>“.tdata, .tbss” 段 (thread-local 的大小是编译时确定的)</li>
+<li>x86-64: 用 fs 段寄存器做 TLS base</li>
+</ul>
+</li>
+<li>thread_local 的初始化更复杂<ul>
+<li>
+<code>thread_local int x = 42;</code> 必须在<strong>每次线程创建</strong>时赋值</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="concurrency/tls"><div><div>
+<h1 id="thread-local-storage"><a href="/OS/demos/concurrency/tls">Thread-local Storage</a></h1>
+<p>C/C++ 支持声明 “线程局部” 的变量，在编译器的配合下，会生成 “每个线程独立” 的拷贝，从而避免维护全局 <code>map&lt;tid,thread_local_storage&gt;</code> 映射的开销。</p>
+</div></div>
+</div>
+<div class="slideshow" name="parallel_ds"><div>
+<h1 id="_1">并行数据结构</h1>
+<h2 id="abstract-data-type">数据结构 (Abstract Data Type)</h2>
+<ul>
+<li>array, list, tree, graph, …</li>
+<li>天生是 “分散” 存储的</li>
+<li>于是又有访问的<strong>局部性</strong>了<ul>
+<li>读写数据结构的一部分<strong>未必需要锁住整个数据结构</strong>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="key-idea">Key Idea: 锁的拆分</h2>
+<ul>
+<li>能用原子指令就不用锁<ul>
+<li>(mymalloc 的 Online Judge 就是这么逃课的)</li>
+</ul>
+</li>
+<li>Reader/writer lock (pthread_rwlock_t)</li>
+<li>Segment/element-wise lock</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="parallel_hashtable"><div>
+<h1 id="hash-table">例子：Hash Table</h1>
+<h2 id="key-value">一种高效的 key-value 数据结构</h2>
+<ul>
+<li>hash(key) 将转化为数组下标</li>
+<li>在该位置存储对应的 value<ul>
+<li>O(1) 插入、删除、查找</li>
+<li>而且我们可以做 per-bucket lock (甚至是读写锁)</li>
+</ul>
+</li>
+</ul>
+<h2 id="open-addressing">Open Addressing 带来的麻烦</h2>
+<ul>
+<li>并发的查找、删除、遍历<ul>
+<li>Tombstone 管理会更麻烦</li>
+</ul>
+</li>
+<li>Resize: 会 “摧毁” 已有的数组<ul>
+<li>简单处理方法：阻止 resize 和任何并发访问 (resize 相当于持有 write lock)<ul>
+<li>每个操作都需要获得 bucket lock 和 resize lock (知道为什么会死锁了吧)</li>
+</ul>
+</li>
+<li>复杂处理方法：!<em>(@#^</em>@&amp;%^!(<em>#&amp;(!@</em>&amp;#</li>
+</ul>
+</li>
+<li>(请大家对库函数保持敬畏之心)</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>并发编程不仅要正确，更要高效。互斥锁保证了正确性，但完全的 serializability 限制了 scalability——性能无法随 CPU/线程数增长。提升并行性能的关键是减少不必要的同步：利用问题的空间局部性实现大规模并行、用线程本地存储消除共享、用细粒度锁和原子指令缩小临界区。同时，脱离 workload 做优化就是耍流氓——理解真实负载的特征才是性能优化的第一步。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 并行算法与数据结构\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e期中测验选讲\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e我直接选择逃课\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eClaude Code 启动\u003c/li\u003e\n\u003cli\u003e(还要我做什么用？)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e统计数据\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一共收到了 49 份有名字的试卷 (交卷率约 50%)\u003c/li\u003e\n\u003cli\u003e我会 normalize 成绩 (放弃的同学理论上说吃亏了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e感想\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eAI 在训练阶段经历了无数的 “考试”\u003c/li\u003e\n\u003cli\u003e我们怎么 “考试”，才能培养出能驾驭 AI 的超级个体？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"concurrent_increment\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"sum\"\u003e并发编程：回到 sum++\u003c/h1\u003e\n\u003ch2 id=\"sum_1\"\u003e\n\u003ccode\u003esum++\u003c/code\u003e 在并发编程中非常常见\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e\u003ccode\u003ebuf[len++] = elem;\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003emapping[key] = value;\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai\"\u003eAI 已经帮我们做了定量性能观测\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e完全的 searializability (release → acquire，且确保可见)\u003c/li\u003e\n\u003cli\u003e导致了很差的 scalability：性能无法随 CPU/线程/机器增加而增长\u003cul\u003e\n\u003cli\u003e如何 scale up (单机) \u0026amp; scale out (多机)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/sum-experiment\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/concurrency/sum-experiment\"\u003e使用不同方式求和\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们对比使用自旋锁 (手工实现)、互斥锁和原子指令在求和上的性能，做一个基础的控制变量的对比实验：确定总的 sum++ 次数不变，分布在 T = 1, 2, 4, 8, 16 个线程，分别为三种实现实验重复 5 次，统计一次 sum++ 的平均时间。保存原始数据的列表 (csv)，并且在 Jupyter Notebook 里生成带 error bar 的 plot。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 1. 并行算法\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"motivation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"scale-up-scale-out\"\u003eScale Up \u0026amp; Scale Out: 分解问题\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"n\"\u003ejob\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eget\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\n\u003cspan class=\"n\"\u003ejob\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003erun\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\u003cspan class=\"w\"\u003e   \u003c/span\u003e\u003cspan class=\"c1\"\u003e// mostly thread-local computation\u003c/span\u003e\n\u003cspan class=\"n\"\u003ejob\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003edone\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// enable other jobs\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003ejob-\u0026gt;run()\u003c/code\u003e 的同步条件：等待所有 predecessors 执行完毕\u003cul\u003e\n\u003cli\u003e条件变量：直接等待这个条件\u003c/li\u003e\n\u003cli\u003e信号量：需要 predecessor 那么多把 🔑\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"scale-up-scale-out_1\"\u003eScale up \u0026amp; scale out\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e只要 \u003ccode\u003ejob-\u0026gt;run()\u003c/code\u003e 的时间 \u0026gt;\u0026gt; 互斥的时间，就可以 scale\u003cul\u003e\n\u003cli\u003e例子：计算图 (DAG) 的深度 v.s. 宽度\u003c/li\u003e\n\u003cli\u003e许多问题天生适合这个结构 (例子：LCS)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"classic_hpc\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e(经典) 高性能计算\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e“A technology that harnesses the power of supercomputers or computer clusters to solve complex problems requiring massive computation.” (IBM)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_2\"\u003e源自数值密集型科学计算任务\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e物理系统模拟\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e大到宇宙小到量子，有模型就能模拟\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003e核爆炸、有限元……渗透天气预报、航天、制造、能源、制药等一切领域\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e矿厂 (proof-of-work)\u003c/li\u003e\n\u003cli\u003eAI 推理 (智力)；我们专门花两节课来讲\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"cray1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"cray-1\"\u003eCRAY-1 超级计算机\u003c/h1\u003e\n\u003ch2 id=\"the-worlds-most-expensive-love-seat-1976-138-mflops-115kw\"\u003e“\u003ca href=\"https://dl.acm.org/doi/10.1145/359327.359336\"\u003eThe world’s most expensive love-seat\u003c/a\u003e” (1976), 138 MFLOPS @ 115kW\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e对比：(Apple M4 iPad Pro: 3.8 TFLOPS; \u003ca href=\"https://chatjimmy.ai/\"\u003eTaalas\u003c/a\u003e: ~300 TOPS; \u003ca href=\"https://hpc100.top/top100/24/\"\u003eHPC-China 100\u003c/a\u003e)\u003cul\u003e\n\u003cli\u003e~2,000,000 台 CRAY-1 的计算能力\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/cray-1.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"hpc_characteristics\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e高性能计算程序：特点\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e可以大规模并行\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e物理世界具有的 “空间局部性”\u003cul\u003e\n\u003cli\u003e划分网格，除去边界都可以独立计算\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e留意细节：HPC-China 100 使用的测试基准是 Linpack\u003cul\u003e\n\u003cli\u003e求解稠密矩阵的 Ax = b\u003c/li\u003e\n\u003cli\u003e同样，这也是一个可以分块计算的任务\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eNewton’s Method 把非线性系统转为稀疏线性系统求解 (FEM)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"embarrassingly-parallel\"\u003e甚至是 “Embarrassingly parallel” (几乎不需要同步/通信)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eTree search (fork-based dfs)\u003c/li\u003e\n\u003cli\u003eMonte Carlo 模拟\u003c/li\u003e\n\u003cli\u003e视频逐帧处理……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"hpc_example\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"embarrassingly-parallel\"\u003eEmbarrassingly Parallel: 例子\u003c/h1\u003e\n\u003ch2 id=\"mandelbrot-set\"\u003e计算 \u003ca href=\"https://cn.mathigon.org/course/fractals/mandelbrot\"\u003eMandelbrot set\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每一个像素的计算都是完全独立的\u003c/li\u003e\n\u003cli\u003e(这就是为什么我觉得大学要完蛋了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/mandelbrot.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"hpc_parallel_programming\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e高性能计算中的并行编程\u003c/h1\u003e\n\u003ch2 id=\"-\"\u003e通常计算图容易静态切分 (机器-线程两级任务分解)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e生产者-消费者就能实现 “按轮同步” (每次计算一个 Δt)\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://hpc-tutorials.llnl.gov/mpi/\"\u003eMPI\u003c/a\u003e: “message passing libraries”\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.openmp.org/\"\u003eOpenMP\u003c/a\u003e: “multi-platform shared-memory parallel programming” (C/C++ and Fortran)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#pragma omp parallel num_threads(128)\u003c/span\u003e\n\u003cspan class=\"k\"\u003efor\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1024\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ei\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_2\"\u003e真正困难的地方\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e网络通信、功耗管理、稳定性和容错、软件和工具链 (很遗憾，无法在课堂上展开)\u003c/li\u003e\n\u003cli\u003e但大家完全可以去试试\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/mandelbrot\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"mandelbrot-set\"\u003e\u003ca href=\"/OS/demos/concurrency/mandelbrot\"\u003e绘制 Mandelbrot Set\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eMandelbrot set 描绘了函数 f(z) = z^2 + c 的轨迹是否有界。对于复平面上每一个点，求值都是完全独立的，因此对计算图的静态划分也是显然的。我们混用了 OpenMP 和我们的线程库。我们的线程库仅限于隔一段时间将当前渲染的结果显示在屏幕上，并在所有线程结束后输出渲染图。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"gpt_experiment\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"gptc\"\u003e实验 (gpt.c) 通关密码\u003c/h1\u003e\n\u003ch2 id=\"llmc\"\u003e大家不要偷看 \u003ca href=\"https://github.com/karpathy/llm.c/blob/master/train_gpt2.c\"\u003ellm.c\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e但可以看一下头\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#ifdef OMP\u003c/span\u003e\n\u003cspan class=\"cp\"\u003e#include\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"cpf\"\u003e\u0026lt;omp.h\u0026gt;\u003c/span\u003e\n\u003cspan class=\"cp\"\u003e#endif\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e整个代码和并行计算相关的就只有 5 行\u003cul\u003e\n\u003cli\u003e如果没有 -fopenmp 编译选项，#pragma 会被直接忽略\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cp\"\u003e#pragma omp parallel for\u003c/span\u003e\n\u003cspan class=\"cp\"\u003e#pragma omp parallel for collapse(2)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e曾经：这个机制对非计算机专业的人实在太友好了\u003c/li\u003e\n\u003cli\u003e现在：直接交给 AI Agent 做并行化 \u0026amp; 性能调优就行\u003cul\u003e\n\u003cli\u003esperf 实验的意义：让大家理解性能调优的底层逻辑\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 并行数据结构\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"try_optimize\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"sum\"\u003e再次回到 sum++\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“高性能计算” 的场景\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e问题规模大、\u003ccode\u003esum++\u003c/code\u003e 相对足够少，不成为瓶颈\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"sum_1\"\u003e但如果就是有很多的并行数据结构操作 (\u003ccode\u003esum++\u003c/code\u003e) 呢？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例子：操作系统内核、数据库、网络游戏服务器、HFT、……\u003c/li\u003e\n\u003cli\u003e对于 \u003ccode\u003esum++\u003c/code\u003e，我们可以不需要完全严格的顺序执行\u003cul\u003e\n\u003cli\u003e允许 load 看到 “不太离谱” 的旧值，但仍然保持 “最终一致性”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum_local\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003eMAX_TID\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"n\"\u003esum_local\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e==\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e100\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_lock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003esum\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum_local\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// “Sloppy” counter\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003emutex_unlock\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003elk\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"n\"\u003esum_local\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003etid\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 2.1. Aside: thread_local\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"tls\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"thread-local-storage\"\u003eThread-local Storage\u003c/h1\u003e\n\u003ch2 id=\"int-sum_local\"\u003e我们都不喜欢 \u003ccode\u003eint sum_local[]\u003c/code\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e语言机制的设计者也不喜欢\u003c/li\u003e\n\u003cli\u003e于是我们有了 \u003ccode\u003ethread_local\u003c/code\u003e keyword (C++11/C23)\u003cul\u003e\n\u003cli\u003e每个线程会 “自动” 得到一份拷贝\u003c/li\u003e\n\u003cli\u003e允许是任何类型 (也可以赋初值)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ethread_local\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003esum_local\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eT_sum\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003ethread_local\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003et\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Compile error\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003esum_local\u003c/span\u003e\u003cspan class=\"o\"\u003e++\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 每个线程有自己的 sum_local\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"tls_impl\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"thread-local-storage\"\u003eThread-local Storage: 实现\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// x(%rip)\u003c/span\u003e\n\n\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003efoo\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// y(%rsp)\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\n\u003cspan class=\"k\"\u003ethread_local\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ez\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// z(%fs)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"thread-local\"\u003e编译 thread-local 访问\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不同的线程 \u0026amp;sum_local 必须得到\u003cstrong\u003e不同的地址\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e让 AI 解释一下编译器是如何实现它的吧\u003cul\u003e\n\u003cli\u003e“.tdata, .tbss” 段 (thread-local 的大小是编译时确定的)\u003c/li\u003e\n\u003cli\u003ex86-64: 用 fs 段寄存器做 TLS base\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003ethread_local 的初始化更复杂\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003ethread_local int x = 42;\u003c/code\u003e 必须在\u003cstrong\u003e每次线程创建\u003c/strong\u003e时赋值\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"concurrency/tls\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"thread-local-storage\"\u003e\u003ca href=\"/OS/demos/concurrency/tls\"\u003eThread-local Storage\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eC/C++ 支持声明 “线程局部” 的变量，在编译器的配合下，会生成 “每个线程独立” 的拷贝，从而避免维护全局 \u003ccode\u003emap\u0026lt;tid,thread_local_storage\u0026gt;\u003c/code\u003e 映射的开销。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"parallel_ds\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e并行数据结构\u003c/h1\u003e\n\u003ch2 id=\"abstract-data-type\"\u003e数据结构 (Abstract Data Type)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003earray, list, tree, graph, …\u003c/li\u003e\n\u003cli\u003e天生是 “分散” 存储的\u003c/li\u003e\n\u003cli\u003e于是又有访问的\u003cstrong\u003e局部性\u003c/strong\u003e了\u003cul\u003e\n\u003cli\u003e读写数据结构的一部分\u003cstrong\u003e未必需要锁住整个数据结构\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"key-idea\"\u003eKey Idea: 锁的拆分\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e能用原子指令就不用锁\u003cul\u003e\n\u003cli\u003e(mymalloc 的 Online Judge 就是这么逃课的)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eReader/writer lock (pthread_rwlock_t)\u003c/li\u003e\n\u003cli\u003eSegment/element-wise lock\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"parallel_hashtable\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hash-table\"\u003e例子：Hash Table\u003c/h1\u003e\n\u003ch2 id=\"key-value\"\u003e一种高效的 key-value 数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ehash(key) 将转化为数组下标\u003c/li\u003e\n\u003cli\u003e在该位置存储对应的 value\u003cul\u003e\n\u003cli\u003eO(1) 插入、删除、查找\u003c/li\u003e\n\u003cli\u003e而且我们可以做 per-bucket lock (甚至是读写锁)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"open-addressing\"\u003eOpen Addressing 带来的麻烦\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e并发的查找、删除、遍历\u003cul\u003e\n\u003cli\u003eTombstone 管理会更麻烦\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eResize: 会 “摧毁” 已有的数组\u003cul\u003e\n\u003cli\u003e简单处理方法：阻止 resize 和任何并发访问 (resize 相当于持有 write lock)\u003cul\u003e\n\u003cli\u003e每个操作都需要获得 bucket lock 和 resize lock (知道为什么会死锁了吧)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e复杂处理方法：!\u003cem\u003e(@#^\u003c/em\u003e@\u0026amp;%^!(\u003cem\u003e#\u0026amp;(!@\u003c/em\u003e\u0026amp;#\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e(请大家对库函数保持敬畏之心)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e并发编程不仅要正确，更要高效。互斥锁保证了正确性，但完全的 serializability 限制了 scalability——性能无法随 CPU/线程数增长。提升并行性能的关键是减少不必要的同步：利用问题的空间局部性实现大规模并行、用线程本地存储消除共享、用细粒度锁和原子指令缩小临界区。同时，脱离 workload 做优化就是耍流氓——理解真实负载的特征才是性能优化的第一步。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect18.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

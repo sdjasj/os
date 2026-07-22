@@ -1,0 +1,441 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 可执行文件
+ </h1>
+<h2> 1. 静态链接和加载
+ </h2>
+<div class="slideshow" name="what_is_executable"><div>
+<h1 id="_1">复习：什么是可执行文件？</h1>
+<h2 id="_2">学习操作系统前</h2>
+<ul>
+<li>那个 “双击可以弹出窗口的东西”</li>
+</ul>
+<h2 id="_3">学习操作系统后</h2>
+<ul>
+<li>一个操作系统中的对象 (文件)</li>
+<li>一个字节序列 (我们可以把它当字符串编辑)</li>
+<li>一个描述了进程初始内存布局的<strong>数据结构</strong> (打扰了)</li>
+</ul>
+<p><img alt="" src="static/img/Genshin.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="aout_format"><div>
+<h1 id="_1">真正的可执行文件</h1>
+<h2 id="unix-aout-assembler-output">UNIX <a href="https://man.freebsd.org/cgi/man.cgi?a.out(5)">a.out</a> “assembler output”</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">exec</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_midmag</span><span class="p">;</span><span class="w">  </span><span class="c1">// Machine ID &amp; Magic</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_text</span><span class="p">;</span><span class="w">    </span><span class="c1">// Text segment size</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_data</span><span class="p">;</span><span class="w">    </span><span class="c1">// Data segment size</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_bss</span><span class="p">;</span><span class="w">     </span><span class="c1">// BSS segment size</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_syms</span><span class="p">;</span><span class="w">    </span><span class="c1">// Symbol table size</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_entry</span><span class="p">;</span><span class="w">   </span><span class="c1">// Entry point</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_trsize</span><span class="p">;</span><span class="w">  </span><span class="c1">// Text reloc table size</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_drsize</span><span class="p">;</span><span class="w">  </span><span class="c1">// Data reloc table size</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<ul>
+<li>人造物：复杂的东西都是从简单演变过来的<ul>
+<li>甚至都没有 offset (.text 位置是平台/ABI 相关的常数)</li>
+<li>不支持动态链接、调试信息、内存对齐、thread-local……<ul>
+<li>所以有了现在的 ELF!</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="linker_horror"><div>
+<h1 id="_1">被《计算机系统基础》支配的恐惧？</h1>
+<h2 id="system-v-abi"><a href="https://jyywiki.cn/OS/manuals/sysv-abi.pdf">System V ABI</a></h2>
+<ul>
+<li>Section 3.4: “Process Initialization”  (调试 crt1.o 的时候确认)</li>
+<li>Section 4: “Object Files”</li>
+</ul>
+<p><img alt="bg contain" src="static/img/linker.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="yearly_struggle"><div>
+<h1 id="elf">和 ELF 搏斗的每一年</h1>
+<h2 id="_1">你期末复习的时候吐血了吗？</h2>
+<ul>
+<li>同学 A: 吐了</li>
+<li>同学 B: 吐了<ul>
+<li>“连 CSAPP 这一章都讲得不怎么样”</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">不只是你们，我们也在吐血</h2>
+<ul>
+<li>任课教师 A: 第一次打开 ppt 真的有点吐血的感觉</li>
+<li>任课教师 B: 根本讲不完，我估计听懂的人也不多</li>
+<li>我自己：太好了，再也不用教了</li>
+</ul>
+<h2 id="_3">为什么？</h2>
+<ul>
+<li>ELF 是<strong>为机器效率</strong>设计的: 高效、紧凑<ul>
+<li>大量的 bitfield、offset、交叉引用、……</li>
+<li>人类偏向于 “信息立即可见” 的平坦结构</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 1.1. Funny Little Executable
+ </h3>
+<div class="slideshow" name="my_idea"><div>
+<h1 id="_1">一个疯狂的想法</h1>
+<h2 id="elf">ELF 不过是一个 “描述”</h2>
+<ul>
+<li>基本信息 (版本、体系结构……)、内存布局 (哪些部分是什么数据)、其他 (调试信息、符号表、重定位……)</li>
+</ul>
+<h2 id="_2">我们总是可以在<strong>等价的描述形式</strong>之间转换</h2>
+<ul>
+<li>Intelligence is cheap<ul>
+<li>让 AI 帮我们做一个转换工具就行</li>
+</ul>
+</li>
+<li>Step 1: 把 ELF 转成一个 “容易阅读” 的格式</li>
+<li>Step 2: 实现一个加载器加载它<ul>
+<li>反正可以 vibe coding，麻烦的事情让 AI 搞定吧</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="fle"><div>
+<h1 id="funny-little-executable">Funny Little Executable</h1>
+<h2 id="fle">这几年一直在改进 “FLE”</h2>
+<ul>
+<li>既兴奋，又有些怅然若失：“聪明” 的努力只值一句 prompt</li>
+</ul>
+<p><img alt="" src="static/img/fle-2025.jpg"></p>
+</div></div>
+
+<div class="code-card" path="virtualization/fle"><div><div>
+<h1 id="funny-little-executable"><a href="/OS/demos/virtualization/fle">Funny Little Executable</a></h1>
+<p>我们 “自行设计” 了能实现 (静态) 链接和加载的二进制文件格式，以及相应的编译器、链接器 (复用 gcc/ld) 和加载器。FLE 文件直接将一段可读、可写、可执行的位置无关代码连通数据映射到内存并跳转执行。</p>
+</div></div>
+</div>
+<div class="slideshow" name="fle_2"><div>
+<h1 id="funny-little-executable-20">Funny Little Executable 2.0</h1>
+<h2 id="_1">如果让我再做一次？</h2>
+<ul>
+<li>我也许会选 Markdown-based (人类可读绝对优先)</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="gh"># ELF [class=64 endian=le osabi=sysv machine=x86_64 type=ET_DYN pie=true entry=_start]</span>
+<span class="gu">## PT_LOAD [flags=R|X align=0x1000]</span>
+<span class="gu">### .text [type=PROGBITS flags=A|X align=16]</span>
+_start:
+    48 c7 c0 01 00 00 00          # mov rax,1   ; sys_write
+    48 c7 c7 01 00 00 00          # mov rdi,1   ; fd=1
+    48 8d 35 {pcrel32: msg - . - 4}  # lea rsi,[rip+msg]
+    48 c7 c2 {u32: msg_end - msg} # mov rdx,len
+    0f 05                         # syscall
+
+    48 c7 c0 3c 00 00 00          # mov rax,60  ; sys_exit
+    48 31 ff                      # xor rdi,rdi
+    0f 05                         # syscall
+<span class="gu">## PT_LOAD [flags=R align=0x1000]</span>
+<span class="gu">### .rodata [type=PROGBITS flags=A|R align=16]</span>
+_msg:
+    48 65 6c 6c 6f 2c 20 4d 44 21 0a   # "Hello, MD!\n"
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="fle_3"><div>
+<h1 id="_1">反思</h1>
+<h2 id="_2">我们应该怎么教《操作系统》(和任何课程)？</h2>
+<ul>
+<li>把知识网络、案例、动机、思路呈现给学生<ul>
+<li><a href="https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f">Andrej Karpathy’s LLM Wiki</a></li>
+<li>(我的 PhD Training 很大程度上是 “人肉” 建立这些关联)</li>
+</ul>
+</li>
+<li>学生：提出问题、把握解决问题的方向、质疑并确认结论</li>
+</ul>
+<h2 id="_3">我是人奸</h2>
+<ul>
+<li>以下过程能产生所有人类知识：</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">D</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"a"</span><span class="p">,</span> <span class="s2">"aa"</span><span class="p">,</span> <span class="s2">"abandon"</span><span class="p">,</span> <span class="o">...</span><span class="p">}</span>
+<span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">...</span> <span class="n">MAX_K</span><span class="p">]:</span>
+    <span class="k">for</span> <span class="n">sentence</span> <span class="ow">in</span> <span class="n">D</span><span class="o">**</span><span class="n">k</span><span class="p">:</span>
+        <span class="n">do_research</span><span class="p">(</span><span class="n">sentence</span><span class="p">)</span>
+</code></pre></div>
+</div></div>
+
+<h3> 1.2. Aside: Linux 内核里的加载器
+ </h3>
+<div class="slideshow" name="loader_in_kernel"><div>
+<h1 id="_1">加载器是内核实现的一部分</h1>
+<h2 id="execvepath-argv-envp">execve(path, argv, envp)</h2>
+<ul>
+<li>操作系统内核解析 path、完成加载</li>
+<li>还有<a href="https://elixir.bootlin.com/linux/latest/source/fs/binfmt_elf.c">代码 (binfmt_elf.c)</a>呢<ul>
+<li>可以找到各种上课介绍过的概念<ul>
+<li>Initial Process Stack (argc, argv, envp)</li>
+<li>Auxiliary Vector (auxv)</li>
+</ul>
+</li>
+<li>关键字搜索：PT_LOAD</li>
+<li>有代码的地方就有 bug: <a href="https://cvefeed.io/vuln/detail/CVE-2024-46826">CVE-2024-46826</a>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="coding-agent-linux-kernel">让 Coding Agent 直接打开 Linux Kernel 吧</h2>
+<ul>
+<li>Coding Agent 在大型项目上的表现令人吃惊<ul>
+<li>很大程度是因为人类维护了项目的 consistency，使 AI 可以 in-context learning</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="shebang"><div>
+<h1 id="shebang">Shebang 运行程序</h1>
+<h2 id="unix-execve">UNIX 对注释的妙用 (滥用): execve 一个可执行的<strong>脚本文件</strong>
+</h2>
+<ul>
+<li>我们甚至可以 strace ./a.sh，execve 的参数正如我们预期的一样<ul>
+<li>但如果在程序里，argv 又是不同的值</li>
+<li>Path(“S”).read_text() == “#!A B C”<ul>
+<li>S x y → execve(“A”, [“A”, “B C”, “S”, “x”, “y”], envp)</li>
+<li>Caveat: macOS (BSD) 会把 B C 作为两个参数 (POSIX 漏了规定)</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Linux 的实现：<a href="https://elixir.bootlin.com/linux/latest/source/fs/binfmt_script.c">binfmt_script.c</a><ul>
+<li>优先使用 <code>#!</code> 作为解释器 (Magic Number)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="cm">/* Not ours to exec if we don't start with "#!". */</span>
+<span class="k">if</span><span class="w"> </span><span class="p">((</span><span class="n">bprm</span><span class="o">-&gt;</span><span class="n">buf</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="sc">'#'</span><span class="p">)</span><span class="w"> </span><span class="o">||</span><span class="w"> </span><span class="p">(</span><span class="n">bprm</span><span class="o">-&gt;</span><span class="n">buf</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="sc">'!'</span><span class="p">))</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">-</span><span class="n">ENOEXEC</span><span class="p">;</span>
+<span class="p">...</span>
+<span class="n">file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">open_exec</span><span class="p">(</span><span class="n">i_name</span><span class="p">);</span>
+</code></pre></div>
+</div></div>
+
+<div class="code-card" path="virtualization/shebang"><div><div>
+<h1 id="shebang"><a href="/OS/demos/virtualization/shebang">Shebang</a></h1>
+<p>在 UNIX 的早期，为了能更方便地将脚本作为可执行文件，实现了 <code>#!</code> 开头的 “可执行文件”，并沿用至今。Shebang 会调用第一行中执行的命令和参数，并把这个脚本文件作为命令行参数传入。</p>
+</div></div>
+</div>
+<h2> 2. 动态链接和加载
+ </h2>
+<div class="slideshow" name="why_dynamic_linking"><div>
+<h1 id="_1">为什么需要动态链接？</h1>
+<h2 id="_2">静态链接的世界</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">exec</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_midmag</span><span class="p">;</span><span class="w">  </span><span class="c1">// Machine ID &amp; Magic</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_text</span><span class="p">;</span><span class="w">    </span><span class="c1">// Text segment size</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_data</span><span class="p">;</span><span class="w">    </span><span class="c1">// Data segment size</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w">  </span><span class="n">a_bss</span><span class="p">;</span><span class="w">     </span><span class="c1">// BSS segment size</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<ul>
+<li>“d3dx9_xxx.dll” 为每个游戏复制一份，似乎不是个好想法？</li>
+</ul>
+<h2 id="_3">我们希望 <strong>“拆解” 应用程序</strong>
+</h2>
+<ul>
+<li>运行库和应用代码分离</li>
+<li>整个系统里只有一个 glibc 的副本，可以<a href="https://semver.org">独立升级</a> (Dependency Hell)</li>
+<li>也可以实现大型项目的分解 (libjvm.so, libart.so, …)<ul>
+<li>NEMU: “把 CPU 插上主板”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="so_experiment"><div>
+<h1 id="_1">探索动态链接的行为</h1>
+<h2 id="linux">我们可以在 Linux 上观察到这种共享吗？</h2>
+<ul>
+<li>必须可以!<ul>
+<li>我们可以构造一个非常大的 bloat()</li>
+<li>再创建 1,000 个进程使用 API 动态加载并执行 bloat()</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">观察系统的内存占用情况情况</h2>
+<ul>
+<li>如果不是一份拷贝，我会立即翻车<ul>
+<li>我们可以观察到 Address Space Layout Randomization (ASLR) 的效果</li>
+<li>动态链接库是<strong>位置无关代码</strong> (Position Independent Code)</li>
+</ul>
+</li>
+</ul>
+<h2 id="procpidfd">还记得 /proc/[pid]/fd 吗？</h2>
+<ul>
+<li>我们应该可以看到所有进程打开/映射的文件！</li>
+<li>lsof libbloat.so 可以看到<ul>
+<li>它是怎么实现的呢？strace &amp;| grep open 就知道啦！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/bloat"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/bloat">动态链接库是进程间共享的吗？</a></h1>
+<p>试着创建一个 10M nop 组成的 bloat()，编译在 libbloat.so，然后创建 1000 个进程动态链接它。如果 libbloat.so 的每个进程都有一份副本，那么系统的内存占用应该会达到 10GB。</p>
+</div></div>
+</div>
+<div class="slideshow" name="so_loading"><div>
+<h1 id="_1">动态链接程序的加载</h1>
+<h2 id="_2">细思恐极：先有鸡还是先有蛋？</h2>
+<ul>
+<li>之前 musl-gcc -static 编译出的 _start 在 crt1.o 中<ul>
+<li>如果 libc 是动态链接的，_start 在哪里？</li>
+<li>__libc_start_main 又在哪里？</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">计算机世界没有魔法</h2>
+<ul>
+<li>crt1.o 还是静态链接的 (程序需要 _start)</li>
+<li>动态链接 a.out 的第一条指令<strong>不是</strong>程序的 _start<ul>
+<li>musl-gcc 调试一下吧！<ul>
+<li>可以 info proc mappings (pmap) 验证</li>
+</ul>
+</li>
+<li>“ld-linux.so”: “写死” 在 ELF 文件的 INTERP (interpreter) 段里的<ul>
+<li>我们可以调试，甚至直接编辑它</li>
+<li>glibc 是用 ld-linux.so 调用 mmap 系统调用加载的</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 2.1. Aside: 阅读 ld.so 手册
+ </h3>
+<div class="slideshow" name="ld_magic"><div>
+<h1 id="man-8-ldso">man 8 ld.so</h1>
+<h2 id="_1">一座 “打开系统世界大门” 的金矿</h2>
+<ul>
+<li>仅仅是 man -P cat ld.so | claude Summarize，今天就值回票价了</li>
+</ul>
+<h2 id="_2">一些有趣的功能</h2>
+<ul>
+<li>LD_LIBRARY_PATH (类似于 PATH)</li>
+<li>LD_DEBUG=libs ls; ldd /bin/ls</li>
+<li>LD_BIND_NOW=1 (可以用于调试)</li>
+<li>LD_SHOW_AUXV=1 ls<ul>
+<li>里面有 AT_SYSINFO_EHDR (计算机世界没有魔法！)</li>
+<li>不懂就管道给 AI Agent 吧 😊</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="ld_preload"><div>
+<h1 id="ld_preload">LD_PRELOAD</h1>
+<h2 id="hook">一个神奇的 “hook” 机制</h2>
+<ul>
+<li>ld.so: 谁先被加载并<strong>首次满足未定义符号</strong>，谁就生效<ul>
+<li>如果在任何库加载之前 load 一个 .so，就可以 “覆盖” 任何符号</li>
+<li>LD_PRELOAD: 这里可以玩的花活就多了</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">让我们实现 “变速齿轮”</h2>
+<ul>
+<li>我只是让 AI 覆盖 time-related functions，他就可以给你惊喜</li>
+<li>AI 还知道 LD_PRELOAD 可以玩的花活<ul>
+<li>glXSwapBuffers 实现透视挂</li>
+<li>劫持 rand() 实现 “随机”</li>
+<li>非侵入性的日志 (例如 malloc/free trace)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/wheel"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/wheel">变速齿轮</a></h1>
+<p>实现 “变速齿轮”：通过 LD_PRELOAD 机制覆盖和时间相关的系统调用 (gettimeofday, usleep, alarm 等)，通过在启动时记录时间并维护 10 倍速度的虚拟时间实现变速。</p>
+</div></div>
+</div>
+<h3> 2.2. Aside: 实现动态链接
+ </h3>
+<div class="slideshow" name="call_so"><div>
+<h1 id="_1">实现动态链接</h1>
+<h2 id="_2">更多对细节的追问</h2>
+<ul>
+<li>main 和 libwheel.so 都可以调用 printf()<ul>
+<li>printf() 是动态加载的</li>
+<li>意味着编译/链接的时候<strong>地址是不知道的</strong><ul>
+<li>aarch64 bl: 26 位立即数，±128M</li>
+<li>x86-64 call: 32 位立即数，±2GB</li>
+<li>a.out 和 libwheel.so 的跳转指令必须<strong>链接时确定地址</strong>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<blockquote>
+<p><em>All problems in computer science can be solved by another level of indirection</em>. (Butler Lampson)</p>
+</blockquote>
+<ul>
+<li>如果是 same_binary()，就直接跳转</li>
+<li>如果不是，就跳转到一小段 trampoline code (PLT)<ul>
+<li>PLT 里会查表 call *TABLE[printf]</li>
+<li>Global Offset Table (GOT)，它们是需要重定位的 (和静态链接类似)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="deref_data"><div>
+<h1 id="plt">PLT: 没能解决数据的问题</h1>
+<h2 id="_1">数据不能像代码一样 “两级跳转”</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">extern</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+</code></pre></div>
+
+<ul>
+<li>如果在同一个 .so: <code>mov $1, x(%rip)</code>
+</li>
+<li>如果在另一个 .so: <code>mov GOT[x], %rdi; mov $1, (%rdi)</code><ul>
+<li>main 访问 stdout: 高效</li>
+<li>libwheel.so 访问 stdout: 低效</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">不优雅的解决方法</h2>
+<ul>
+<li>-fPIC 默认会为所有 extern 数据增加一层间接访问<ul>
+<li>可以通过 <strong>attribute</strong>((visibility(“hidden”))) “告诉” 编译器</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>可执行文件本质上是 “进程初始状态的描述”。ELF 格式虽然强大但复杂不友好，通过理解链接和加载的核心概念（代码、符号、重定位），我们可以设计更友好的格式。动态链接通过 GOT/PLPL 实现了代码共享，是现代操作系统的重要机制。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 17 章 - Free Space Management</li>
+</ul>
+<p>以下为选读，考试不涉及：</p>
+<ul>
+<li>第 18 章 - Introduction to Paging</li>
+<li>第 19 章 - Translation Lookaside Buffers</li>
+<li>第 20 章 - Advanced Page Tables</li>
+<li>第 21 章 - Swapping: Mechanisms</li>
+<li>第 22 章 - Swapping: Policies</li>
+<li>第 23 章 - Complete VM Systems</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 可执行文件\n \u003c/h1\u003e\n\u003ch2\u003e 1. 静态链接和加载\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"what_is_executable\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e复习：什么是可执行文件？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e学习操作系统前\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e那个 “双击可以弹出窗口的东西”\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e学习操作系统后\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一个操作系统中的对象 (文件)\u003c/li\u003e\n\u003cli\u003e一个字节序列 (我们可以把它当字符串编辑)\u003c/li\u003e\n\u003cli\u003e一个描述了进程初始内存布局的\u003cstrong\u003e数据结构\u003c/strong\u003e (打扰了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/Genshin.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"aout_format\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e真正的可执行文件\u003c/h1\u003e\n\u003ch2 id=\"unix-aout-assembler-output\"\u003eUNIX \u003ca href=\"https://man.freebsd.org/cgi/man.cgi?a.out(5)\"\u003ea.out\u003c/a\u003e “assembler output”\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eexec\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_midmag\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Machine ID \u0026amp; Magic\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_text\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Text segment size\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_data\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Data segment size\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_bss\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e     \u003c/span\u003e\u003cspan class=\"c1\"\u003e// BSS segment size\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_syms\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Symbol table size\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_entry\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e   \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Entry point\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_trsize\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Text reloc table size\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_drsize\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Data reloc table size\u003c/span\u003e\n\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e人造物：复杂的东西都是从简单演变过来的\u003cul\u003e\n\u003cli\u003e甚至都没有 offset (.text 位置是平台/ABI 相关的常数)\u003c/li\u003e\n\u003cli\u003e不支持动态链接、调试信息、内存对齐、thread-local……\u003cul\u003e\n\u003cli\u003e所以有了现在的 ELF!\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"linker_horror\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e被《计算机系统基础》支配的恐惧？\u003c/h1\u003e\n\u003ch2 id=\"system-v-abi\"\u003e\u003ca href=\"https://jyywiki.cn/OS/manuals/sysv-abi.pdf\"\u003eSystem V ABI\u003c/a\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSection 3.4: “Process Initialization”  (调试 crt1.o 的时候确认)\u003c/li\u003e\n\u003cli\u003eSection 4: “Object Files”\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"bg contain\" src=\"static/img/linker.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"yearly_struggle\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"elf\"\u003e和 ELF 搏斗的每一年\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e你期末复习的时候吐血了吗？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e同学 A: 吐了\u003c/li\u003e\n\u003cli\u003e同学 B: 吐了\u003cul\u003e\n\u003cli\u003e“连 CSAPP 这一章都讲得不怎么样”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e不只是你们，我们也在吐血\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e任课教师 A: 第一次打开 ppt 真的有点吐血的感觉\u003c/li\u003e\n\u003cli\u003e任课教师 B: 根本讲不完，我估计听懂的人也不多\u003c/li\u003e\n\u003cli\u003e我自己：太好了，再也不用教了\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e为什么？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eELF 是\u003cstrong\u003e为机器效率\u003c/strong\u003e设计的: 高效、紧凑\u003cul\u003e\n\u003cli\u003e大量的 bitfield、offset、交叉引用、……\u003c/li\u003e\n\u003cli\u003e人类偏向于 “信息立即可见” 的平坦结构\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. Funny Little Executable\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"my_idea\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一个疯狂的想法\u003c/h1\u003e\n\u003ch2 id=\"elf\"\u003eELF 不过是一个 “描述”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e基本信息 (版本、体系结构……)、内存布局 (哪些部分是什么数据)、其他 (调试信息、符号表、重定位……)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e我们总是可以在\u003cstrong\u003e等价的描述形式\u003c/strong\u003e之间转换\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eIntelligence is cheap\u003cul\u003e\n\u003cli\u003e让 AI 帮我们做一个转换工具就行\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eStep 1: 把 ELF 转成一个 “容易阅读” 的格式\u003c/li\u003e\n\u003cli\u003eStep 2: 实现一个加载器加载它\u003cul\u003e\n\u003cli\u003e反正可以 vibe coding，麻烦的事情让 AI 搞定吧\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fle\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"funny-little-executable\"\u003eFunny Little Executable\u003c/h1\u003e\n\u003ch2 id=\"fle\"\u003e这几年一直在改进 “FLE”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e既兴奋，又有些怅然若失：“聪明” 的努力只值一句 prompt\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fle-2025.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/fle\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"funny-little-executable\"\u003e\u003ca href=\"/OS/demos/virtualization/fle\"\u003eFunny Little Executable\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们 “自行设计” 了能实现 (静态) 链接和加载的二进制文件格式，以及相应的编译器、链接器 (复用 gcc/ld) 和加载器。FLE 文件直接将一段可读、可写、可执行的位置无关代码连通数据映射到内存并跳转执行。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"fle_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"funny-little-executable-20\"\u003eFunny Little Executable 2.0\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e如果让我再做一次？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我也许会选 Markdown-based (人类可读绝对优先)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"gh\"\u003e# ELF [class=64 endian=le osabi=sysv machine=x86_64 type=ET_DYN pie=true entry=_start]\u003c/span\u003e\n\u003cspan class=\"gu\"\u003e## PT_LOAD [flags=R|X align=0x1000]\u003c/span\u003e\n\u003cspan class=\"gu\"\u003e### .text [type=PROGBITS flags=A|X align=16]\u003c/span\u003e\n_start:\n    48 c7 c0 01 00 00 00          # mov rax,1   ; sys_write\n    48 c7 c7 01 00 00 00          # mov rdi,1   ; fd=1\n    48 8d 35 {pcrel32: msg - . - 4}  # lea rsi,[rip+msg]\n    48 c7 c2 {u32: msg_end - msg} # mov rdx,len\n    0f 05                         # syscall\n\n    48 c7 c0 3c 00 00 00          # mov rax,60  ; sys_exit\n    48 31 ff                      # xor rdi,rdi\n    0f 05                         # syscall\n\u003cspan class=\"gu\"\u003e## PT_LOAD [flags=R align=0x1000]\u003c/span\u003e\n\u003cspan class=\"gu\"\u003e### .rodata [type=PROGBITS flags=A|R align=16]\u003c/span\u003e\n_msg:\n    48 65 6c 6c 6f 2c 20 4d 44 21 0a   # \"Hello, MD!\\n\"\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fle_3\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e反思\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e我们应该怎么教《操作系统》(和任何课程)？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把知识网络、案例、动机、思路呈现给学生\u003cul\u003e\n\u003cli\u003e\u003ca href=\"https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f\"\u003eAndrej Karpathy’s LLM Wiki\u003c/a\u003e\u003c/li\u003e\n\u003cli\u003e(我的 PhD Training 很大程度上是 “人肉” 建立这些关联)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e学生：提出问题、把握解决问题的方向、质疑并确认结论\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e我是人奸\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e以下过程能产生所有人类知识：\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003eD\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"a\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"s2\"\u003e\"aa\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"s2\"\u003e\"abandon\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"o\"\u003e...\u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"k\"\u003efor\u003c/span\u003e \u003cspan class=\"n\"\u003ek\u003c/span\u003e \u003cspan class=\"ow\"\u003ein\u003c/span\u003e \u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"o\"\u003e...\u003c/span\u003e \u003cspan class=\"n\"\u003eMAX_K\u003c/span\u003e\u003cspan class=\"p\"\u003e]:\u003c/span\u003e\n    \u003cspan class=\"k\"\u003efor\u003c/span\u003e \u003cspan class=\"n\"\u003esentence\u003c/span\u003e \u003cspan class=\"ow\"\u003ein\u003c/span\u003e \u003cspan class=\"n\"\u003eD\u003c/span\u003e\u003cspan class=\"o\"\u003e**\u003c/span\u003e\u003cspan class=\"n\"\u003ek\u003c/span\u003e\u003cspan class=\"p\"\u003e:\u003c/span\u003e\n        \u003cspan class=\"n\"\u003edo_research\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esentence\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.2. Aside: Linux 内核里的加载器\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"loader_in_kernel\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e加载器是内核实现的一部分\u003c/h1\u003e\n\u003ch2 id=\"execvepath-argv-envp\"\u003eexecve(path, argv, envp)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e操作系统内核解析 path、完成加载\u003c/li\u003e\n\u003cli\u003e还有\u003ca href=\"https://elixir.bootlin.com/linux/latest/source/fs/binfmt_elf.c\"\u003e代码 (binfmt_elf.c)\u003c/a\u003e呢\u003cul\u003e\n\u003cli\u003e可以找到各种上课介绍过的概念\u003cul\u003e\n\u003cli\u003eInitial Process Stack (argc, argv, envp)\u003c/li\u003e\n\u003cli\u003eAuxiliary Vector (auxv)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e关键字搜索：PT_LOAD\u003c/li\u003e\n\u003cli\u003e有代码的地方就有 bug: \u003ca href=\"https://cvefeed.io/vuln/detail/CVE-2024-46826\"\u003eCVE-2024-46826\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"coding-agent-linux-kernel\"\u003e让 Coding Agent 直接打开 Linux Kernel 吧\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCoding Agent 在大型项目上的表现令人吃惊\u003cul\u003e\n\u003cli\u003e很大程度是因为人类维护了项目的 consistency，使 AI 可以 in-context learning\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"shebang\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"shebang\"\u003eShebang 运行程序\u003c/h1\u003e\n\u003ch2 id=\"unix-execve\"\u003eUNIX 对注释的妙用 (滥用): execve 一个可执行的\u003cstrong\u003e脚本文件\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们甚至可以 strace ./a.sh，execve 的参数正如我们预期的一样\u003cul\u003e\n\u003cli\u003e但如果在程序里，argv 又是不同的值\u003c/li\u003e\n\u003cli\u003ePath(“S”).read_text() == “#!A B C”\u003cul\u003e\n\u003cli\u003eS x y → execve(“A”, [“A”, “B C”, “S”, “x”, “y”], envp)\u003c/li\u003e\n\u003cli\u003eCaveat: macOS (BSD) 会把 B C 作为两个参数 (POSIX 漏了规定)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eLinux 的实现：\u003ca href=\"https://elixir.bootlin.com/linux/latest/source/fs/binfmt_script.c\"\u003ebinfmt_script.c\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e优先使用 \u003ccode\u003e#!\u003c/code\u003e 作为解释器 (Magic Number)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"cm\"\u003e/* Not ours to exec if we don't start with \"#!\". */\u003c/span\u003e\n\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e((\u003c/span\u003e\u003cspan class=\"n\"\u003ebprm\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e0\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e!=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sc\"\u003e'#'\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e||\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ebprm\u003c/span\u003e\u003cspan class=\"o\"\u003e-\u0026gt;\u003c/span\u003e\u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e!=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"sc\"\u003e'!'\u003c/span\u003e\u003cspan class=\"p\"\u003e))\u003c/span\u003e\n\u003cspan class=\"w\"\u003e        \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"n\"\u003eENOEXEC\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"n\"\u003efile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eopen_exec\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003ei_name\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/shebang\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"shebang\"\u003e\u003ca href=\"/OS/demos/virtualization/shebang\"\u003eShebang\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e在 UNIX 的早期，为了能更方便地将脚本作为可执行文件，实现了 \u003ccode\u003e#!\u003c/code\u003e 开头的 “可执行文件”，并沿用至今。Shebang 会调用第一行中执行的命令和参数，并把这个脚本文件作为命令行参数传入。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 2. 动态链接和加载\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"why_dynamic_linking\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e为什么需要动态链接？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e静态链接的世界\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eexec\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_midmag\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Machine ID \u0026amp; Magic\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_text\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Text segment size\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_data\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Data segment size\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"n\"\u003ea_bss\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e     \u003c/span\u003e\u003cspan class=\"c1\"\u003e// BSS segment size\u003c/span\u003e\n\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e“d3dx9_xxx.dll” 为每个游戏复制一份，似乎不是个好想法？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e我们希望 \u003cstrong\u003e“拆解” 应用程序\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e运行库和应用代码分离\u003c/li\u003e\n\u003cli\u003e整个系统里只有一个 glibc 的副本，可以\u003ca href=\"https://semver.org\"\u003e独立升级\u003c/a\u003e (Dependency Hell)\u003c/li\u003e\n\u003cli\u003e也可以实现大型项目的分解 (libjvm.so, libart.so, …)\u003cul\u003e\n\u003cli\u003eNEMU: “把 CPU 插上主板”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"so_experiment\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e探索动态链接的行为\u003c/h1\u003e\n\u003ch2 id=\"linux\"\u003e我们可以在 Linux 上观察到这种共享吗？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e必须可以!\u003cul\u003e\n\u003cli\u003e我们可以构造一个非常大的 bloat()\u003c/li\u003e\n\u003cli\u003e再创建 1,000 个进程使用 API 动态加载并执行 bloat()\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e观察系统的内存占用情况情况\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果不是一份拷贝，我会立即翻车\u003cul\u003e\n\u003cli\u003e我们可以观察到 Address Space Layout Randomization (ASLR) 的效果\u003c/li\u003e\n\u003cli\u003e动态链接库是\u003cstrong\u003e位置无关代码\u003c/strong\u003e (Position Independent Code)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"procpidfd\"\u003e还记得 /proc/[pid]/fd 吗？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们应该可以看到所有进程打开/映射的文件！\u003c/li\u003e\n\u003cli\u003elsof libbloat.so 可以看到\u003cul\u003e\n\u003cli\u003e它是怎么实现的呢？strace \u0026amp;| grep open 就知道啦！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/bloat\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/bloat\"\u003e动态链接库是进程间共享的吗？\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e试着创建一个 10M nop 组成的 bloat()，编译在 libbloat.so，然后创建 1000 个进程动态链接它。如果 libbloat.so 的每个进程都有一份副本，那么系统的内存占用应该会达到 10GB。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"so_loading\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e动态链接程序的加载\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e细思恐极：先有鸡还是先有蛋？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e之前 musl-gcc -static 编译出的 _start 在 crt1.o 中\u003cul\u003e\n\u003cli\u003e如果 libc 是动态链接的，_start 在哪里？\u003c/li\u003e\n\u003cli\u003e__libc_start_main 又在哪里？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e计算机世界没有魔法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ecrt1.o 还是静态链接的 (程序需要 _start)\u003c/li\u003e\n\u003cli\u003e动态链接 a.out 的第一条指令\u003cstrong\u003e不是\u003c/strong\u003e程序的 _start\u003cul\u003e\n\u003cli\u003emusl-gcc 调试一下吧！\u003cul\u003e\n\u003cli\u003e可以 info proc mappings (pmap) 验证\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e“ld-linux.so”: “写死” 在 ELF 文件的 INTERP (interpreter) 段里的\u003cul\u003e\n\u003cli\u003e我们可以调试，甚至直接编辑它\u003c/li\u003e\n\u003cli\u003eglibc 是用 ld-linux.so 调用 mmap 系统调用加载的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 2.1. Aside: 阅读 ld.so 手册\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"ld_magic\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"man-8-ldso\"\u003eman 8 ld.so\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e一座 “打开系统世界大门” 的金矿\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e仅仅是 man -P cat ld.so | claude Summarize，今天就值回票价了\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e一些有趣的功能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLD_LIBRARY_PATH (类似于 PATH)\u003c/li\u003e\n\u003cli\u003eLD_DEBUG=libs ls; ldd /bin/ls\u003c/li\u003e\n\u003cli\u003eLD_BIND_NOW=1 (可以用于调试)\u003c/li\u003e\n\u003cli\u003eLD_SHOW_AUXV=1 ls\u003cul\u003e\n\u003cli\u003e里面有 AT_SYSINFO_EHDR (计算机世界没有魔法！)\u003c/li\u003e\n\u003cli\u003e不懂就管道给 AI Agent 吧 😊\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ld_preload\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ld_preload\"\u003eLD_PRELOAD\u003c/h1\u003e\n\u003ch2 id=\"hook\"\u003e一个神奇的 “hook” 机制\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eld.so: 谁先被加载并\u003cstrong\u003e首次满足未定义符号\u003c/strong\u003e，谁就生效\u003cul\u003e\n\u003cli\u003e如果在任何库加载之前 load 一个 .so，就可以 “覆盖” 任何符号\u003c/li\u003e\n\u003cli\u003eLD_PRELOAD: 这里可以玩的花活就多了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e让我们实现 “变速齿轮”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我只是让 AI 覆盖 time-related functions，他就可以给你惊喜\u003c/li\u003e\n\u003cli\u003eAI 还知道 LD_PRELOAD 可以玩的花活\u003cul\u003e\n\u003cli\u003eglXSwapBuffers 实现透视挂\u003c/li\u003e\n\u003cli\u003e劫持 rand() 实现 “随机”\u003c/li\u003e\n\u003cli\u003e非侵入性的日志 (例如 malloc/free trace)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/wheel\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/wheel\"\u003e变速齿轮\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e实现 “变速齿轮”：通过 LD_PRELOAD 机制覆盖和时间相关的系统调用 (gettimeofday, usleep, alarm 等)，通过在启动时记录时间并维护 10 倍速度的虚拟时间实现变速。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch3\u003e 2.2. Aside: 实现动态链接\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"call_so\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现动态链接\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e更多对细节的追问\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003emain 和 libwheel.so 都可以调用 printf()\u003cul\u003e\n\u003cli\u003eprintf() 是动态加载的\u003c/li\u003e\n\u003cli\u003e意味着编译/链接的时候\u003cstrong\u003e地址是不知道的\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003eaarch64 bl: 26 位立即数，±128M\u003c/li\u003e\n\u003cli\u003ex86-64 call: 32 位立即数，±2GB\u003c/li\u003e\n\u003cli\u003ea.out 和 libwheel.so 的跳转指令必须\u003cstrong\u003e链接时确定地址\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cblockquote\u003e\n\u003cp\u003e\u003cem\u003eAll problems in computer science can be solved by another level of indirection\u003c/em\u003e. (Butler Lampson)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003e如果是 same_binary()，就直接跳转\u003c/li\u003e\n\u003cli\u003e如果不是，就跳转到一小段 trampoline code (PLT)\u003cul\u003e\n\u003cli\u003ePLT 里会查表 call *TABLE[printf]\u003c/li\u003e\n\u003cli\u003eGlobal Offset Table (GOT)，它们是需要重定位的 (和静态链接类似)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"deref_data\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"plt\"\u003ePLT: 没能解决数据的问题\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e数据不能像代码一样 “两级跳转”\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003eextern\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e如果在同一个 .so: \u003ccode\u003emov $1, x(%rip)\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e如果在另一个 .so: \u003ccode\u003emov GOT[x], %rdi; mov $1, (%rdi)\u003c/code\u003e\u003cul\u003e\n\u003cli\u003emain 访问 stdout: 高效\u003c/li\u003e\n\u003cli\u003elibwheel.so 访问 stdout: 低效\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e不优雅的解决方法\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e-fPIC 默认会为所有 extern 数据增加一层间接访问\u003cul\u003e\n\u003cli\u003e可以通过 \u003cstrong\u003eattribute\u003c/strong\u003e((visibility(“hidden”))) “告诉” 编译器\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e可执行文件本质上是 “进程初始状态的描述”。ELF 格式虽然强大但复杂不友好，通过理解链接和加载的核心概念（代码、符号、重定位），我们可以设计更友好的格式。动态链接通过 GOT/PLPL 实现了代码共享，是现代操作系统的重要机制。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 17 章 - Free Space Management\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e以下为选读，考试不涉及：\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 18 章 - Introduction to Paging\u003c/li\u003e\n\u003cli\u003e第 19 章 - Translation Lookaside Buffers\u003c/li\u003e\n\u003cli\u003e第 20 章 - Advanced Page Tables\u003c/li\u003e\n\u003cli\u003e第 21 章 - Swapping: Mechanisms\u003c/li\u003e\n\u003cli\u003e第 22 章 - Swapping: Policies\u003c/li\u003e\n\u003cli\u003e第 23 章 - Complete VM Systems\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect11.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

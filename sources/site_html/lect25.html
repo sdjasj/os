@@ -1,0 +1,392 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 文件系统 API (2)
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="api">文件系统 API</h2>
+<ul>
+<li>目录树管理 (mount, umount)</li>
+<li>增删改查<ul>
+<li>目录树：mkdir, rmdir, getdents</li>
+<li>链接：link, symlink</li>
+<li>元数据：mode, xattr, ACL</li>
+</ul>
+</li>
+<li>都是 “<strong>简单的一小步操作</strong>”</li>
+</ul>
+<h2 id="api_1">是时候设计真正的 “文件系统” API 了</h2>
+<ul>
+<li>回到一个根本问题：文件系统作为一个 Abstract Data Type 还可以支持怎样的操作？<ul>
+<li>数据结构中的例子：持久化数据结构的 “时间回溯”、子集的整体操作……</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 监控
+ </h2>
+<div class="slideshow" name="crud_limitations"><div>
+<h1 id="_1">“监控” 的需求</h1>
+<h2 id="_2">在文件系统改变以后通知我</h2>
+<ul>
+<li>最好告诉我什么什么文件变了</li>
+<li>Web server: 如果代码改了需要重新加载<ul>
+<li>Flask, next.js, … 的 debug mode 都支持这个功能 </li>
+</ul>
+</li>
+</ul>
+<h2 id="crud-last-modified">用 CRUD 实现：获取一个 last modified 列表</h2>
+<div class="codehilite"><pre><span></span><code>diff<span class="w"> </span>&lt;<span class="o">(</span>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">'%n %y'</span><span class="w"> </span>**<span class="o">)</span><span class="w"> </span>&lt;<span class="o">(</span>sleep<span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span>date<span class="w"> </span>&gt;<span class="w"> </span>a.txt<span class="p">;</span><span class="w"> </span>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">'%n %y'</span><span class="w"> </span>**<span class="o">)</span>
+</code></pre></div>
+
+<ul>
+<li>但如果目录里有几百万个文件……<ul>
+<li>“数据结构” 是支持 O(d) 的各类修改操作的 (包括 notify)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="inotify"><div>
+<h1 id="_1">实现文件系统监控</h1>
+<h2 id="inotify-7">inotify (7)</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">inotify_init</span><span class="p">(</span><span class="kt">void</span><span class="p">);</span><span class="w">  </span><span class="c1">// 返回 fd</span>
+<span class="kt">int</span><span class="w"> </span><span class="nf">inotify_add_watch</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">fd</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">pathname</span><span class="p">,</span><span class="w"> </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">mask</span><span class="p">);</span>
+</code></pre></div>
+
+<h2 id="python-watchdog">Python watchdog</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">observer</span> <span class="o">=</span> <span class="n">Observer</span><span class="p">()</span>  <span class="c1"># PollingObserver()</span>
+<span class="n">observer</span><span class="o">.</span><span class="n">schedule</span><span class="p">(</span><span class="n">event_handler</span><span class="p">,</span> <span class="s2">"."</span><span class="p">,</span> <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">observer</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+</code></pre></div>
+
+<ul>
+<li>如果只有 CRUD API，就需要遍历 + 对比时间戳<ul>
+<li>也可以让 AI 对比使用 PollingObserver 和 Observer 时候的 strace</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/watchdog"><div><div>
+<h1 id="watchdog"><a href="/OS/demos/persistence/watchdog">watchdog</a></h1>
+<p>文件系统提供 “监控” 的 API (<code>inotify</code> / <code>FSEvents</code> 等)，使应用程序无需轮询即可响应文件变化。Python <a href="https://github.com/gorakhargosh/watchdog">watchdog</a> 库可以递归监听目录。</p>
+</div></div>
+</div>
+<div class="slideshow" name="inotify_discuss"><div>
+<h1 id="contd">实现文件系统监控 (cont’d)</h1>
+<h2 id="_1">“任何监控” 都是可以实现的</h2>
+<ul>
+<li>strace, ltrace, inotify, …</li>
+<li>本质上是从 “操作系统内核执行” 提取信息<ul>
+<li>理想情况：插入一个 programmable 的 probe</li>
+<li>恭喜你，你发明了 eBPF (Extended Berkeley Packet Filter)</li>
+</ul>
+</li>
+<li>例子：bio-trace.bt</li>
+</ul>
+<h2 id="ebpf-vm-in-kernel">eBPF VM: 轻量级 in-kernel “只读” 虚拟机</h2>
+<ul>
+<li>RISC like, r0-r10 11 个寄存器<ul>
+<li>在 probe 入口执行，r1 指向 context 结构体</li>
+<li>
+<code>BPF_CALL &lt;helper&gt;</code>:<code>bpf_get_current_pid_tgid()</code>, <code>bpf_map_lookup_elem()</code>, …, side-effect 严格可控</li>
+</ul>
+</li>
+<li>严格的验证器，只允许 bounded execution (当然是<a href="https://blog.igns.top/posts/ebpf-promises/">有 bug</a> 的 😂)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/bio"><div><div>
+<h1 id="linux-block-io"><a href="/OS/demos/persistence/bio">打开 Linux Block I/O</a></h1>
+<p>让我们借助 Coding Agent，“在没有直接经验的领域（如语言、技术、框架等）进行一些编程工作” 吧！虽然我作为《操作系统》的教师，知道 Linux 内核内部的机制，但我决定在对话时假装自己对系统内的这些机制一无所知。模型：deepseek-v4-pro (high)，成本：¥ 0.72。</p>
+</div></div>
+</div>
+<div class="slideshow" name="inotify_reflection"><div>
+<h1 id="_1">一些反思</h1>
+<h2 id="ai">问一问 AI</h2>
+<div class="codehilite"><pre><span></span><code>diff<span class="w"> </span>&lt;<span class="o">(</span>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">'%n %y'</span><span class="w"> </span>**<span class="o">)</span><span class="w"> </span>&lt;<span class="o">(</span>sleep<span class="w"> </span><span class="m">2</span><span class="p">;</span><span class="w"> </span>date<span class="w"> </span>&gt;<span class="w"> </span>a.txt<span class="p">;</span><span class="w"> </span>stat<span class="w"> </span>-c<span class="w"> </span><span class="s1">'%n %y'</span><span class="w"> </span>**<span class="o">)</span>
+</code></pre></div>
+
+<ul>
+<li>“允许使用任意 Linux 机制，有没有高效的实现方法？”<ul>
+<li>所有的模型都知道：我们不用知道 inotify 和 eBPF</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">机制与策略的彻底分离</h2>
+<ul>
+<li>Specification is all you need!<ul>
+<li>你要的是 “一个 <code>diff &lt;() &lt;()</code> 的等价高效实现”</li>
+<li>
+<a href="https://arxiv.org/abs/2605.24096">The time is here for just-in-time systems: challenges and opportunities</a>: LLM-based coding agents now make a different approach tractable: Just-in-Time Systems, in which the entire system is synthesized from scratch, specialized to the environment, workload, and required system properties.</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 2. 快照
+ </h2>
+<div class="slideshow" name="git_object_store"><div>
+<h1 id="_1">在文件系统上实现快照</h1>
+<h2 id="random-read-append-only-write">Random read + append-only write = 持久化数据结构</h2>
+<ul>
+<li>Git: 这个题我懂，我就是一个<strong>持久化数据结构</strong>
+</li>
+<li>持久化数据结构的好处：<ul>
+<li>git reflog 包含所有的历史 trees, commits, etc.</li>
+<li>除了 <code>git reset --hard</code> 清除的工作区，只要不 git gc 都可以恢复！</li>
+</ul>
+</li>
+</ul>
+<h2 id="git-gitobjects">Git 的三大类对象 (直接存储在 <code>.git/objects/</code>)</h2>
+<ul>
+<li>blob: <code>blob [length] \0[content]</code>
+</li>
+<li>tree:  <code>[mode] [filename]\0[hash]\n...</code>
+</li>
+<li>commit: <code>tree [hash]\nparent [hash]...</code><ul>
+<li>它们是<strong>压缩存储</strong>的</li>
+<li>让 AI 帮我们做一个 <code>ls .git/objects/*/* | xargs ./git-cat</code>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="git_ops"><div>
+<h1 id="git">Git: 数据结构操作</h1>
+<h2 id="_1">分支和提交</h2>
+<ul>
+<li>
+<code>refs/heads/[branch]</code> 是指向 commit object 的指针</li>
+<li>
+<code>git checkout -b new</code> → 新建一个 new 的文件 (指针)</li>
+<li>
+<code>git commit</code> → 创建 tree/commit object → 更新 <code>refs/heads/[branch]</code>
+</li>
+</ul>
+<h2 id="head">HEAD “指针的指针”</h2>
+<ul>
+<li>.git/HEAD 文本文件 <code>ref: refs/heads/main</code>
+</li>
+<li>我们可以 “依葫芦画瓢” 创建一个 TAIL (commit object hash)<ul>
+<li>git diff HEAD TAIL</li>
+</ul>
+</li>
+<li>git checkout 就是改 HEAD (可以 HEAD detach)</li>
+</ul>
+<h2 id="stash-refsstash-detached-commit">Stash: refs/stash 下的 detached commit</h2>
+<ul>
+<li>Stash commit 有两个 parent: HEAD 和 next stash</li>
+<li>让 AI 阅读 <code>.git/**/*</code>，绘制 object 和 refs 数据结构图</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="rebase_vs_ff"><div>
+<h1 id="commits">处理分叉的 Commits</h1>
+<h2 id="common-ancestor">Common Ancestor 上的分叉</h2>
+<ul>
+<li>Local: CA → A → B</li>
+<li>Remote: CA → C → D<ul>
+<li>Merge: 增加一个 E 节点，合并 B &amp; D</li>
+<li>Rebase: CA → C → D → A’ → B’</li>
+<li>如果本地没有 A 和 B，可以 fast-forward: CA → C → D</li>
+</ul>
+</li>
+</ul>
+<h2 id="rebase-a-b">Rebase: A’ 和 B’ 是怎么来的？</h2>
+<div class="codehilite"><pre><span></span><code>git<span class="w"> </span>reset<span class="w"> </span>--hard<span class="w"> </span>D
+git<span class="w"> </span>cherry-pick<span class="w"> </span>A<span class="w">  </span><span class="c1"># git diff CA A | git apply</span>
+git<span class="w"> </span>cherry-pick<span class="w"> </span>B<span class="w">  </span><span class="c1"># git diff A B | git apply</span>
+</code></pre></div>
+
+<ul>
+<li>“变基” 是很危险的操作 😂<ul>
+<li>自动 cherry-pick 冲突，基本就得放弃 (退回到 merge)</li>
+<li>即便成功，也可能隐藏逻辑冲突的炸弹，一定要回头 review 代码</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="worktree"><div>
+<h1 id="_1">历史总在重演</h1>
+<h2 id="git">Git 是为单线程设计的</h2>
+<ul>
+<li>还记得 UNIX: 进程 → 线程 (魔鬼的盒子) 吗？</li>
+<li>Git: 一个工作区，一个 HEAD，线性的 commit/stash/branch<ul>
+<li>但我有 “多线程并发” 的需求<ul>
+<li>多次被要求紧急切换到优先级更高的 feature 分支上修 bug (git stash 地狱 😭)</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="worktree-since-2015-git-25">Worktree (Since 2015, Git 2.5)</h2>
+<ul>
+<li>Persistent data structure 管理的是<strong>快照</strong>！</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>git<span class="w"> </span>worktree<span class="w"> </span>add<span class="w"> </span>../experiment<span class="w">  </span><span class="c1"># 在另一个目录切换到 experiment 分支</span>
+cat<span class="w"> </span>../experiment/.git<span class="w">  </span><span class="c1"># 又是一个 “指针”</span>
+</code></pre></div>
+
+<ul>
+<li>这个 feature 在 Agent Swarm (test-time scaling) 时代是刚需<ul>
+<li>Sub-agents，在干净的 branch 上提交，主 agent 负责 merge</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="fs_snapshot"><div>
+<h1 id="_1">文件系统级的快照</h1>
+<h2 id="persistent-data-structure">干脆用 persistent data structure 实现文件系统吧？</h2>
+<ul>
+<li>你能想到的事情，一定会有人试图实现的<ul>
+<li>btrfs: <code>ioctl(fd, BTRFS_IOC_SNAP_CREATE, ...);</code>
+</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/btrfs-cow.png"></p>
+</div></div>
+
+<h2> 3. 覆盖
+ </h2>
+<div class="slideshow" name="overlay_intro"><div>
+<h1 id="_1">目录的“拼凑”</h1>
+<h2 id="idea">一个神奇的 idea: 你看到的目录，可以是 “拼凑” 出来的</h2>
+<ul>
+<li>把 upper/ 和 lower/ 拼起来，形成一个 “假” (虚拟化的) 目录<ul>
+<li>所有的写入都会写到 upper/</li>
+<li>重名的，优先看到 upper/ 的版本</li>
+</ul>
+</li>
+</ul>
+<h2 id="killer-application-1">Killer Application (1): 光盘打包</h2>
+<ul>
+<li>刻盘工具 <code>burn /path-to-dir/ /dev/cdrw0</code>
+</li>
+<li>现在你要为每一个写入不同的 CD-Key<ul>
+<li>16 个 cdrw drives，同一个 lower，但 verify-key.exe 是不同的</li>
+</ul>
+</li>
+</ul>
+<h2 id="killer-application-2">Killer Application (2): 试升级</h2>
+<ul>
+<li>害怕 sudo apt dist-upgrade 吗？</li>
+<li>系统 “试运行” (overlayroot)，直接 rsync 就可以 commit 了</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="overlay_mechanism"><div>
+<h1 id="overlayfs-unionfs">OverlayFS (“UnionFS”, 联合挂载)</h1>
+<div class="codehilite"><pre><span></span><code>mount<span class="w"> </span>-t<span class="w"> </span>overlay<span class="w"> </span>overlay<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>-o<span class="w"> </span><span class="nv">lowerdir</span><span class="o">=</span>L1:L2:...,upperdir<span class="o">=</span>U,workdir<span class="o">=</span>W<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>path_to_merged
+</code></pre></div>
+
+<h2 id="_1">一些有趣的行为</h2>
+<ul>
+<li>workdir 是文件系统内部使用的临时空间 (用于实现原子性)</li>
+<li>只允许一个 upper，但可以有多个 lower</li>
+<li>在 merged 里删除 lower 的文件，会在 upper 里创建一个 “whiteout” 文件<ul>
+<li>终于可以是实现 “网吧管理” 了 (再也不用担心用户破坏电脑了)<ul>
+<li>考试机的 /home 是个 overlay，“系统一键还原” 也搞定了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/overlay"><div><div>
+<h1 id="overlayfs"><a href="/OS/demos/persistence/overlay">OverlayFS</a></h1>
+<p>一种联合文件系统，允许将多个目录 “层叠” 在一起，形成单一的虚拟目录。OverlayFS 是容器 (如 docker) 的重要底层机制。它也可以用于实现文件系统的快照、原子的系统更新等。</p>
+</div></div>
+</div>
+<div class="slideshow" name="docker_overlay"><div>
+<h1 id="docker-overlay">Docker 的多层 Overlay</h1>
+<div class="codehilite"><pre><span></span><code><span class="k">FROM</span><span class="w"> </span><span class="s">ubuntu:22.04</span>
+<span class="k">ENV</span><span class="w"> </span><span class="nv">DEBIAN_FRONTEND</span><span class="o">=</span>noninteractive
+...
+<span class="k">RUN</span><span class="w"> </span>apt-get<span class="w"> </span>update
+<span class="k">RUN</span><span class="w"> </span>apt-get<span class="w"> </span>install<span class="w"> </span>-y<span class="w"> </span>...<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>apt-get<span class="w"> </span>upgrade<span class="w"> </span>-y
+</code></pre></div>
+
+<ul>
+<li>每一次 RUN 都会创建一个 layer<ul>
+<li>从文件系统角度，RUN 工作在 upper 上</li>
+<li>这个 upper 会 “增加” 到下一次 RUN 的 lower stack 顶部</li>
+</ul>
+</li>
+<li>如果发现还想增加一个包？<ul>
+<li>不应该修改 RUN 的参数，而是应该增加一个 RUN</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 4. 终极的虚拟化
+ </h2>
+<div class="slideshow" name="fuse_intro"><div>
+<h1 id="_1">文件系统 = 数据结构</h1>
+<h2 id="_2">我们早就学过数据结构了！</h2>
+<ul>
+<li>凭什么不能直接写一个 fs.c 实现文件系统？<ul>
+<li><strong>你能想到的，就一定能做到</strong></li>
+<li>Filesystem in User Space (FUSE): 内核把 lookup, read, write, … 转发到 FUSE driver</li>
+</ul>
+</li>
+</ul>
+<h2 id="struct-fuse_operations">只要实现 <a href="https://libfuse.github.io/doxygen/structfuse__operations.html">struct fuse_operations</a> 就行</h2>
+<ul>
+<li>甚至有 <code>int (*setxattr)(const char *, const char *, const char *, size_t, int)</code>
+</li>
+<li>从此文件系统不再是 CRUD<ul>
+<li>你可以不受任何约束地实现 “任意数据结构”</li>
+<li>例子：/proc 里的真正 “隐藏” 目录</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="fuse_hacks"><div>
+<h1 id="fuse-hacks">FUSE Hacks</h1>
+<h2 id="_1">把任何远端变成文件系统</h2>
+<ul>
+<li>sshfs: 远程目录变成本地目录</li>
+<li>aitfs: 远程 git 仓库变成本地目录</li>
+<li>dbfs: 由数据库作为存储的 “安全” 文件系统<ul>
+<li>借助 FUSE 可以直接在不一致的文件系统上实现强一致性</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">甚至还可以把任何数据改造成文件系统接口</h2>
+<ul>
+<li>
+<a href="https://mgree.github.io/ffs/">ffs</a>: 把任何 “数据库” (json, …) 变成文件系统<ul>
+<li>一瞬间 UNIX 世界里的一切命令行工具都可以使用了</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">甚至可以实现 “非常规” 的文件系统操作</h2>
+<ul>
+<li>实现 <code>.学习资料114514</code> 的真正隐藏：getdents64 无法看到，但可以 cd 进入</li>
+<li>ggfs: Galgame 也可以做成文件系统！<ul>
+<li>“Everything is a file 的终极实现”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/ggmaker"><div><div>
+<h1 id="symlink-game"><a href="/OS/demos/persistence/ggmaker">Symlink Game</a></h1>
+<p>我们可以使用符号链接创建 “近乎任意” 的目录结构，包括任意的图结构 (状态机)，操作系统也能正确解析。操作系统的机制 (系统调用、文件系统……) 给了我们无限的创作空间。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>如果我们摆脱 “块设备” 的固有印象，把文件系统看作是数据结构，就可以不受约束地设计出有趣的操作系统机制：监控 (inotify)、快照 (git/btrfs)、覆盖 (OverlayFS)，甚至是彻底的定制化文件系统 API。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 文件系统 API (2)\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e文件系统 API\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e目录树管理 (mount, umount)\u003c/li\u003e\n\u003cli\u003e增删改查\u003cul\u003e\n\u003cli\u003e目录树：mkdir, rmdir, getdents\u003c/li\u003e\n\u003cli\u003e链接：link, symlink\u003c/li\u003e\n\u003cli\u003e元数据：mode, xattr, ACL\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e都是 “\u003cstrong\u003e简单的一小步操作\u003c/strong\u003e”\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"api_1\"\u003e是时候设计真正的 “文件系统” API 了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e回到一个根本问题：文件系统作为一个 Abstract Data Type 还可以支持怎样的操作？\u003cul\u003e\n\u003cli\u003e数据结构中的例子：持久化数据结构的 “时间回溯”、子集的整体操作……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 监控\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"crud_limitations\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e“监控” 的需求\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e在文件系统改变以后通知我\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e最好告诉我什么什么文件变了\u003c/li\u003e\n\u003cli\u003eWeb server: 如果代码改了需要重新加载\u003cul\u003e\n\u003cli\u003eFlask, next.js, … 的 debug mode 都支持这个功能 \u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"crud-last-modified\"\u003e用 CRUD 实现：获取一个 last modified 列表\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003ediff\u003cspan class=\"w\"\u003e \u003c/span\u003e\u0026lt;\u003cspan class=\"o\"\u003e(\u003c/span\u003estat\u003cspan class=\"w\"\u003e \u003c/span\u003e-c\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'%n %y'\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e**\u003cspan class=\"o\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u0026lt;\u003cspan class=\"o\"\u003e(\u003c/span\u003esleep\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"m\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003edate\u003cspan class=\"w\"\u003e \u003c/span\u003e\u0026gt;\u003cspan class=\"w\"\u003e \u003c/span\u003ea.txt\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003estat\u003cspan class=\"w\"\u003e \u003c/span\u003e-c\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'%n %y'\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e**\u003cspan class=\"o\"\u003e)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e但如果目录里有几百万个文件……\u003cul\u003e\n\u003cli\u003e“数据结构” 是支持 O(d) 的各类修改操作的 (包括 notify)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"inotify\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现文件系统监控\u003c/h1\u003e\n\u003ch2 id=\"inotify-7\"\u003einotify (7)\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003einotify_init\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 返回 fd\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003einotify_add_watch\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efd\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003econst\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003epathname\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emask\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"python-watchdog\"\u003ePython watchdog\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003eobserver\u003c/span\u003e \u003cspan class=\"o\"\u003e=\u003c/span\u003e \u003cspan class=\"n\"\u003eObserver\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e  \u003cspan class=\"c1\"\u003e# PollingObserver()\u003c/span\u003e\n\u003cspan class=\"n\"\u003eobserver\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eschedule\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003eevent_handler\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"s2\"\u003e\".\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"n\"\u003erecursive\u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"kc\"\u003eTrue\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"n\"\u003eobserver\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003estart\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e如果只有 CRUD API，就需要遍历 + 对比时间戳\u003cul\u003e\n\u003cli\u003e也可以让 AI 对比使用 PollingObserver 和 Observer 时候的 strace\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/watchdog\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"watchdog\"\u003e\u003ca href=\"/OS/demos/persistence/watchdog\"\u003ewatchdog\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e文件系统提供 “监控” 的 API (\u003ccode\u003einotify\u003c/code\u003e / \u003ccode\u003eFSEvents\u003c/code\u003e 等)，使应用程序无需轮询即可响应文件变化。Python \u003ca href=\"https://github.com/gorakhargosh/watchdog\"\u003ewatchdog\u003c/a\u003e 库可以递归监听目录。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"inotify_discuss\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"contd\"\u003e实现文件系统监控 (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e“任何监控” 都是可以实现的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003estrace, ltrace, inotify, …\u003c/li\u003e\n\u003cli\u003e本质上是从 “操作系统内核执行” 提取信息\u003cul\u003e\n\u003cli\u003e理想情况：插入一个 programmable 的 probe\u003c/li\u003e\n\u003cli\u003e恭喜你，你发明了 eBPF (Extended Berkeley Packet Filter)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e例子：bio-trace.bt\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ebpf-vm-in-kernel\"\u003eeBPF VM: 轻量级 in-kernel “只读” 虚拟机\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eRISC like, r0-r10 11 个寄存器\u003cul\u003e\n\u003cli\u003e在 probe 入口执行，r1 指向 context 结构体\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003eBPF_CALL \u0026lt;helper\u0026gt;\u003c/code\u003e:\u003ccode\u003ebpf_get_current_pid_tgid()\u003c/code\u003e, \u003ccode\u003ebpf_map_lookup_elem()\u003c/code\u003e, …, side-effect 严格可控\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e严格的验证器，只允许 bounded execution (当然是\u003ca href=\"https://blog.igns.top/posts/ebpf-promises/\"\u003e有 bug\u003c/a\u003e 的 😂)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/bio\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"linux-block-io\"\u003e\u003ca href=\"/OS/demos/persistence/bio\"\u003e打开 Linux Block I/O\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e让我们借助 Coding Agent，“在没有直接经验的领域（如语言、技术、框架等）进行一些编程工作” 吧！虽然我作为《操作系统》的教师，知道 Linux 内核内部的机制，但我决定在对话时假装自己对系统内的这些机制一无所知。模型：deepseek-v4-pro (high)，成本：¥ 0.72。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"inotify_reflection\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一些反思\u003c/h1\u003e\n\u003ch2 id=\"ai\"\u003e问一问 AI\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003ediff\u003cspan class=\"w\"\u003e \u003c/span\u003e\u0026lt;\u003cspan class=\"o\"\u003e(\u003c/span\u003estat\u003cspan class=\"w\"\u003e \u003c/span\u003e-c\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'%n %y'\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e**\u003cspan class=\"o\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u0026lt;\u003cspan class=\"o\"\u003e(\u003c/span\u003esleep\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"m\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003edate\u003cspan class=\"w\"\u003e \u003c/span\u003e\u0026gt;\u003cspan class=\"w\"\u003e \u003c/span\u003ea.txt\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003estat\u003cspan class=\"w\"\u003e \u003c/span\u003e-c\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'%n %y'\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e**\u003cspan class=\"o\"\u003e)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e“允许使用任意 Linux 机制，有没有高效的实现方法？”\u003cul\u003e\n\u003cli\u003e所有的模型都知道：我们不用知道 inotify 和 eBPF\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e机制与策略的彻底分离\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSpecification is all you need!\u003cul\u003e\n\u003cli\u003e你要的是 “一个 \u003ccode\u003ediff \u0026lt;() \u0026lt;()\u003c/code\u003e 的等价高效实现”\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://arxiv.org/abs/2605.24096\"\u003eThe time is here for just-in-time systems: challenges and opportunities\u003c/a\u003e: LLM-based coding agents now make a different approach tractable: Just-in-Time Systems, in which the entire system is synthesized from scratch, specialized to the environment, workload, and required system properties.\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 快照\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"git_object_store\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e在文件系统上实现快照\u003c/h1\u003e\n\u003ch2 id=\"random-read-append-only-write\"\u003eRandom read + append-only write = 持久化数据结构\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eGit: 这个题我懂，我就是一个\u003cstrong\u003e持久化数据结构\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e持久化数据结构的好处：\u003cul\u003e\n\u003cli\u003egit reflog 包含所有的历史 trees, commits, etc.\u003c/li\u003e\n\u003cli\u003e除了 \u003ccode\u003egit reset --hard\u003c/code\u003e 清除的工作区，只要不 git gc 都可以恢复！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"git-gitobjects\"\u003eGit 的三大类对象 (直接存储在 \u003ccode\u003e.git/objects/\u003c/code\u003e)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eblob: \u003ccode\u003eblob [length] \\0[content]\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003etree:  \u003ccode\u003e[mode] [filename]\\0[hash]\\n...\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003ecommit: \u003ccode\u003etree [hash]\\nparent [hash]...\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e它们是\u003cstrong\u003e压缩存储\u003c/strong\u003e的\u003c/li\u003e\n\u003cli\u003e让 AI 帮我们做一个 \u003ccode\u003els .git/objects/*/* | xargs ./git-cat\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"git_ops\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"git\"\u003eGit: 数据结构操作\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e分支和提交\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003erefs/heads/[branch]\u003c/code\u003e 是指向 commit object 的指针\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003egit checkout -b new\u003c/code\u003e → 新建一个 new 的文件 (指针)\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003egit commit\u003c/code\u003e → 创建 tree/commit object → 更新 \u003ccode\u003erefs/heads/[branch]\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"head\"\u003eHEAD “指针的指针”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e.git/HEAD 文本文件 \u003ccode\u003eref: refs/heads/main\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e我们可以 “依葫芦画瓢” 创建一个 TAIL (commit object hash)\u003cul\u003e\n\u003cli\u003egit diff HEAD TAIL\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003egit checkout 就是改 HEAD (可以 HEAD detach)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"stash-refsstash-detached-commit\"\u003eStash: refs/stash 下的 detached commit\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eStash commit 有两个 parent: HEAD 和 next stash\u003c/li\u003e\n\u003cli\u003e让 AI 阅读 \u003ccode\u003e.git/**/*\u003c/code\u003e，绘制 object 和 refs 数据结构图\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"rebase_vs_ff\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"commits\"\u003e处理分叉的 Commits\u003c/h1\u003e\n\u003ch2 id=\"common-ancestor\"\u003eCommon Ancestor 上的分叉\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLocal: CA → A → B\u003c/li\u003e\n\u003cli\u003eRemote: CA → C → D\u003cul\u003e\n\u003cli\u003eMerge: 增加一个 E 节点，合并 B \u0026amp; D\u003c/li\u003e\n\u003cli\u003eRebase: CA → C → D → A’ → B’\u003c/li\u003e\n\u003cli\u003e如果本地没有 A 和 B，可以 fast-forward: CA → C → D\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"rebase-a-b\"\u003eRebase: A’ 和 B’ 是怎么来的？\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003egit\u003cspan class=\"w\"\u003e \u003c/span\u003ereset\u003cspan class=\"w\"\u003e \u003c/span\u003e--hard\u003cspan class=\"w\"\u003e \u003c/span\u003eD\ngit\u003cspan class=\"w\"\u003e \u003c/span\u003echerry-pick\u003cspan class=\"w\"\u003e \u003c/span\u003eA\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e# git diff CA A | git apply\u003c/span\u003e\ngit\u003cspan class=\"w\"\u003e \u003c/span\u003echerry-pick\u003cspan class=\"w\"\u003e \u003c/span\u003eB\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e# git diff A B | git apply\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e“变基” 是很危险的操作 😂\u003cul\u003e\n\u003cli\u003e自动 cherry-pick 冲突，基本就得放弃 (退回到 merge)\u003c/li\u003e\n\u003cli\u003e即便成功，也可能隐藏逻辑冲突的炸弹，一定要回头 review 代码\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"worktree\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e历史总在重演\u003c/h1\u003e\n\u003ch2 id=\"git\"\u003eGit 是为单线程设计的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e还记得 UNIX: 进程 → 线程 (魔鬼的盒子) 吗？\u003c/li\u003e\n\u003cli\u003eGit: 一个工作区，一个 HEAD，线性的 commit/stash/branch\u003cul\u003e\n\u003cli\u003e但我有 “多线程并发” 的需求\u003cul\u003e\n\u003cli\u003e多次被要求紧急切换到优先级更高的 feature 分支上修 bug (git stash 地狱 😭)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"worktree-since-2015-git-25\"\u003eWorktree (Since 2015, Git 2.5)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003ePersistent data structure 管理的是\u003cstrong\u003e快照\u003c/strong\u003e！\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003egit\u003cspan class=\"w\"\u003e \u003c/span\u003eworktree\u003cspan class=\"w\"\u003e \u003c/span\u003eadd\u003cspan class=\"w\"\u003e \u003c/span\u003e../experiment\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e# 在另一个目录切换到 experiment 分支\u003c/span\u003e\ncat\u003cspan class=\"w\"\u003e \u003c/span\u003e../experiment/.git\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e# 又是一个 “指针”\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e这个 feature 在 Agent Swarm (test-time scaling) 时代是刚需\u003cul\u003e\n\u003cli\u003eSub-agents，在干净的 branch 上提交，主 agent 负责 merge\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fs_snapshot\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e文件系统级的快照\u003c/h1\u003e\n\u003ch2 id=\"persistent-data-structure\"\u003e干脆用 persistent data structure 实现文件系统吧？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e你能想到的事情，一定会有人试图实现的\u003cul\u003e\n\u003cli\u003ebtrfs: \u003ccode\u003eioctl(fd, BTRFS_IOC_SNAP_CREATE, ...);\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/btrfs-cow.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 覆盖\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"overlay_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e目录的“拼凑”\u003c/h1\u003e\n\u003ch2 id=\"idea\"\u003e一个神奇的 idea: 你看到的目录，可以是 “拼凑” 出来的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e把 upper/ 和 lower/ 拼起来，形成一个 “假” (虚拟化的) 目录\u003cul\u003e\n\u003cli\u003e所有的写入都会写到 upper/\u003c/li\u003e\n\u003cli\u003e重名的，优先看到 upper/ 的版本\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"killer-application-1\"\u003eKiller Application (1): 光盘打包\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e刻盘工具 \u003ccode\u003eburn /path-to-dir/ /dev/cdrw0\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e现在你要为每一个写入不同的 CD-Key\u003cul\u003e\n\u003cli\u003e16 个 cdrw drives，同一个 lower，但 verify-key.exe 是不同的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"killer-application-2\"\u003eKiller Application (2): 试升级\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e害怕 sudo apt dist-upgrade 吗？\u003c/li\u003e\n\u003cli\u003e系统 “试运行” (overlayroot)，直接 rsync 就可以 commit 了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"overlay_mechanism\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"overlayfs-unionfs\"\u003eOverlayFS (“UnionFS”, 联合挂载)\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003emount\u003cspan class=\"w\"\u003e \u003c/span\u003e-t\u003cspan class=\"w\"\u003e \u003c/span\u003eoverlay\u003cspan class=\"w\"\u003e \u003c/span\u003eoverlay\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"se\"\u003e\\\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e-o\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nv\"\u003elowerdir\u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003eL1:L2:...,upperdir\u003cspan class=\"o\"\u003e=\u003c/span\u003eU,workdir\u003cspan class=\"o\"\u003e=\u003c/span\u003eW\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"se\"\u003e\\\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003epath_to_merged\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_1\"\u003e一些有趣的行为\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eworkdir 是文件系统内部使用的临时空间 (用于实现原子性)\u003c/li\u003e\n\u003cli\u003e只允许一个 upper，但可以有多个 lower\u003c/li\u003e\n\u003cli\u003e在 merged 里删除 lower 的文件，会在 upper 里创建一个 “whiteout” 文件\u003cul\u003e\n\u003cli\u003e终于可以是实现 “网吧管理” 了 (再也不用担心用户破坏电脑了)\u003cul\u003e\n\u003cli\u003e考试机的 /home 是个 overlay，“系统一键还原” 也搞定了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/overlay\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"overlayfs\"\u003e\u003ca href=\"/OS/demos/persistence/overlay\"\u003eOverlayFS\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e一种联合文件系统，允许将多个目录 “层叠” 在一起，形成单一的虚拟目录。OverlayFS 是容器 (如 docker) 的重要底层机制。它也可以用于实现文件系统的快照、原子的系统更新等。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"docker_overlay\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"docker-overlay\"\u003eDocker 的多层 Overlay\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003eFROM\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s\"\u003eubuntu:22.04\u003c/span\u003e\n\u003cspan class=\"k\"\u003eENV\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nv\"\u003eDEBIAN_FRONTEND\u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003enoninteractive\n...\n\u003cspan class=\"k\"\u003eRUN\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003eapt-get\u003cspan class=\"w\"\u003e \u003c/span\u003eupdate\n\u003cspan class=\"k\"\u003eRUN\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003eapt-get\u003cspan class=\"w\"\u003e \u003c/span\u003einstall\u003cspan class=\"w\"\u003e \u003c/span\u003e-y\u003cspan class=\"w\"\u003e \u003c/span\u003e...\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u0026amp;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003eapt-get\u003cspan class=\"w\"\u003e \u003c/span\u003eupgrade\u003cspan class=\"w\"\u003e \u003c/span\u003e-y\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e每一次 RUN 都会创建一个 layer\u003cul\u003e\n\u003cli\u003e从文件系统角度，RUN 工作在 upper 上\u003c/li\u003e\n\u003cli\u003e这个 upper 会 “增加” 到下一次 RUN 的 lower stack 顶部\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e如果发现还想增加一个包？\u003cul\u003e\n\u003cli\u003e不应该修改 RUN 的参数，而是应该增加一个 RUN\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 4. 终极的虚拟化\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"fuse_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e文件系统 = 数据结构\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e我们早就学过数据结构了！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e凭什么不能直接写一个 fs.c 实现文件系统？\u003cul\u003e\n\u003cli\u003e\u003cstrong\u003e你能想到的，就一定能做到\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003eFilesystem in User Space (FUSE): 内核把 lookup, read, write, … 转发到 FUSE driver\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"struct-fuse_operations\"\u003e只要实现 \u003ca href=\"https://libfuse.github.io/doxygen/structfuse__operations.html\"\u003estruct fuse_operations\u003c/a\u003e 就行\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e甚至有 \u003ccode\u003eint (*setxattr)(const char *, const char *, const char *, size_t, int)\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e从此文件系统不再是 CRUD\u003cul\u003e\n\u003cli\u003e你可以不受任何约束地实现 “任意数据结构”\u003c/li\u003e\n\u003cli\u003e例子：/proc 里的真正 “隐藏” 目录\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fuse_hacks\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"fuse-hacks\"\u003eFUSE Hacks\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e把任何远端变成文件系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003esshfs: 远程目录变成本地目录\u003c/li\u003e\n\u003cli\u003eaitfs: 远程 git 仓库变成本地目录\u003c/li\u003e\n\u003cli\u003edbfs: 由数据库作为存储的 “安全” 文件系统\u003cul\u003e\n\u003cli\u003e借助 FUSE 可以直接在不一致的文件系统上实现强一致性\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e甚至还可以把任何数据改造成文件系统接口\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://mgree.github.io/ffs/\"\u003effs\u003c/a\u003e: 把任何 “数据库” (json, …) 变成文件系统\u003cul\u003e\n\u003cli\u003e一瞬间 UNIX 世界里的一切命令行工具都可以使用了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e甚至可以实现 “非常规” 的文件系统操作\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e实现 \u003ccode\u003e.学习资料114514\u003c/code\u003e 的真正隐藏：getdents64 无法看到，但可以 cd 进入\u003c/li\u003e\n\u003cli\u003eggfs: Galgame 也可以做成文件系统！\u003cul\u003e\n\u003cli\u003e“Everything is a file 的终极实现”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/ggmaker\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"symlink-game\"\u003e\u003ca href=\"/OS/demos/persistence/ggmaker\"\u003eSymlink Game\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们可以使用符号链接创建 “近乎任意” 的目录结构，包括任意的图结构 (状态机)，操作系统也能正确解析。操作系统的机制 (系统调用、文件系统……) 给了我们无限的创作空间。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e如果我们摆脱 “块设备” 的固有印象，把文件系统看作是数据结构，就可以不受约束地设计出有趣的操作系统机制：监控 (inotify)、快照 (git/btrfs)、覆盖 (OverlayFS)，甚至是彻底的定制化文件系统 API。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect25.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

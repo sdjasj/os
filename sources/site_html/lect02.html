@@ -1,0 +1,514 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 应用视角的操作系统
+ </h1>
+<h2> 1. 程序：解释与编译
+ </h2>
+<div class="slideshow" name="program_on_os"><div>
+<h1 id="_1">操作系统上的程序</h1>
+<blockquote>
+<p>Operating System: A body of software, in fact, that is responsible for
+<em>making it easy to run programs</em> (even allowing you to seemingly run many at
+the same time), allowing programs to share memory, enabling programs to
+interact with devices, and other fun stuff like that. (OSTEP)</p>
+</blockquote>
+<h2 id="_2">《操作系统》课会彻底讲清楚<strong>什么是程序</strong>
+</h2>
+<ul>
+<li>精确到每一个 bit 都是 well-defined</li>
+<li>顺便也充当 “形式语义” 的第一课</li>
+</ul>
+</div></div>
+
+<h3> 1.1. 单步解释执行 C 程序
+ </h3>
+<div class="slideshow" name="understand_program"><div>
+<h1 id="_1">理解计算机程序</h1>
+<h2 id="c-simplec">C → SimpleC</h2>
+<ul>
+<li>
+<a href="https://cil-project.github.io/cil/">C Intermediate Language</a> transpiler<ul>
+<li>任何 C 程序都可以改写成 “每行只做一小件事” 的形式</li>
+<li>于是我们可以像 NEMU 一样 “单步解释执行” C 语言代码<ul>
+<li>例子：<a href="https://github.com/jpoirier/picoc">PicoC</a>: a very small C interpreter for scripting</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">fetch_statement</span><span class="p">();</span>
+<span class="w">    </span><span class="n">decode_and_execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>(我们让 LLM 改写了 printf，调试一下试试吧！)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/cinterp"><div><div>
+<h1 id="c"><a href="/OS/demos/intro/cinterp">C 解释执行器</a></h1>
+<p>虽然我们不大费周章去实现一个 SimpleC 的解释器 (烧一些 tokens 完全也可以做到)，但我们可以在 gdb 中模拟这个效果：我们可以主动把程序改写成 SimpleC 的形式，在 gdb 中单步，就收集到了程序运行的状态和迁移，从而反过来 “看” 解释器是如何执行的。</p>
+</div></div>
+</div>
+<div class="slideshow" name="recursive_v_nonrecursive"><div>
+<h1 id="_1">理解计算机程序：函数调用</h1>
+<h2 id="tower-of-hanoi-c">Tower of Hanoi: C++ 课的噩梦</h2>
+<ul>
+<li>第一次领教了计算机里的 “函数” 不是数学里的 “函数”<ul>
+<li>总有一种 “搞懂了，又没完全搞懂” 的感觉</li>
+<li>有多少同学自信能不借助 AI 写对一个非递归的版本？</li>
+</ul>
+</li>
+<li>后悔没有选修 SICP 了 (里面讲了函数式编程呢)</li>
+</ul>
+<p><img alt="center w:600" src="static/img/tower-of-hanoi.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="llm_challenge"><div>
+<h1 id="_1">理解函数调用：终极考题</h1>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="o">&lt;=</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="mi">-1</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">g</span><span class="p">(</span><span class="n">n</span><span class="mi">-2</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+<span class="kt">int</span><span class="w"> </span><span class="nf">g</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="p">(</span><span class="n">n</span><span class="o">&lt;=</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">?</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="o">+</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">g</span><span class="p">(</span><span class="n">n</span><span class="mi">-1</span><span class="p">);</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>汉诺塔</th>
+<th>f 和 g</th>
+<th>输出调用序列</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GPT-3.5 (22.12)</td>
+<td>✅</td>
+<td>N/A</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>GPT-4 (23.3)</td>
+<td>✅</td>
+<td>❌</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>deepseek-v3 (24.12)</td>
+<td>✅</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>deepseek-r1 (25.1)</td>
+<td>✅</td>
+<td>✅</td>
+<td>❌ 错的 Python</td>
+</tr>
+<tr>
+<td>o3-mini (25.1)</td>
+<td>✅</td>
+<td>✅ 逃课</td>
+<td>✅</td>
+</tr>
+<tr>
+<td>deepseek-?? (26.2)</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+</tr>
+</tbody>
+</table>
+</div></div>
+
+<div class="slideshow" name="program_state_machine"><div>
+<h1 id="_1">理解函数调用：程序状态机</h1>
+<blockquote>
+<p>状态机是拥有<strong>严格数学定义</strong>的对象。这意味着你可以把定义写出来，并且用<strong>数学严格</strong>的方法理解它 —— 形式化方法</p>
+</blockquote>
+<h2 id="_2">状态</h2>
+<ul>
+<li>[StackFrame, StackFrame, …] + 全局变量</li>
+<li>状态 ≠ “变量 + 栈 + PC”</li>
+</ul>
+<h2 id="_3">初始状态</h2>
+<ul>
+<li>仅有一个 StackFrame(main, argc, argv, <strong>PC=0</strong>)</li>
+<li>全局变量全部为初始值</li>
+</ul>
+<h2 id="_4">状态迁移</h2>
+<ul>
+<li>执行 frames[-1].PC 处的语句 (假设是 SimpleC)</li>
+<li>f(x): stack[-1].next_pc(); stack.push(x=x, PC=f)<ul>
+<li>这一步是完全<strong>机械</strong>的操作</li>
+<li>许多体系结构都提供完成这个操作的 call 指令</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/hanoi-nr"><div><div>
+<h1 id="_1"><a href="/OS/demos/intro/hanoi-nr">汉诺塔</a></h1>
+<p>汉诺塔是递归和分治的经典问题，而同学们也曾经在理解这个程序的时候遇到困难。遇到困难是正常的：C/C++ 中的 “函数” 和数学的函数很不一样，例如我们可以把 Fibonacci 数列的递归写成</p>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">f</span><span class="p">(</span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">2</span><span class="p">);</span>
+<span class="c1">// 也可以 return y + x;</span>
+<span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">y</span><span class="p">;</span>
+</code></pre></div>
+
+<p>或是任意调换函数调用的次序，但汉诺塔不行。</p>
+<p>不行的根本原因在于汉诺塔中的 printf 会带来全局的副作用。但 C/C++ 遵循 “顺序执行” 的原则，函数的执行有 “先后” (不像数学的函数，先后是无关的)，按照不同顺序调用会导致程序输出不同的结果。实际上，C 标准中 <code>return f(n - 1) + f(n - 2);</code> 甚至不保证从左到右的调用顺序。(但现代编译器为了防止产生难以理解的执行，通常按照自然顺序调用、不做激进优化。)</p>
+</div></div>
+</div>
+<h3> 1.2. 编译器
+ </h3>
+<div class="slideshow" name="compiled_program"><div>
+<h1 id="_1">什么是 “编译后” 的程序？</h1>
+<h2 id="_2">程序最终还是在<strong>计算机</strong>上执行的</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">CPUState</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">regs</span><span class="p">[</span><span class="mi">32</span><span class="p">],</span><span class="w"> </span><span class="n">csrs</span><span class="p">[</span><span class="n">CSR_COUNT</span><span class="p">];</span>
+<span class="w">    </span><span class="kt">uint8_t</span><span class="w"> </span><span class="o">*</span><span class="n">mem</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">mem_offset</span><span class="p">,</span><span class="w"> </span><span class="n">mem_size</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<h2 id="_3">无情的、执行指令的<strong>状态机</strong>
+</h2>
+<ul>
+<li>取指令、译码、执行……</li>
+<li>SimpleC 到机器指令几乎可以 “原样翻译”</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/mini-rv32ima"><div><div>
+<h1 id="risc-v"><a href="/OS/demos/intro/mini-rv32ima">RISC-V 处理器模拟器</a></h1>
+<p>C 语言实现的 single-header RISC-V32IMA 系统模拟器 (项目源自<a href="https://github.com/cnlohr/mini-rv32ima">mini-rv32ima</a>)。因为有 M-Mode，这个模拟器可以运行几乎 “任意复杂” 的程序——甚至是没有 MMU 的 Linux。我们稍稍修改了这份代码，更好地体现《操作系统》课程的教学目标。</p>
+</div></div>
+</div>
+<div class="slideshow" name="c_semantics"><div>
+<h1 id="_1">什么是编译器？</h1>
+<h2 id="simplec">编译器输入一个 SimpleC 程序</h2>
+<ul>
+<li>在不同的输入下，会有不同的输出 (和外部 API 调用序列)</li>
+<li>编译器需要保证：输出<strong>等价</strong>的程序 (SimpleC, 汇编代码……)<ul>
+<li>等价：在相同输入下有相同的 API 调用序列</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">推论 (假设程序一定终止)</h2>
+<ul>
+<li>如果从未调用过外部 API，那么所有代码都是死代码 (DCE)</li>
+<li>我们可以看一些编译器做优化的例子</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/ccompile"><div><div>
+<h1 id="_1"><a href="/OS/demos/intro/ccompile">什么是编译器</a></h1>
+<p>“编译器是一种将高级语言转换为低级语言的程序。” 这个定义不错；但到底什么是 “编译正确”？编译正确意味着对于任何输入，编译后程序的执行结果都和执行 C 语言形式语义的结果等价 (包括输出和终止)。这个定义其实给了编译器很多优化的空间——例如，所有最终 “用不上” 的计算都可以抹去。现在的编译器为了确保编译正确性，能做的优化相对有限，一个著名的论断是 “编译器不能把冒泡排序优化成快速排序”——虽然在今天也许不再是这样了。</p>
+</div></div>
+</div>
+<h2> 2. 操作系统上的最小程序
+ </h2>
+<div class="slideshow" name="take_control"><div>
+<h1 id="_1">从一开始就获得机器的控制权</h1>
+<h2 id="_2">构造一个 “最小” 的程序</h2>
+<ul>
+<li>从一开始就取得程序的控制权</li>
+<li>《计算机系统基础》说，程序是从 _start 开始执行的</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">_start</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<h2 id="_3">编译运行 “最小” 的程序</h2>
+<ul>
+<li>如何确认程序加载后的确从我的 _start 开始执行？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="exit_program"><div>
+<h1 id="_1">退出程序</h1>
+<h2 id="_2">程序自己是不能 “停下来” 的</h2>
+<ul>
+<li>指令集里没有一条关闭计算机的指令，那么操作系统是如何在关闭所有软件后，切断计算机的电源的？</li>
+</ul>
+<h2 id="_3">只能借助<strong>操作系统</strong>
+</h2>
+<div class="codehilite"><pre><span></span><code><span class="nf">movq</span><span class="w"> </span><span class="no">$SYS_exit</span><span class="p">,</span><span class="w">  </span><span class="nv">%rax</span><span class="w">   </span><span class="c1"># exit(</span>
+<span class="nf">movq</span><span class="w"> </span><span class="no">$1</span><span class="p">,</span><span class="w">         </span><span class="nv">%rdi</span><span class="w">   </span><span class="c1">#   status=1</span>
+<span class="nf">syscall</span><span class="w">                 </span><span class="c1"># );</span>
+</code></pre></div>
+
+<ul>
+<li>把<strong>系统调用</strong>的参数放到寄存器中</li>
+<li>执行 syscall，操作系统接管程序<ul>
+<li>操作系统可以任意改变程序状态 (甚至终止程序)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="intro/minimal"><div><div>
+<h1 id="_1"><a href="/OS/demos/intro/minimal">最小可执行文件</a></h1>
+<p>为了理解操作系统上的程序，我们的目标是构造一个能直接被操作系统加载且打印 Hello World 的指令序列。如果你能想到这一点，剩下的一切都可以让 AI 帮助你。</p>
+</div></div>
+</div>
+<div class="slideshow" name="syscall"><div>
+<h1 id="_1">系统调用指令：请求操作系统系统服务</h1>
+<h2 id="syscall-x86-64-ecall-risc-v-svc-aarch64">syscall (x86-64), ecall (risc-v), svc (aarch64)</h2>
+<ul>
+<li>对应用程序而言，这是一条区别于所有其他指令的 “特别指令”<ul>
+<li>只有它可以打破 “程序状态” (memory/register) 的边界</li>
+<li><strong>将状态机 “完全交给” 操作系统</strong></li>
+</ul>
+</li>
+</ul>
+<h2 id="syscall">直观地理解 syscall：类比 “全身麻醉”</h2>
+<ul>
+<li>失去一切对自己的控制权</li>
+<li>把权限主动交给另一组权限更高的人<ul>
+<li>对于计算机系统而言，就是一条向操作系统代码的跳转<ul>
+<li>跳转目的地是操作系统 “写死” 的，程序无权更改</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>服务完成后返回<ul>
+<li>操作系统可以做 “任何事”<ul>
+<li>可能醒来没事，可能肾没了，也可能再也醒不过来了</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="slide">(这是整个《操作系统》课最重要的一页 slide)</h2>
+</div></div>
+
+<h2> 3. 操作系统上的应用世界
+ </h2>
+<h3> 3.1. 各式各样的应用程序
+ </h3>
+<div class="slideshow" name="os_experience"><div>
+<h1 id="_1">操作系统上的应用程序</h1>
+<h2 id="_2">天天说操作系统，但我们其实是<strong>感知不到</strong>操作系统存在的</h2>
+<ul>
+<li>能感受到的是操作系统上<strong>运行的程序</strong> (进程)</li>
+</ul>
+<p><img alt="" src="static/img/minix3-desktop.png"></p>
+</div></div>
+
+<div class="slideshow" name="applications"><div>
+<h1 id="applications">能直接看到的程序：Applications</h1>
+<h2 id="_1">开发</h2>
+<ul>
+<li>集成开发环境 Vscode, Cursor, …</li>
+<li>编程工具 gcc, clang, nodejs, gdb, …</li>
+<li>终端工具 tmux, vim, htop, …</li>
+</ul>
+<h2 id="_2">日用</h2>
+<ul>
+<li>办公 LibreOffice, GIMP, …</li>
+<li>浏览器 Chrome, Firefox, …</li>
+<li>媒体 OBS, VLC, …</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="utilities"><div>
+<h1 id="utilities">能直接看到的 (幕后) 程序：Utilities</h1>
+<h2 id="core-utilities-coreutils">Core Utilities (coreutils)</h2>
+<ul>
+<li>
+<em>Standard</em> programs for text and file manipulation</li>
+<li>系统中默认安装的是 <a href="https://www.gnu.org/software/coreutils/">GNU Coreutils</a>
+</li>
+<li>也有简化版 <a href="https://www.busybox.net/">busybox</a>, <a href="https://landley.net/toybox/">toybox</a>
+</li>
+</ul>
+<h2 id="_1">系统/工具程序：无所不能</h2>
+<ul>
+<li>Shell, Claude Code (下一代 Shell), <a href="https://www.gnu.org/software/binutils/">binutils</a>, …</li>
+<li>包管理 (apt, dpkg, …)、网络管理 (ip, ssh, curl)、多媒体 (ffmpeg, gstreamer, …)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="background_programs"><div>
+<h1 id="_1">不能直接看到的：各种后台程序</h1>
+<h2 id="daemon">“守护进程” daemon</h2>
+<ul>
+<li>万物归宗 systemd<ul>
+<li>systemd-network, systemd-logind, systemd-udevd, …</li>
+</ul>
+</li>
+<li>系统管理 cron, udiskd, unattended-upgrade (讨厌), …</li>
+<li>各类服务 httpd, sshd, dbus, …</li>
+<li>安全组件 auditd, firewalld, …</li>
+</ul>
+<h2 id="_2">图形与媒体</h2>
+<ul>
+<li>Wayland compositor, pulseaudio, pipewire, video4linux, …</li>
+</ul>
+</div></div>
+
+<h3> 3.2. 应用程序是什么
+ </h3>
+<div class="slideshow" name="all_programs_same"><div>
+<h1 id="_1">一切应用程序：它们都是 “一样” 的</h1>
+<h2 id="minimals">和 minimal.S 有任何区别吗？</h2>
+<ul>
+<li>简短的答案：<strong>没有</strong>
+</li>
+<li>任何程序 = minimal.S = 状态机</li>
+</ul>
+<h2 id="_2">可执行文件是操作系统中的对象</h2>
+<ul>
+<li>系统里的程序和 minimal 一样，都是 ELF 可执行文件<ul>
+<li>可执行文件就是 “状态机初始状态的描述”<ul>
+<li>执行信息 (类型、入口地址……)</li>
+<li>指令序列 (普通指令/系统调用)、数据……</li>
+</ul>
+</li>
+<li>毫无疑问，打开文件是 “乱码”</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="first_reverse"><div>
+<h1 id="2000">我的第一次二进制逆向 (~2000)</h1>
+<h2 id="5">¥5 一张盗版游戏光盘的时代……</h2>
+<ul>
+<li>人畜无害的《大富翁 4》，却藏了一个神秘的文件夹<ul>
+<li>大家知道 “<a href="https://zhuanlan.zhihu.com/p/21347746">Elf</a>”？(不是 a.out 的 Elf)</li>
+<li>可是难度实在太高了 😭 </li>
+<li>GAME.SAV 里有一串神秘的 0x00 0x00 0x01 0x00 0x00 代表了解锁 CG 的 “进度”</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/rich4.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="world_changed"><div>
+<h1 id="_1">感叹：世界变了</h1>
+<h2 id="curiosity-is-all-you-need"><strong>Curiosity is all you need</strong></h2>
+<ul>
+<li>如果那时候有人告诉我……<ul>
+<li>同样的方式也可以去 hack Windows binary</li>
+<li>Binary 太复杂？我们总有办法<strong>用工具</strong>把 “不在意” 的部分屏蔽掉</li>
+</ul>
+</li>
+</ul>
+<h2 id="ai">在 AI 的辅助下，你与 “顶尖人类” 的差距几乎为零</h2>
+<ul>
+<li>一切代码工具都能自由组合、无限复用</li>
+<li>只要你能给出正确的 prompt<ul>
+<li>让 Claude Code hack 一下 minimal 吧！</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 3.3. 用正确的工具 “打开” 应用程序
+ </h3>
+<div class="slideshow" name="right_tools"><div>
+<h1 id="_1">使用正确的工具</h1>
+<h2 id="_2">操作系统课会帮助大家建立正确的 “工具体系” 思维</h2>
+<ul>
+<li>打开程序的执行：Trace (追踪)</li>
+</ul>
+<blockquote>
+<p>In general, trace refers to the process of following <em>anything</em> from the beginning to the end. For example, the traceroute command follows each of the network hops as your computer connects to another computer.</p>
+</blockquote>
+<h2 id="system-call-trace-strace"><strong>System call trace (strace)</strong></h2>
+<ul>
+<li>理解程序是如何与操作系统交互的<ul>
+<li>(观测状态机执行里的 syscalls)</li>
+<li>Demo: 试一试最小的 Hello World</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="any_program_in_os"><div>
+<h1 id="_1">操作系统中的 “任何程序”</h1>
+<h2 id="minimals"><strong>任何程序 = minimal.S = 状态机</strong></h2>
+<ul>
+<li>总是从被操作系统加载开始<ul>
+<li>通过另一个进程执行 execve 设置为初始状态</li>
+</ul>
+</li>
+<li>经历状态机执行 (计算 + syscalls)<ul>
+<li>进程管理：fork, execve, exit, …</li>
+<li>文件/设备管理：open, close, read, write, …</li>
+<li>存储管理：mmap, brk, …</li>
+</ul>
+</li>
+<li>最终调用 _exit (exit_group) 退出</li>
+</ul>
+<h2 id="_2">感到吃惊？</h2>
+<ul>
+<li>浏览器、游戏、杀毒软件、病毒呢？都是这些 API 吗？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="observe_execution"><div>
+<h1 id="_1">自己动手做实验：观察程序的执行</h1>
+<h2 id="gcc">工具程序代表：编译器 (gcc)</h2>
+<ul>
+<li>strace -f gcc a.c (gcc 会启动其他进程)<ul>
+<li>UNIX Philosophy 再次亮相<ul>
+<li>可以管道给编辑器 vim - (vscode 也可以)</li>
+<li>编辑器里还可以 %!grep</li>
+</ul>
+</li>
+<li>过去：《操作系统》课的 “魔法”</li>
+<li>今天：AI 学会了</li>
+</ul>
+</li>
+</ul>
+<h2 id="xedit">图形界面程序代表：编辑器 (xedit)</h2>
+<ul>
+<li>strace xedit<ul>
+<li>图形界面程序和 X-Window 服务器按照 X11 协议通信</li>
+<li>虚拟机中的 xedit 将 X11 命令通过 ssh (X11 forwarding) 转发到 Host</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="imagine_apps"><div>
+<h1 id="_1">想象 “一切应用程序” 的实现</h1>
+<h2 id="api">应用程序 = 计算 + 操作系统 API</h2>
+<ul>
+<li>窗口管理器<ul>
+<li>能直接管理屏幕设备 (read/write/mmap)<ul>
+<li>能画一个点，理论上就能画任何东西</li>
+</ul>
+</li>
+<li>能够和其他进程通信 (send, recv)</li>
+</ul>
+</li>
+<li>任务管理器<ul>
+<li>能访问操作系统提供的进程对象 (readdir)</li>
+</ul>
+</li>
+<li>杀毒软件<ul>
+<li>文件静态扫描 (read)、主动防御 (ptrace)</li>
+</ul>
+</li>
+</ul>
+<h2 id="api_1">操作系统的职责：提供令应用程序<strong>舒适</strong>的抽象 (对象 + API)</h2>
+<ul>
+<li>(我们用一学期来讲这个内容)</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>程序 = 状态机 (变量 + 栈)，通过指令/语句不断迁移状态。操作系统提供了一组抽象和 API：进程管理 (fork, execve, exit)、文件/设备管理：(open, close, read, write)、存储管理：(mmap, brk)……通过 strace 观察程序的行为，我们确认了 “真实” 的应用程序确实只是计算 + 系统调用实现的。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>本次课没有书本阅读材料；但你可以花一些时间和 AI 对话，了解一下 GNU Coreutils, Binutils，建立 “手边有哪些可用的命令行工具” 的一些印象，并且让 AI 带着你玩一玩这些应用。你还可以浏览 gdb 文档的目录，找到你感兴趣的章节了解，例如——“Reverse Execution”、“TUI: GDB Text User Interface”……对于你有兴趣的命令行工具，可以参考 busybox 和 toybox 项目中与之对应的简化实现。Toybox 现在已经成为了 Android 自带的命令行工具集。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 应用视角的操作系统\n \u003c/h1\u003e\n\u003ch2\u003e 1. 程序：解释与编译\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"program_on_os\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e操作系统上的程序\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eOperating System: A body of software, in fact, that is responsible for\n\u003cem\u003emaking it easy to run programs\u003c/em\u003e (even allowing you to seemingly run many at\nthe same time), allowing programs to share memory, enabling programs to\ninteract with devices, and other fun stuff like that. (OSTEP)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_2\"\u003e《操作系统》课会彻底讲清楚\u003cstrong\u003e什么是程序\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e精确到每一个 bit 都是 well-defined\u003c/li\u003e\n\u003cli\u003e顺便也充当 “形式语义” 的第一课\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. 单步解释执行 C 程序\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"understand_program\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e理解计算机程序\u003c/h1\u003e\n\u003ch2 id=\"c-simplec\"\u003eC → SimpleC\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://cil-project.github.io/cil/\"\u003eC Intermediate Language\u003c/a\u003e transpiler\u003cul\u003e\n\u003cli\u003e任何 C 程序都可以改写成 “每行只做一小件事” 的形式\u003c/li\u003e\n\u003cli\u003e于是我们可以像 NEMU 一样 “单步解释执行” C 语言代码\u003cul\u003e\n\u003cli\u003e例子：\u003ca href=\"https://github.com/jpoirier/picoc\"\u003ePicoC\u003c/a\u003e: a very small C interpreter for scripting\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003ewhile\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003estmt\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003efetch_statement\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003edecode_and_execute\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003estmt\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e(我们让 LLM 改写了 printf，调试一下试试吧！)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/cinterp\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"c\"\u003e\u003ca href=\"/OS/demos/intro/cinterp\"\u003eC 解释执行器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e虽然我们不大费周章去实现一个 SimpleC 的解释器 (烧一些 tokens 完全也可以做到)，但我们可以在 gdb 中模拟这个效果：我们可以主动把程序改写成 SimpleC 的形式，在 gdb 中单步，就收集到了程序运行的状态和迁移，从而反过来 “看” 解释器是如何执行的。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"recursive_v_nonrecursive\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e理解计算机程序：函数调用\u003c/h1\u003e\n\u003ch2 id=\"tower-of-hanoi-c\"\u003eTower of Hanoi: C++ 课的噩梦\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e第一次领教了计算机里的 “函数” 不是数学里的 “函数”\u003cul\u003e\n\u003cli\u003e总有一种 “搞懂了，又没完全搞懂” 的感觉\u003c/li\u003e\n\u003cli\u003e有多少同学自信能不借助 AI 写对一个非递归的版本？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e后悔没有选修 SICP 了 (里面讲了函数式编程呢)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"center w:600\" src=\"static/img/tower-of-hanoi.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"llm_challenge\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e理解函数调用：终极考题\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;=\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e?\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"mi\"\u003e-1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eg\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"mi\"\u003e-2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003eg\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;=\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e?\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eg\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"mi\"\u003e-1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ctable\u003e\n\u003cthead\u003e\n\u003ctr\u003e\n\u003cth\u003e模型\u003c/th\u003e\n\u003cth\u003e汉诺塔\u003c/th\u003e\n\u003cth\u003ef 和 g\u003c/th\u003e\n\u003cth\u003e输出调用序列\u003c/th\u003e\n\u003c/tr\u003e\n\u003c/thead\u003e\n\u003ctbody\u003e\n\u003ctr\u003e\n\u003ctd\u003eGPT-3.5 (22.12)\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003eN/A\u003c/td\u003e\n\u003ctd\u003eN/A\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003eGPT-4 (23.3)\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003e❌\u003c/td\u003e\n\u003ctd\u003eN/A\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003edeepseek-v3 (24.12)\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003e❌\u003c/td\u003e\n\u003ctd\u003e❌\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003edeepseek-r1 (25.1)\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003e❌ 错的 Python\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003eo3-mini (25.1)\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003e✅ 逃课\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003edeepseek-?? (26.2)\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003ctd\u003e✅\u003c/td\u003e\n\u003c/tr\u003e\n\u003c/tbody\u003e\n\u003c/table\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"program_state_machine\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e理解函数调用：程序状态机\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e状态机是拥有\u003cstrong\u003e严格数学定义\u003c/strong\u003e的对象。这意味着你可以把定义写出来，并且用\u003cstrong\u003e数学严格\u003c/strong\u003e的方法理解它 —— 形式化方法\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_2\"\u003e状态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e[StackFrame, StackFrame, …] + 全局变量\u003c/li\u003e\n\u003cli\u003e状态 ≠ “变量 + 栈 + PC”\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e初始状态\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e仅有一个 StackFrame(main, argc, argv, \u003cstrong\u003ePC=0\u003c/strong\u003e)\u003c/li\u003e\n\u003cli\u003e全局变量全部为初始值\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_4\"\u003e状态迁移\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e执行 frames[-1].PC 处的语句 (假设是 SimpleC)\u003c/li\u003e\n\u003cli\u003ef(x): stack[-1].next_pc(); stack.push(x=x, PC=f)\u003cul\u003e\n\u003cli\u003e这一步是完全\u003cstrong\u003e机械\u003c/strong\u003e的操作\u003c/li\u003e\n\u003cli\u003e许多体系结构都提供完成这个操作的 call 指令\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/hanoi-nr\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/intro/hanoi-nr\"\u003e汉诺塔\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e汉诺塔是递归和分治的经典问题，而同学们也曾经在理解这个程序的时候遇到困难。遇到困难是正常的：C/C++ 中的 “函数” 和数学的函数很不一样，例如我们可以把 Fibonacci 数列的递归写成\u003c/p\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e1\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ef\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e);\u003c/span\u003e\n\u003cspan class=\"c1\"\u003e// 也可以 return y + x;\u003c/span\u003e\n\u003cspan class=\"k\"\u003ereturn\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ex\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ey\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e或是任意调换函数调用的次序，但汉诺塔不行。\u003c/p\u003e\n\u003cp\u003e不行的根本原因在于汉诺塔中的 printf 会带来全局的副作用。但 C/C++ 遵循 “顺序执行” 的原则，函数的执行有 “先后” (不像数学的函数，先后是无关的)，按照不同顺序调用会导致程序输出不同的结果。实际上，C 标准中 \u003ccode\u003ereturn f(n - 1) + f(n - 2);\u003c/code\u003e 甚至不保证从左到右的调用顺序。(但现代编译器为了防止产生难以理解的执行，通常按照自然顺序调用、不做激进优化。)\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch3\u003e 1.2. 编译器\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"compiled_program\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e什么是 “编译后” 的程序？\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e程序最终还是在\u003cstrong\u003e计算机\u003c/strong\u003e上执行的\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eCPUState\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eregs\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e32\u003c/span\u003e\u003cspan class=\"p\"\u003e],\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecsrs\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"n\"\u003eCSR_COUNT\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint8_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003emem\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003euint32_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emem_offset\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emem_size\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_3\"\u003e无情的、执行指令的\u003cstrong\u003e状态机\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e取指令、译码、执行……\u003c/li\u003e\n\u003cli\u003eSimpleC 到机器指令几乎可以 “原样翻译”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/mini-rv32ima\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"risc-v\"\u003e\u003ca href=\"/OS/demos/intro/mini-rv32ima\"\u003eRISC-V 处理器模拟器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eC 语言实现的 single-header RISC-V32IMA 系统模拟器 (项目源自\u003ca href=\"https://github.com/cnlohr/mini-rv32ima\"\u003emini-rv32ima\u003c/a\u003e)。因为有 M-Mode，这个模拟器可以运行几乎 “任意复杂” 的程序——甚至是没有 MMU 的 Linux。我们稍稍修改了这份代码，更好地体现《操作系统》课程的教学目标。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"c_semantics\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e什么是编译器？\u003c/h1\u003e\n\u003ch2 id=\"simplec\"\u003e编译器输入一个 SimpleC 程序\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在不同的输入下，会有不同的输出 (和外部 API 调用序列)\u003c/li\u003e\n\u003cli\u003e编译器需要保证：输出\u003cstrong\u003e等价\u003c/strong\u003e的程序 (SimpleC, 汇编代码……)\u003cul\u003e\n\u003cli\u003e等价：在相同输入下有相同的 API 调用序列\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e推论 (假设程序一定终止)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果从未调用过外部 API，那么所有代码都是死代码 (DCE)\u003c/li\u003e\n\u003cli\u003e我们可以看一些编译器做优化的例子\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/ccompile\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/intro/ccompile\"\u003e什么是编译器\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e“编译器是一种将高级语言转换为低级语言的程序。” 这个定义不错；但到底什么是 “编译正确”？编译正确意味着对于任何输入，编译后程序的执行结果都和执行 C 语言形式语义的结果等价 (包括输出和终止)。这个定义其实给了编译器很多优化的空间——例如，所有最终 “用不上” 的计算都可以抹去。现在的编译器为了确保编译正确性，能做的优化相对有限，一个著名的论断是 “编译器不能把冒泡排序优化成快速排序”——虽然在今天也许不再是这样了。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003ch2\u003e 2. 操作系统上的最小程序\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"take_control\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e从一开始就获得机器的控制权\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e构造一个 “最小” 的程序\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e从一开始就取得程序的控制权\u003c/li\u003e\n\u003cli\u003e《计算机系统基础》说，程序是从 _start 开始执行的\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003e_start\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// ...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_3\"\u003e编译运行 “最小” 的程序\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如何确认程序加载后的确从我的 _start 开始执行？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"exit_program\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e退出程序\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e程序自己是不能 “停下来” 的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e指令集里没有一条关闭计算机的指令，那么操作系统是如何在关闭所有软件后，切断计算机的电源的？\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e只能借助\u003cstrong\u003e操作系统\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"nf\"\u003emovq\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"no\"\u003e$SYS_exit\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"nv\"\u003e%rax\u003c/span\u003e\u003cspan class=\"w\"\u003e   \u003c/span\u003e\u003cspan class=\"c1\"\u003e# exit(\u003c/span\u003e\n\u003cspan class=\"nf\"\u003emovq\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"no\"\u003e$1\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e         \u003c/span\u003e\u003cspan class=\"nv\"\u003e%rdi\u003c/span\u003e\u003cspan class=\"w\"\u003e   \u003c/span\u003e\u003cspan class=\"c1\"\u003e#   status=1\u003c/span\u003e\n\u003cspan class=\"nf\"\u003esyscall\u003c/span\u003e\u003cspan class=\"w\"\u003e                 \u003c/span\u003e\u003cspan class=\"c1\"\u003e# );\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e把\u003cstrong\u003e系统调用\u003c/strong\u003e的参数放到寄存器中\u003c/li\u003e\n\u003cli\u003e执行 syscall，操作系统接管程序\u003cul\u003e\n\u003cli\u003e操作系统可以任意改变程序状态 (甚至终止程序)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"intro/minimal\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/intro/minimal\"\u003e最小可执行文件\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e为了理解操作系统上的程序，我们的目标是构造一个能直接被操作系统加载且打印 Hello World 的指令序列。如果你能想到这一点，剩下的一切都可以让 AI 帮助你。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"syscall\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e系统调用指令：请求操作系统系统服务\u003c/h1\u003e\n\u003ch2 id=\"syscall-x86-64-ecall-risc-v-svc-aarch64\"\u003esyscall (x86-64), ecall (risc-v), svc (aarch64)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e对应用程序而言，这是一条区别于所有其他指令的 “特别指令”\u003cul\u003e\n\u003cli\u003e只有它可以打破 “程序状态” (memory/register) 的边界\u003c/li\u003e\n\u003cli\u003e\u003cstrong\u003e将状态机 “完全交给” 操作系统\u003c/strong\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"syscall\"\u003e直观地理解 syscall：类比 “全身麻醉”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e失去一切对自己的控制权\u003c/li\u003e\n\u003cli\u003e把权限主动交给另一组权限更高的人\u003cul\u003e\n\u003cli\u003e对于计算机系统而言，就是一条向操作系统代码的跳转\u003cul\u003e\n\u003cli\u003e跳转目的地是操作系统 “写死” 的，程序无权更改\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e服务完成后返回\u003cul\u003e\n\u003cli\u003e操作系统可以做 “任何事”\u003cul\u003e\n\u003cli\u003e可能醒来没事，可能肾没了，也可能再也醒不过来了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"slide\"\u003e(这是整个《操作系统》课最重要的一页 slide)\u003c/h2\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 操作系统上的应用世界\n \u003c/h2\u003e\n\u003ch3\u003e 3.1. 各式各样的应用程序\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"os_experience\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e操作系统上的应用程序\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e天天说操作系统，但我们其实是\u003cstrong\u003e感知不到\u003c/strong\u003e操作系统存在的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e能感受到的是操作系统上\u003cstrong\u003e运行的程序\u003c/strong\u003e (进程)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/minix3-desktop.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"applications\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"applications\"\u003e能直接看到的程序：Applications\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e开发\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e集成开发环境 Vscode, Cursor, …\u003c/li\u003e\n\u003cli\u003e编程工具 gcc, clang, nodejs, gdb, …\u003c/li\u003e\n\u003cli\u003e终端工具 tmux, vim, htop, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e日用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e办公 LibreOffice, GIMP, …\u003c/li\u003e\n\u003cli\u003e浏览器 Chrome, Firefox, …\u003c/li\u003e\n\u003cli\u003e媒体 OBS, VLC, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"utilities\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"utilities\"\u003e能直接看到的 (幕后) 程序：Utilities\u003c/h1\u003e\n\u003ch2 id=\"core-utilities-coreutils\"\u003eCore Utilities (coreutils)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cem\u003eStandard\u003c/em\u003e programs for text and file manipulation\u003c/li\u003e\n\u003cli\u003e系统中默认安装的是 \u003ca href=\"https://www.gnu.org/software/coreutils/\"\u003eGNU Coreutils\u003c/a\u003e\n\u003c/li\u003e\n\u003cli\u003e也有简化版 \u003ca href=\"https://www.busybox.net/\"\u003ebusybox\u003c/a\u003e, \u003ca href=\"https://landley.net/toybox/\"\u003etoybox\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e系统/工具程序：无所不能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eShell, Claude Code (下一代 Shell), \u003ca href=\"https://www.gnu.org/software/binutils/\"\u003ebinutils\u003c/a\u003e, …\u003c/li\u003e\n\u003cli\u003e包管理 (apt, dpkg, …)、网络管理 (ip, ssh, curl)、多媒体 (ffmpeg, gstreamer, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"background_programs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e不能直接看到的：各种后台程序\u003c/h1\u003e\n\u003ch2 id=\"daemon\"\u003e“守护进程” daemon\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e万物归宗 systemd\u003cul\u003e\n\u003cli\u003esystemd-network, systemd-logind, systemd-udevd, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e系统管理 cron, udiskd, unattended-upgrade (讨厌), …\u003c/li\u003e\n\u003cli\u003e各类服务 httpd, sshd, dbus, …\u003c/li\u003e\n\u003cli\u003e安全组件 auditd, firewalld, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e图形与媒体\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eWayland compositor, pulseaudio, pipewire, video4linux, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.2. 应用程序是什么\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"all_programs_same\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一切应用程序：它们都是 “一样” 的\u003c/h1\u003e\n\u003ch2 id=\"minimals\"\u003e和 minimal.S 有任何区别吗？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e简短的答案：\u003cstrong\u003e没有\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e任何程序 = minimal.S = 状态机\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e可执行文件是操作系统中的对象\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e系统里的程序和 minimal 一样，都是 ELF 可执行文件\u003cul\u003e\n\u003cli\u003e可执行文件就是 “状态机初始状态的描述”\u003cul\u003e\n\u003cli\u003e执行信息 (类型、入口地址……)\u003c/li\u003e\n\u003cli\u003e指令序列 (普通指令/系统调用)、数据……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e毫无疑问，打开文件是 “乱码”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"first_reverse\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"2000\"\u003e我的第一次二进制逆向 (~2000)\u003c/h1\u003e\n\u003ch2 id=\"5\"\u003e¥5 一张盗版游戏光盘的时代……\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e人畜无害的《大富翁 4》，却藏了一个神秘的文件夹\u003cul\u003e\n\u003cli\u003e大家知道 “\u003ca href=\"https://zhuanlan.zhihu.com/p/21347746\"\u003eElf\u003c/a\u003e”？(不是 a.out 的 Elf)\u003c/li\u003e\n\u003cli\u003e可是难度实在太高了 😭 \u003c/li\u003e\n\u003cli\u003eGAME.SAV 里有一串神秘的 0x00 0x00 0x01 0x00 0x00 代表了解锁 CG 的 “进度”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/rich4.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"world_changed\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e感叹：世界变了\u003c/h1\u003e\n\u003ch2 id=\"curiosity-is-all-you-need\"\u003e\u003cstrong\u003eCuriosity is all you need\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e如果那时候有人告诉我……\u003cul\u003e\n\u003cli\u003e同样的方式也可以去 hack Windows binary\u003c/li\u003e\n\u003cli\u003eBinary 太复杂？我们总有办法\u003cstrong\u003e用工具\u003c/strong\u003e把 “不在意” 的部分屏蔽掉\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"ai\"\u003e在 AI 的辅助下，你与 “顶尖人类” 的差距几乎为零\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一切代码工具都能自由组合、无限复用\u003c/li\u003e\n\u003cli\u003e只要你能给出正确的 prompt\u003cul\u003e\n\u003cli\u003e让 Claude Code hack 一下 minimal 吧！\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.3. 用正确的工具 “打开” 应用程序\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"right_tools\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e使用正确的工具\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e操作系统课会帮助大家建立正确的 “工具体系” 思维\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e打开程序的执行：Trace (追踪)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cblockquote\u003e\n\u003cp\u003eIn general, trace refers to the process of following \u003cem\u003eanything\u003c/em\u003e from the beginning to the end. For example, the traceroute command follows each of the network hops as your computer connects to another computer.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"system-call-trace-strace\"\u003e\u003cstrong\u003eSystem call trace (strace)\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e理解程序是如何与操作系统交互的\u003cul\u003e\n\u003cli\u003e(观测状态机执行里的 syscalls)\u003c/li\u003e\n\u003cli\u003eDemo: 试一试最小的 Hello World\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"any_program_in_os\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e操作系统中的 “任何程序”\u003c/h1\u003e\n\u003ch2 id=\"minimals\"\u003e\u003cstrong\u003e任何程序 = minimal.S = 状态机\u003c/strong\u003e\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e总是从被操作系统加载开始\u003cul\u003e\n\u003cli\u003e通过另一个进程执行 execve 设置为初始状态\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e经历状态机执行 (计算 + syscalls)\u003cul\u003e\n\u003cli\u003e进程管理：fork, execve, exit, …\u003c/li\u003e\n\u003cli\u003e文件/设备管理：open, close, read, write, …\u003c/li\u003e\n\u003cli\u003e存储管理：mmap, brk, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e最终调用 _exit (exit_group) 退出\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e感到吃惊？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e浏览器、游戏、杀毒软件、病毒呢？都是这些 API 吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"observe_execution\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e自己动手做实验：观察程序的执行\u003c/h1\u003e\n\u003ch2 id=\"gcc\"\u003e工具程序代表：编译器 (gcc)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003estrace -f gcc a.c (gcc 会启动其他进程)\u003cul\u003e\n\u003cli\u003eUNIX Philosophy 再次亮相\u003cul\u003e\n\u003cli\u003e可以管道给编辑器 vim - (vscode 也可以)\u003c/li\u003e\n\u003cli\u003e编辑器里还可以 %!grep\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e过去：《操作系统》课的 “魔法”\u003c/li\u003e\n\u003cli\u003e今天：AI 学会了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"xedit\"\u003e图形界面程序代表：编辑器 (xedit)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003estrace xedit\u003cul\u003e\n\u003cli\u003e图形界面程序和 X-Window 服务器按照 X11 协议通信\u003c/li\u003e\n\u003cli\u003e虚拟机中的 xedit 将 X11 命令通过 ssh (X11 forwarding) 转发到 Host\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"imagine_apps\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e想象 “一切应用程序” 的实现\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e应用程序 = 计算 + 操作系统 API\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e窗口管理器\u003cul\u003e\n\u003cli\u003e能直接管理屏幕设备 (read/write/mmap)\u003cul\u003e\n\u003cli\u003e能画一个点，理论上就能画任何东西\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e能够和其他进程通信 (send, recv)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e任务管理器\u003cul\u003e\n\u003cli\u003e能访问操作系统提供的进程对象 (readdir)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e杀毒软件\u003cul\u003e\n\u003cli\u003e文件静态扫描 (read)、主动防御 (ptrace)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"api_1\"\u003e操作系统的职责：提供令应用程序\u003cstrong\u003e舒适\u003c/strong\u003e的抽象 (对象 + API)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e(我们用一学期来讲这个内容)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e程序 = 状态机 (变量 + 栈)，通过指令/语句不断迁移状态。操作系统提供了一组抽象和 API：进程管理 (fork, execve, exit)、文件/设备管理：(open, close, read, write)、存储管理：(mmap, brk)……通过 strace 观察程序的行为，我们确认了 “真实” 的应用程序确实只是计算 + 系统调用实现的。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e本次课没有书本阅读材料；但你可以花一些时间和 AI 对话，了解一下 GNU Coreutils, Binutils，建立 “手边有哪些可用的命令行工具” 的一些印象，并且让 AI 带着你玩一玩这些应用。你还可以浏览 gdb 文档的目录，找到你感兴趣的章节了解，例如——“Reverse Execution”、“TUI: GDB Text User Interface”……对于你有兴趣的命令行工具，可以参考 busybox 和 toybox 项目中与之对应的简化实现。Toybox 现在已经成为了 Android 自带的命令行工具集。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect2.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

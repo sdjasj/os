@@ -1,0 +1,372 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> C 标准库和实现 (2)
+ </h1>
+<h2> 1. 编译 musl libc
+ </h2>
+<div class="slideshow" name="musl_libc"><div>
+<h1 id="libc">使用自己的 libc</h1>
+<h2 id="_1">原理</h2>
+<ul>
+<li>在 freestanding 的环境里，除了 “我的代码”，什么都没有<ul>
+<li>控制了 _start，就控制了一切</li>
+<li>Foreign function interface/inline assembly 可以执行系统调用/指令序列</li>
+<li>于是就没什么是不能实现的了</li>
+</ul>
+</li>
+</ul>
+<h2 id="musl-libc">实例：musl-libc</h2>
+<ul>
+<li>编译一份自己的 libc (musl-gcc), -Og &amp; -ggdb</li>
+<li>上次翻车原因：直接让豆包搞定，他幻觉搞定了 (这次直接修改配置并检查了)</li>
+</ul>
+<p><img alt="" src="static/img/doubao-fat.jpg"></p>
+</div></div>
+
+<h3> 1.1. Aside: Debug Info
+ </h3>
+<div class="slideshow" name="debug_info"><div>
+<h1 id="debug-info">Debug Info</h1>
+<h2 id="_1">二进制文件里除了指令和数据，还有<strong>额外的信息</strong>
+</h2>
+<ul>
+<li>低级程序状态 (PC、寄存器、内存) → 高级程序状态 (栈帧、变量、代码行)<ul>
+<li>我们可以用 .symtab 做近似的 addr2line</li>
+<li>gcc 支持 -gstabs 生成 .stab 符号表 (更好用的 addr2line)</li>
+</ul>
+</li>
+</ul>
+<h2 id="dwarf-debugging-standard">今天：<a href="https://dwarfstd.org/">DWARF Debugging Standard</a>
+</h2>
+<ul>
+<li>包含一个 bytecode 指令集，能任意访问进程内存，描述 “在某个 PC 范围内，变量的值在哪里、如何算出来”<ul>
+<li>甚至可以在<strong>优化后</strong>的二进制代码中得到部分信息</li>
+</ul>
+</li>
+<li>也用于实现 C++ 异常的 stack unwinding</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="debug_info_2"><div>
+<h1 id="claude-code">热评：Claude Code 源代码泄漏</h1>
+<h2 id="javascript-debug-info">JavaScript 的 debug info</h2>
+<ul>
+<li>你的 node_modules 里到处都是 .map (Source Code Map, JSON) 文件</li>
+<li>
+<a href="https://github.com/hangsman/claude-code-source/blob/main/cli.js.map">cli.js.map</a> 泄漏后，光速就有了<a href="https://github.com/oboard/claude-code-rev">能运行的版本</a><ul>
+<li>他们的 CI 竟然没有 <code>claude 是否存在潜在内部信息泄漏</code> 😊</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="p">{</span>
+<span class="w">    </span><span class="s2">"version"</span><span class="o">:</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"file"</span><span class="o">:</span><span class="w"> </span><span class="s2">"bundle.js"</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"sources"</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"src/index.js"</span><span class="p">],</span>
+<span class="w">    </span><span class="s2">"names"</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"map"</span><span class="p">,</span><span class="w"> </span><span class="s2">"callbackFn"</span><span class="p">],</span>
+<span class="w">    </span><span class="s2">"mappings"</span><span class="o">:</span><span class="w"> </span><span class="s2">"AAAA, ..."</span><span class="p">,</span>
+<span class="w">    </span><span class="s2">"sourcesContent"</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"const x = 1; ..."</span><span class="p">]</span><span class="w">   </span><span class="c1">// 就是这个！</span>
+<span class="p">}</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="debug_info_useful"><div>
+<h1 id="debug-info">Debug Info 的作用</h1>
+<h2 id="_1">重构 “程序意义” 状态的能力</h2>
+<ul>
+<li>Stack unwinding (backtrace)</li>
+<li>Trace/profiler (<a href="https://perfetto.dev/">Perfetto</a>, flame graph, …)</li>
+<li>Crash dump 调试</li>
+<li>AddressSanitizer 诊断报告</li>
+</ul>
+<p><img alt="" src="static/img/flame-graph.svg"></p>
+</div></div>
+
+<h2> 2. 探索 libc 实现
+ </h2>
+<div class="code-card" path="virtualization/musl-demos"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/musl-demos">调试 “小程序”</a></h1>
+<p>再次回到学习 C 语言时 “最简单” 的例子；但当我们有了操作系统的知识以后，我们就可以深入调试其中的每一个细节。从汇编指令到系统调用到，我们可以看到程序和处理器、操作系统的所有交互。</p>
+</div></div>
+</div>
+<div class="slideshow" name="debug_crt1"><div>
+<h1 id="crt1o">crt1.o 和程序初始化</h1>
+<h2 id="initial-process-stack">我们可以用代码里 “反向推出” Initial Process Stack</h2>
+<ul>
+<li>依旧豆包，启动</li>
+<li>(可以看到 dummy 的 strace 十分精简)</li>
+</ul>
+<p><img alt="" src="static/img/doubao-fat.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="debug_printf"><div>
+<h1 id="printf-va_args">调试 printf 和 va_args</h1>
+<h2 id="printf">printf</h2>
+<ul>
+<li>可以看到 struct FILE 的 “内部”<ul>
+<li>包括 stdout 变量</li>
+<li>一直到系统调用的使用 (和 strace 可以对上)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">变参数</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">n</span><span class="p">,</span><span class="w"> </span><span class="p">...)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">intptr_t</span><span class="w"> </span><span class="o">*</span><span class="n">vargs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="kt">intptr_t</span><span class="w"> </span><span class="o">*</span><span class="p">)</span><span class="o">&amp;</span><span class="n">n</span><span class="p">;</span>
+<span class="w">    </span><span class="c1">// vargs[0]</span>
+<span class="w">    </span><span class="c1">// vargs[1]</span>
+<span class="w">    </span><span class="c1">// ...</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>cdecl 的 hack 在 x86-64, aarch64, riscv 上都不能正常工作了</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="debug_setjmp"><div>
+<h1 id="setjmplongjmp">调试 setjmp/longjmp</h1>
+<h2 id="_1">这个比较复杂了</h2>
+<ul>
+<li>我们做一个有趣的 trick<ul>
+<li>setjmp 前写入所有寄存器</li>
+<li>longjmp 前再写入一次所有寄存器</li>
+<li>就可以很清楚地看到 setjmp/longjmp 的行为了</li>
+</ul>
+</li>
+<li>甚至可以逆向出部分 aarch64 的 calling convention<ul>
+<li>哪些恢复了，就是 callee-saved</li>
+<li>没恢复的都是 caller-saved (call-clobbered，我更喜欢这个理解)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="debug_gettimeofday"><div>
+<h1 id="gettimeofday">调试 gettimeofday</h1>
+<h2 id="_1">回答一个问题：到底有没有用系统调用？</h2>
+<ul>
+<li>我们一路可以看到进入 vDSO 的过程<ul>
+<li>甚至我们可以看到<strong>获取 gettimeofday 实际入口地址的代码</strong> (musl 的一部分)</li>
+</ul>
+</li>
+<li>我们甚至可以让 AI 帮我们 trace 指令序列</li>
+</ul>
+</div></div>
+
+<h2> 3. 动态内存分配
+ </h2>
+<div class="slideshow" name="malloc_intro"><div>
+<h1 id="malloc-free">malloc 和 free</h1>
+<h2 id="api">非常简单直观的 API</h2>
+<ul>
+<li>ptr = malloc(n); free(ptr)<ul>
+<li>例子：实现链表</li>
+<li>问题：内存从哪里来的呢？</li>
+</ul>
+</li>
+<li>操作系统<strong>不支持</strong>分配一小段内存<ul>
+<li>应用程序可以每次向操作系统 “多要一点” 内存</li>
+<li>自己在内存上实现一个数据结构</li>
+</ul>
+</li>
+</ul>
+<h2 id="mmapsbrk">内存分配背后的系统调用：mmap/sbrk</h2>
+<ul>
+<li>大段内存，要多少有多少<ul>
+<li>用 MAP_ANONYMOUS 申请</li>
+<li>超过物理内存上限都行 (回忆我们的 demo)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="malloc_and_free"><div>
+<h1 id="aside-mallocfree">Aside: malloc/free 犯下的 “错误”</h1>
+<blockquote>
+<p>I call it my billion-dollar mistake. It was the invention of the null reference in 1965. (Tony Hoare, 1934—2026)</p>
+</blockquote>
+<h2 id="_1">最小完备性 &amp; 机制与策略分离</h2>
+<ul>
+<li>系统调用, libc, …<ul>
+<li>有些 API 不引入额外的复杂性，例如 open/write → Pathlib</li>
+<li>有些不一样：malloc 要求在任何可能路径上都必有一次配对的 free，且之后不再使用<ul>
+<li>就为了证明这个，人类不知道走了多少弯路<ul>
+<li>今天：managed runtime, RAII, ownership/borrowing, …</li>
+</ul>
+</li>
+<li>无穷无尽的 CVEs: Use after free, concurrent use after free, memory leak, …</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="implement_malloc_n"><div>
+<h1 id="malloc">作业：实现 malloc</h1>
+<h2 id="n">如果 n 足够大</h2>
+<ul>
+<li>直接用 mmap 分配内存</li>
+</ul>
+<h2 id="n_1">如果 n 不够大</h2>
+<ul>
+<li>每个 mmap region 都维护了一个<strong>数据结构</strong><ul>
+<li>数据结构维护了不相交的小区间集合</li>
+<li>我们需要区间的 find-first、删除</li>
+</ul>
+</li>
+<li>如果你向这个方向思考，就会想到 balanced binary search tree ❌</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="malloc_research"><div>
+<h1 id="_1">年轻的你们对现实的恐怖一无所知</h1>
+<h2 id="1995-research">早在 1995 年：<a href="http://jyywiki.cn/OS/manuals/malloc-survey.pdf">这才叫 research</a>
+</h2>
+<ul>
+<li>Segregated free lists 在 1964 年就提出了</li>
+<li>停止无意义的 “科研实践”，去做真正有价值的事情</li>
+</ul>
+<blockquote>
+<p>Understanding real program behavior still remains the most important first step in formulating a theory of memory management. Without doing that, we cannot hope to develop the science of memory management; we can only fumble around doing ad hoc engineering, in the too-often-used pejorative sense of the word. At this point, the needs of good science and of good engineering in this area are the same—a deeper qualitative understanding. We must try to discern what is relevant and characterize it; this is necessary before formal techniques can be applied usefully.</p>
+</blockquote>
+</div></div>
+
+<div class="slideshow" name="efficient_malloc_free"><div>
+<h1 id="mallocfree">实现高效的 malloc/free</h1>
+<blockquote>
+<p>Premature optimization is the root of all evil.</p>
+<p>——D. E. Knuth</p>
+</blockquote>
+<h2 id="_1">重要的事情说三遍：</h2>
+<ul>
+<li>
+<strong>脱离 workload 做优化就是耍流氓</strong><ul>
+<li>在开始考虑性能之前，理解你需要考虑什么样的性能</li>
+</ul>
+</li>
+</ul>
+<h2 id="workload">然后，去哪里找 workload?</h2>
+<ul>
+<li>当然是 paper 了 (顺便白得一个方案)<ul>
+<li>
+<a href="https://www.microsoft.com/en-us/research/uploads/prod/2019/06/mimalloc-tr-v1.pdf">Mimalloc: free list sharding in action</a> (APLAS‘19)</li>
+<li>
+<a href="https://dl.acm.org/doi/10.1145/3620666.3651350">卷到今天</a>大家做的事情也没变：看 workload 调性能</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="theory_vs_practice"><div>
+<h1 id="vs">理论 v.s. 实践</h1>
+<h2 id="adversarial-worst-case">在实际系统中，我们通常不考虑 adversarial worst case</h2>
+<ul>
+<li>现实中的应用是 “正常” 的，不是 “恶意” 的<ul>
+<li>但这给了很多 Denial of Service 的机会：<a href="https://dl.acm.org/doi/abs/10.5555/3620237.3620571">Cross container attack</a>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="malloc">malloc() 的观察</h2>
+<ul>
+<li>
+<strong>大对象分配后应，读写数量应当远大于它的大小</strong><ul>
+<li>否则就是 performance bug</li>
+<li>申请 16MB 内存，扫了一遍就释放了😂<ul>
+<li>这不是 bug，难道还是 feature 吗？</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>推论：<strong>越小的对象创建/分配越频繁</strong>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="malloc_insights"><div>
+<h1 id="malloc">malloc() 的观察</h1>
+<h2 id="_1">我们需要管理的对象</h2>
+<ul>
+<li>小对象：字符串、临时对象等；生存周期可长可短 </li>
+<li>中对象：容器、复杂的对象；更长的生存周期</li>
+<li>大对象：巨大的容器、分配器；很长的生存周期</li>
+</ul>
+<h2 id="_2">结论</h2>
+<ul>
+<li>
+<strong>我们几乎只要管好小对象就好了</strong> (当然，仅针对 oslabs)</li>
+<li>由于所有分配都会在所有处理器上发生<ul>
+<li>小对象分配/回收的 <strong>scalability</strong> 是主要瓶颈</li>
+<li>使用链表/区间树 (first fit) 可不是个好想法</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="malloc_fast_slow"><div>
+<h1 id="malloc-fast-and-slow">malloc, Fast and Slow</h1>
+<h2 id="_1">人类也是这样的系统</h2>
+<ul>
+<li>
+<em>Thinking, Fast and Slow</em> by Daniel Kahneman</li>
+</ul>
+<h2 id="_2">设置两套系统</h2>
+<ul>
+<li>Fast path (System I)<ul>
+<li>性能极好、覆盖大部分情况</li>
+<li>但有小概率会失败 (fall back to slow path)</li>
+</ul>
+</li>
+<li>Slow path (System II)<ul>
+<li>不在乎那么快</li>
+<li>但把困难的事情做好</li>
+</ul>
+</li>
+<li>计算机系统里有很多这样的例子 (比如 cache)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="slabs"><div>
+<h1 id="_1">人类的智慧：空间换简洁</h1>
+<h2 id="segregated-lists-slab">分配: Segregated Lists (Slab)</h2>
+<ul>
+<li>每个 slab 里的每个对象都<strong>一样大</strong><ul>
+<li>每个线程拥有每个对象大小的 slab</li>
+<li>fast path → 立即在线程本地分配完成</li>
+<li>slow path → mmap()</li>
+</ul>
+</li>
+</ul>
+<h2 id="o1">回收: O(1)</h2>
+<p><img alt="" src="static/img/slabs.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="ai_era"><div>
+<h1 id="ai">AI 时代？</h1>
+<h2 id="heuristics-is-dead-policy-is-heuristics-llm-is-policy-mechanism-is-king">Heuristics is dead, Policy is Heuristics, LLM is Policy, Mechanism is King.</h2>
+<blockquote>
+<p>原文：“Tape is Dead, Disk is Tape, Flash is Disk, RAM Locality is King.” (Jim Gray, 2006)</p>
+</blockquote>
+<ul>
+<li>Scaling law &amp; bitter lesson: 我们需要为 AI 搭建<strong>舞台</strong>
+</li>
+<li>让 AI 在一个 Design Space 里探索<ul>
+<li>甚至允许扩充 Design Space </li>
+</ul>
+</li>
+</ul>
+<h2 id="phd">为什么我们要让 PhD 学生做<a href="http://jyywiki.cn/OS/manuals/malloc-survey.pdf">综述</a>？</h2>
+<ul>
+<li>学会提取 Design Space 的能力</li>
+<li>malloc/free 的 Design Space 是什么呢？</li>
+</ul>
+</div></div>
+
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>libc 作为屏蔽了几乎所有指令集体系结构和 ABI 的抽象层，里面有许多隐秘的 “角落”，必须用 “机器级” 的 hacking 实现，而不仅仅是系统调用的封装。在 libc 的抽象之上，除了极致性能的场景，我们几乎不再需要任何 “机器相关” 的代码——这个可移植的抽象层最终支撑了世界的应用生态。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>在 AI 的帮助下调试 musl libc 中你感兴趣的函数。</p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e C 标准库和实现 (2)\n \u003c/h1\u003e\n\u003ch2\u003e 1. 编译 musl libc\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"musl_libc\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"libc\"\u003e使用自己的 libc\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e原理\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在 freestanding 的环境里，除了 “我的代码”，什么都没有\u003cul\u003e\n\u003cli\u003e控制了 _start，就控制了一切\u003c/li\u003e\n\u003cli\u003eForeign function interface/inline assembly 可以执行系统调用/指令序列\u003c/li\u003e\n\u003cli\u003e于是就没什么是不能实现的了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"musl-libc\"\u003e实例：musl-libc\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e编译一份自己的 libc (musl-gcc), -Og \u0026amp; -ggdb\u003c/li\u003e\n\u003cli\u003e上次翻车原因：直接让豆包搞定，他幻觉搞定了 (这次直接修改配置并检查了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/doubao-fat.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. Aside: Debug Info\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"debug_info\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"debug-info\"\u003eDebug Info\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e二进制文件里除了指令和数据，还有\u003cstrong\u003e额外的信息\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e低级程序状态 (PC、寄存器、内存) → 高级程序状态 (栈帧、变量、代码行)\u003cul\u003e\n\u003cli\u003e我们可以用 .symtab 做近似的 addr2line\u003c/li\u003e\n\u003cli\u003egcc 支持 -gstabs 生成 .stab 符号表 (更好用的 addr2line)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"dwarf-debugging-standard\"\u003e今天：\u003ca href=\"https://dwarfstd.org/\"\u003eDWARF Debugging Standard\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e包含一个 bytecode 指令集，能任意访问进程内存，描述 “在某个 PC 范围内，变量的值在哪里、如何算出来”\u003cul\u003e\n\u003cli\u003e甚至可以在\u003cstrong\u003e优化后\u003c/strong\u003e的二进制代码中得到部分信息\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e也用于实现 C++ 异常的 stack unwinding\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"debug_info_2\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"claude-code\"\u003e热评：Claude Code 源代码泄漏\u003c/h1\u003e\n\u003ch2 id=\"javascript-debug-info\"\u003eJavaScript 的 debug info\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e你的 node_modules 里到处都是 .map (Source Code Map, JSON) 文件\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://github.com/hangsman/claude-code-source/blob/main/cli.js.map\"\u003ecli.js.map\u003c/a\u003e 泄漏后，光速就有了\u003ca href=\"https://github.com/oboard/claude-code-rev\"\u003e能运行的版本\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e他们的 CI 竟然没有 \u003ccode\u003eclaude 是否存在潜在内部信息泄漏\u003c/code\u003e 😊\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"version\"\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mf\"\u003e3\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"file\"\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"bundle.js\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"sources\"\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"src/index.js\"\u003c/span\u003e\u003cspan class=\"p\"\u003e],\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"names\"\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"map\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"callbackFn\"\u003c/span\u003e\u003cspan class=\"p\"\u003e],\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"mappings\"\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"AAAA, ...\"\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"s2\"\u003e\"sourcesContent\"\u003c/span\u003e\u003cspan class=\"o\"\u003e:\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"const x = 1; ...\"\u003c/span\u003e\u003cspan class=\"p\"\u003e]\u003c/span\u003e\u003cspan class=\"w\"\u003e   \u003c/span\u003e\u003cspan class=\"c1\"\u003e// 就是这个！\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"debug_info_useful\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"debug-info\"\u003eDebug Info 的作用\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e重构 “程序意义” 状态的能力\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eStack unwinding (backtrace)\u003c/li\u003e\n\u003cli\u003eTrace/profiler (\u003ca href=\"https://perfetto.dev/\"\u003ePerfetto\u003c/a\u003e, flame graph, …)\u003c/li\u003e\n\u003cli\u003eCrash dump 调试\u003c/li\u003e\n\u003cli\u003eAddressSanitizer 诊断报告\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/flame-graph.svg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 探索 libc 实现\n \u003c/h2\u003e\n\u003cdiv class=\"code-card\" path=\"virtualization/musl-demos\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/musl-demos\"\u003e调试 “小程序”\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e再次回到学习 C 语言时 “最简单” 的例子；但当我们有了操作系统的知识以后，我们就可以深入调试其中的每一个细节。从汇编指令到系统调用到，我们可以看到程序和处理器、操作系统的所有交互。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"debug_crt1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"crt1o\"\u003ecrt1.o 和程序初始化\u003c/h1\u003e\n\u003ch2 id=\"initial-process-stack\"\u003e我们可以用代码里 “反向推出” Initial Process Stack\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e依旧豆包，启动\u003c/li\u003e\n\u003cli\u003e(可以看到 dummy 的 strace 十分精简)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/doubao-fat.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"debug_printf\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"printf-va_args\"\u003e调试 printf 和 va_args\u003c/h1\u003e\n\u003ch2 id=\"printf\"\u003eprintf\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e可以看到 struct FILE 的 “内部”\u003cul\u003e\n\u003cli\u003e包括 stdout 变量\u003c/li\u003e\n\u003cli\u003e一直到系统调用的使用 (和 strace 可以对上)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e变参数\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003evoid\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003efoo\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003eintptr_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003evargs\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eintptr_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026amp;\u003c/span\u003e\u003cspan class=\"n\"\u003en\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// vargs[0]\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// vargs[1]\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"c1\"\u003e// ...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003ecdecl 的 hack 在 x86-64, aarch64, riscv 上都不能正常工作了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"debug_setjmp\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"setjmplongjmp\"\u003e调试 setjmp/longjmp\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e这个比较复杂了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们做一个有趣的 trick\u003cul\u003e\n\u003cli\u003esetjmp 前写入所有寄存器\u003c/li\u003e\n\u003cli\u003elongjmp 前再写入一次所有寄存器\u003c/li\u003e\n\u003cli\u003e就可以很清楚地看到 setjmp/longjmp 的行为了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e甚至可以逆向出部分 aarch64 的 calling convention\u003cul\u003e\n\u003cli\u003e哪些恢复了，就是 callee-saved\u003c/li\u003e\n\u003cli\u003e没恢复的都是 caller-saved (call-clobbered，我更喜欢这个理解)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"debug_gettimeofday\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"gettimeofday\"\u003e调试 gettimeofday\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e回答一个问题：到底有没有用系统调用？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我们一路可以看到进入 vDSO 的过程\u003cul\u003e\n\u003cli\u003e甚至我们可以看到\u003cstrong\u003e获取 gettimeofday 实际入口地址的代码\u003c/strong\u003e (musl 的一部分)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e我们甚至可以让 AI 帮我们 trace 指令序列\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 动态内存分配\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"malloc_intro\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"malloc-free\"\u003emalloc 和 free\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003e非常简单直观的 API\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eptr = malloc(n); free(ptr)\u003cul\u003e\n\u003cli\u003e例子：实现链表\u003c/li\u003e\n\u003cli\u003e问题：内存从哪里来的呢？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e操作系统\u003cstrong\u003e不支持\u003c/strong\u003e分配一小段内存\u003cul\u003e\n\u003cli\u003e应用程序可以每次向操作系统 “多要一点” 内存\u003c/li\u003e\n\u003cli\u003e自己在内存上实现一个数据结构\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"mmapsbrk\"\u003e内存分配背后的系统调用：mmap/sbrk\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e大段内存，要多少有多少\u003cul\u003e\n\u003cli\u003e用 MAP_ANONYMOUS 申请\u003c/li\u003e\n\u003cli\u003e超过物理内存上限都行 (回忆我们的 demo)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"malloc_and_free\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"aside-mallocfree\"\u003eAside: malloc/free 犯下的 “错误”\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003eI call it my billion-dollar mistake. It was the invention of the null reference in 1965. (Tony Hoare, 1934—2026)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e最小完备性 \u0026amp; 机制与策略分离\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e系统调用, libc, …\u003cul\u003e\n\u003cli\u003e有些 API 不引入额外的复杂性，例如 open/write → Pathlib\u003c/li\u003e\n\u003cli\u003e有些不一样：malloc 要求在任何可能路径上都必有一次配对的 free，且之后不再使用\u003cul\u003e\n\u003cli\u003e就为了证明这个，人类不知道走了多少弯路\u003cul\u003e\n\u003cli\u003e今天：managed runtime, RAII, ownership/borrowing, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e无穷无尽的 CVEs: Use after free, concurrent use after free, memory leak, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"implement_malloc_n\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"malloc\"\u003e作业：实现 malloc\u003c/h1\u003e\n\u003ch2 id=\"n\"\u003e如果 n 足够大\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e直接用 mmap 分配内存\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"n_1\"\u003e如果 n 不够大\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每个 mmap region 都维护了一个\u003cstrong\u003e数据结构\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e数据结构维护了不相交的小区间集合\u003c/li\u003e\n\u003cli\u003e我们需要区间的 find-first、删除\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e如果你向这个方向思考，就会想到 balanced binary search tree ❌\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"malloc_research\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e年轻的你们对现实的恐怖一无所知\u003c/h1\u003e\n\u003ch2 id=\"1995-research\"\u003e早在 1995 年：\u003ca href=\"http://jyywiki.cn/OS/manuals/malloc-survey.pdf\"\u003e这才叫 research\u003c/a\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eSegregated free lists 在 1964 年就提出了\u003c/li\u003e\n\u003cli\u003e停止无意义的 “科研实践”，去做真正有价值的事情\u003c/li\u003e\n\u003c/ul\u003e\n\u003cblockquote\u003e\n\u003cp\u003eUnderstanding real program behavior still remains the most important first step in formulating a theory of memory management. Without doing that, we cannot hope to develop the science of memory management; we can only fumble around doing ad hoc engineering, in the too-often-used pejorative sense of the word. At this point, the needs of good science and of good engineering in this area are the same—a deeper qualitative understanding. We must try to discern what is relevant and characterize it; this is necessary before formal techniques can be applied usefully.\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"efficient_malloc_free\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"mallocfree\"\u003e实现高效的 malloc/free\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003ePremature optimization is the root of all evil.\u003c/p\u003e\n\u003cp\u003e——D. E. Knuth\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"_1\"\u003e重要的事情说三遍：\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e脱离 workload 做优化就是耍流氓\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e在开始考虑性能之前，理解你需要考虑什么样的性能\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"workload\"\u003e然后，去哪里找 workload?\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e当然是 paper 了 (顺便白得一个方案)\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://www.microsoft.com/en-us/research/uploads/prod/2019/06/mimalloc-tr-v1.pdf\"\u003eMimalloc: free list sharding in action\u003c/a\u003e (APLAS‘19)\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://dl.acm.org/doi/10.1145/3620666.3651350\"\u003e卷到今天\u003c/a\u003e大家做的事情也没变：看 workload 调性能\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"theory_vs_practice\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"vs\"\u003e理论 v.s. 实践\u003c/h1\u003e\n\u003ch2 id=\"adversarial-worst-case\"\u003e在实际系统中，我们通常不考虑 adversarial worst case\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e现实中的应用是 “正常” 的，不是 “恶意” 的\u003cul\u003e\n\u003cli\u003e但这给了很多 Denial of Service 的机会：\u003ca href=\"https://dl.acm.org/doi/abs/10.5555/3620237.3620571\"\u003eCross container attack\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"malloc\"\u003emalloc() 的观察\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e大对象分配后应，读写数量应当远大于它的大小\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e否则就是 performance bug\u003c/li\u003e\n\u003cli\u003e申请 16MB 内存，扫了一遍就释放了😂\u003cul\u003e\n\u003cli\u003e这不是 bug，难道还是 feature 吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e推论：\u003cstrong\u003e越小的对象创建/分配越频繁\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"malloc_insights\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"malloc\"\u003emalloc() 的观察\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e我们需要管理的对象\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e小对象：字符串、临时对象等；生存周期可长可短 \u003c/li\u003e\n\u003cli\u003e中对象：容器、复杂的对象；更长的生存周期\u003c/li\u003e\n\u003cli\u003e大对象：巨大的容器、分配器；很长的生存周期\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e结论\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e我们几乎只要管好小对象就好了\u003c/strong\u003e (当然，仅针对 oslabs)\u003c/li\u003e\n\u003cli\u003e由于所有分配都会在所有处理器上发生\u003cul\u003e\n\u003cli\u003e小对象分配/回收的 \u003cstrong\u003escalability\u003c/strong\u003e 是主要瓶颈\u003c/li\u003e\n\u003cli\u003e使用链表/区间树 (first fit) 可不是个好想法\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"malloc_fast_slow\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"malloc-fast-and-slow\"\u003emalloc, Fast and Slow\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e人类也是这样的系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cem\u003eThinking, Fast and Slow\u003c/em\u003e by Daniel Kahneman\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e设置两套系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFast path (System I)\u003cul\u003e\n\u003cli\u003e性能极好、覆盖大部分情况\u003c/li\u003e\n\u003cli\u003e但有小概率会失败 (fall back to slow path)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eSlow path (System II)\u003cul\u003e\n\u003cli\u003e不在乎那么快\u003c/li\u003e\n\u003cli\u003e但把困难的事情做好\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e计算机系统里有很多这样的例子 (比如 cache)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"slabs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e人类的智慧：空间换简洁\u003c/h1\u003e\n\u003ch2 id=\"segregated-lists-slab\"\u003e分配: Segregated Lists (Slab)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每个 slab 里的每个对象都\u003cstrong\u003e一样大\u003c/strong\u003e\u003cul\u003e\n\u003cli\u003e每个线程拥有每个对象大小的 slab\u003c/li\u003e\n\u003cli\u003efast path → 立即在线程本地分配完成\u003c/li\u003e\n\u003cli\u003eslow path → mmap()\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"o1\"\u003e回收: O(1)\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/slabs.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"ai_era\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"ai\"\u003eAI 时代？\u003c/h1\u003e\n\u003ch2 id=\"heuristics-is-dead-policy-is-heuristics-llm-is-policy-mechanism-is-king\"\u003eHeuristics is dead, Policy is Heuristics, LLM is Policy, Mechanism is King.\u003c/h2\u003e\n\u003cblockquote\u003e\n\u003cp\u003e原文：“Tape is Dead, Disk is Tape, Flash is Disk, RAM Locality is King.” (Jim Gray, 2006)\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003eScaling law \u0026amp; bitter lesson: 我们需要为 AI 搭建\u003cstrong\u003e舞台\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e让 AI 在一个 Design Space 里探索\u003cul\u003e\n\u003cli\u003e甚至允许扩充 Design Space \u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"phd\"\u003e为什么我们要让 PhD 学生做\u003ca href=\"http://jyywiki.cn/OS/manuals/malloc-survey.pdf\"\u003e综述\u003c/a\u003e？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e学会提取 Design Space 的能力\u003c/li\u003e\n\u003cli\u003emalloc/free 的 Design Space 是什么呢？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003elibc 作为屏蔽了几乎所有指令集体系结构和 ABI 的抽象层，里面有许多隐秘的 “角落”，必须用 “机器级” 的 hacking 实现，而不仅仅是系统调用的封装。在 libc 的抽象之上，除了极致性能的场景，我们几乎不再需要任何 “机器相关” 的代码——这个可移植的抽象层最终支撑了世界的应用生态。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e在 AI 的帮助下调试 musl libc 中你感兴趣的函数。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect10.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

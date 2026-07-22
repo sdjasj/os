@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 500" width="100%" height="100%">
+    <defs>
+      <!-- Background and Casing Gradients -->
+      <radialGradient id="bg" cx="50%" cy="50%" r="75%">
+        <stop offset="0%" stop-color="#1f1f1f"/>
+        <stop offset="80%" stop-color="#0a0a0a"/>
+        <stop offset="100%" stop-color="#000000"/>
+      </radialGradient>
+  
+      <radialGradient id="ambientGlow" cx="50%" cy="50%" r="60%">
+        <stop offset="0%" stop-color="#ff0000" stop-opacity="0.12"/>
+        <stop offset="100%" stop-color="#ff0000" stop-opacity="0"/>
+      </radialGradient>
+  
+      <linearGradient id="glare" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12"/>
+        <stop offset="50%" stop-color="#ffffff" stop-opacity="0.02"/>
+        <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+  
+      <!-- LED Segment Gradients (Lit) - featuring dual hotspots to simulate internal LED dice -->
+      <linearGradient id="litHoriz" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#8a0000"/>
+        <stop offset="15%" stop-color="#e60000"/>
+        <stop offset="25%" stop-color="#ffe6e6"/>
+        <stop offset="35%" stop-color="#e60000"/>
+        <stop offset="50%" stop-color="#a30000"/>
+        <stop offset="65%" stop-color="#e60000"/>
+        <stop offset="75%" stop-color="#ffe6e6"/>
+        <stop offset="85%" stop-color="#e60000"/>
+        <stop offset="100%" stop-color="#8a0000"/>
+      </linearGradient>
+  
+      <linearGradient id="litVert" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#8a0000"/>
+        <stop offset="15%" stop-color="#e60000"/>
+        <stop offset="25%" stop-color="#ffe6e6"/>
+        <stop offset="35%" stop-color="#e60000"/>
+        <stop offset="50%" stop-color="#a30000"/>
+        <stop offset="65%" stop-color="#e60000"/>
+        <stop offset="75%" stop-color="#ffe6e6"/>
+        <stop offset="85%" stop-color="#e60000"/>
+        <stop offset="100%" stop-color="#8a0000"/>
+      </linearGradient>
+  
+      <!-- LED Segment Gradient (Unlit) - simulated dark recessed glass -->
+      <linearGradient id="unlit" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#140202"/>
+        <stop offset="50%" stop-color="#2a0505"/>
+        <stop offset="100%" stop-color="#0a0000"/>
+      </linearGradient>
+  
+      <!-- Optical Bloom/Glow Filter for maximum realism -->
+      <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur in="SourceGraphic" stdDeviation="25" result="blurXL"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blurL"/>
+        <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blurS"/>
+        <feMerge>
+          <feMergeNode in="blurXL"/>
+          <feMergeNode in="blurL"/>
+          <feMergeNode in="blurS"/>
+          <feMergeNode in="SourceGraphic"/>
+        </feMerge>
+      </filter>
+  
+      <!-- Precise Seven-Segment Polygon Paths -->
+      <path id="segA" d="M 48 40 L 64 24 L 176 24 L 192 40 L 176 56 L 64 56 Z" />
+      <path id="segB" d="M 196 44 L 212 60 L 212 176 L 196 192 L 180 176 L 180 60 Z" />
+      <path id="segC" d="M 196 208 L 212 224 L 212 340 L 196 356 L 180 340 L 180 224 Z" />
+      <path id="segD" d="M 48 360 L 64 344 L 176 344 L 192 360 L 176 376 L 64 376 Z" />
+      <path id="segE" d="M 44 208 L 60 224 L 60 340 L 44 356 L 28 340 L 28 224 Z" />
+      <path id="segF" d="M 44 44 L 60 60 L 60 176 L 44 192 L 28 176 L 28 60 Z" />
+      <path id="segG" d="M 48 200 L 64 184 L 176 184 L 192 200 L 176 216 L 64 216 Z" />
+      <circle id="segDP" cx="236" cy="360" r="16" />
+    </defs>
+  
+    <!-- Outer Plastic Package Base -->
+    <rect x="10" y="10" width="320" height="480" rx="20" ry="20" fill="#141414" />
+    
+    <!-- Main Display Screen Area -->
+    <rect x="20" y="20" width="300" height="460" rx="14" ry="14" fill="url(#bg)" stroke="#262626" stroke-width="2"/>
+    
+    <!-- Recessed Display Bezel / Inner Shadow -->
+    <rect x="22" y="22" width="296" height="456" rx="12" ry="12" fill="none" stroke="#000000" stroke-width="4"/>
+  
+    <!-- Subtle Ambient Glow radiating from the active LEDs -->
+    <rect x="22" y="22" width="296" height="456" rx="12" ry="12" fill="url(#ambientGlow)"/>
+  
+    <!-- Seven Segment Digits Container -->
+    <!-- Translate dynamically centers the slightly skewed shape -->
+    <g transform="translate(98, 50) skewX(-10)">
+      
+      <!-- BASE LAYER: Unlit Segments (acts as dark backing and defines the unlit "B" and "DP") -->
+      <g fill="url(#unlit)" stroke="#050000" stroke-width="3" stroke-linejoin="round">
+        <use href="#segA" />
+        <use href="#segB" />
+        <use href="#segC" />
+        <use href="#segD" />
+        <use href="#segE" />
+        <use href="#segF" />
+        <use href="#segG" />
+        <use href="#segDP" />
+      </g>
+  
+      <!-- ACTIVE LAYER: Lit Segments rendering the number "6" with intense bloom filter -->
+      <g filter="url(#bloom)" stroke="none">
+        <use href="#segA" fill="url(#litHoriz)" />
+        <!-- Segment B is unlit for "6" -->
+        <use href="#segC" fill="url(#litVert)" />
+        <use href="#segD" fill="url(#litHoriz)" />
+        <use href="#segE" fill="url(#litVert)" />
+        <use href="#segF" fill="url(#litVert)" />
+        <use href="#segG" fill="url(#litHoriz)" />
+      </g>
+      
+    </g>
+  
+    <!-- Glass Casing Reflections and Glare (Overlays to enhance realism) -->
+    <!-- Large diagonal soft glare -->
+    <path d="M 22 22 L 318 22 L 318 190 C 210 260, 110 170, 22 280 Z" fill="url(#glare)" opacity="0.6" style="mix-blend-mode: screen; pointer-events: none;" />
+    <!-- Sharp top edge reflection -->
+    <path d="M 22 22 L 318 22 L 318 26 C 210 24, 110 24, 22 26 Z" fill="#ffffff" opacity="0.15" pointer-events="none" />
+    
+    <!-- Display Hardware Details (Screws/Mounting Indents) -->
+    <circle cx="42" cy="42" r="5" fill="#080808" stroke="#1f1f1f" stroke-width="1"/>
+    <circle cx="298" cy="42" r="5" fill="#080808" stroke="#1f1f1f" stroke-width="1"/>
+    <circle cx="42" cy="458" r="5" fill="#080808" stroke="#1f1f1f" stroke-width="1"/>
+    <circle cx="298" cy="458" r="5" fill="#080808" stroke="#1f1f1f" stroke-width="1"/>
+  
+    <!-- Serial / Part Number Detail -->
+    <text x="170" y="465" font-family="monospace" font-size="12" fill="#3a3a3a" font-weight="bold" text-anchor="middle" letter-spacing="1">HDSP-7SR6</text>
+  </svg>

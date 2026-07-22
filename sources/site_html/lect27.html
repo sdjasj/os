@@ -1,0 +1,451 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 数据库系统
+ </h1>
+<div class="slideshow" name="review"><div>
+<h1 id="review-comments">Review &amp; Comments</h1>
+<h2 id="_1">持久化：文件系统</h2>
+<ul>
+<li>Linux: 块设备上的一个数据结构</li>
+<li>支持 crash consistency 和 recovery</li>
+</ul>
+<h2 id="_2">我们用文件系统来做什么？</h2>
+<ul>
+<li>保存<strong>应用程序</strong>用的数据</li>
+<li>我们总是通过应用程序访问文件 (哪怕是 cat, sort)<ul>
+<li>课件.pptx, 作业.docx, 电影.mp4, Projects/oslabs/… </li>
+<li>这也是为什么应用程序的 crash consistency 也很重要</li>
+</ul>
+</li>
+<li>文件系统提供了 “原始” 的 API<ul>
+<li>文件 (byte array)、目录</li>
+<li>有没有更好的保存应用程序数据的方法？</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h2> 1. 持久保存应用数据
+ </h2>
+<div class="slideshow" name="what_is_app"><div>
+<h1 id="_1">什么是 “应用程序”？</h1>
+<blockquote>
+<p>软件是物理世界过程在信息世界中的投影。</p>
+</blockquote>
+<h2 id="persist-data">软件天生有 persist data 的需求</h2>
+<ul>
+<li>个人信息 (学籍……)</li>
+<li>订单</li>
+<li>日志 (支付记录、维护记录)……</li>
+</ul>
+<h2 id="crud">本质：数据结构的 CRUD</h2>
+<ul>
+<li>
+<a href="https://ehallapp.nju.edu.cn/jwapp/sys/teacherJxrwApp/*default/index.do">教务系统</a><ul>
+<li>管理员、教务员、教师、学生看到不同的数据和操作接口</li>
+</ul>
+</li>
+<li>
+<a href="https://cs.nju.edu.cn/yuanyao/course/dismath/lec1.pptx">演示文稿</a><ul>
+<li>XML 描述的数据结构 (ISO/IEC 29500)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 1.1. 使用目录和文件
+ </h3>
+<div class="slideshow" name="persist_data_fs"><div>
+<h1 id="everything-is-a-file">Everything is a File</h1>
+<div class="codehilite"><pre><span></span><code>ehall.nju.edu.cn/teacherJxrwApp/22020230/4
+├── enrollment
+│   ├── 231220001.md
+│   └── ...
+├── syllabus
+│   ├── 1-intro.md
+│   └── ...
+└── textbook
+    └── 1-ostep.md
+</code></pre></div>
+
+<h2 id="unix-find-grep">UNIX 世界中的工具都能用了：find, grep, …</h2>
+<ul>
+<li>甚至可以用 symlink 去实现 “引用” (enroll/id/student -&gt; …)</li>
+<li>自动得到的 agent friendly (非常巨大的优势)</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="fs_as_db"><div>
+<h1 id="_1">优点和缺点</h1>
+<h2 id="tool-friendly-agent-friendly">Tool friendly 和 agent friendly 的代价</h2>
+<ul>
+<li>Crash consistency 实现需要小心<ul>
+<li>最好是 append-only 的</li>
+</ul>
+</li>
+<li>性能稍差一些<ul>
+<li>每次都需要去文件系统 API 绕一圈，还有隐藏的读/写放大</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">结论：小规模系统 (例如课程主页) 的选择</h2>
+<ul>
+<li>提交存储在 <code>/var/www/filerecv/OS2026/M1/[stuid]</code><ul>
+<li>
+<code>2026-04-04-19-26-43.tar.bz2</code>: 提交</li>
+<li>
+<code>2026-04-04-19-26-43.tar.bz2.result</code>: 结果</li>
+</ul>
+</li>
+<li>统计 Accepted 数量：<code>cat **/*.result | grep ... | wc -l</code>
+</li>
+<li>Rejudge M5: <code>echo M5/**/*.result | xargs rm</code>
+</li>
+</ul>
+</div></div>
+
+<h3> 1.2. 直接保存数据结构
+ </h3>
+<div class="slideshow" name="persist_data_1"><div>
+<h1 id="hack">一个有趣的 Hack</h1>
+<h2 id="_1">直接在文件 (虚拟磁盘) 上构建<strong>数据结构</strong>
+</h2>
+<ul>
+<li>就像 ELF, BMP, …</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">superblock</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">student</span><span class="w"> </span><span class="o">*</span><span class="n">s</span><span class="p">;</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">course</span><span class="w"> </span><span class="o">*</span><span class="n">c</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">student</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">stuid</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span><span class="w"> </span><span class="p">...</span><span class="w">  </span><span class="p">};</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">course</span><span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">cid</span><span class="p">[</span><span class="mi">16</span><span class="p">];</span><span class="w"> </span><span class="p">...</span><span class="w">  </span><span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>实现数据结构的 CRUD: <code>expel(s);</code> <code>enroll(s, c);</code> …</li>
+</ul>
+<h2 id="mmap-persist">甚至可以直接把数据结构 mmap 到内存，直接 persist 指针</h2>
+<ul>
+<li>坑：mmap region 不会自动 write-back</li>
+<li>需要 msync (2); 而且 msync 并不保证 crash consistency</li>
+<li>还需要额外的 fdatasync</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="persistence/mmds"><div><div>
+<h1 id="memory-mapped"><a href="/OS/demos/persistence/mmds">Memory-mapped 数据结构</a></h1>
+<p>如果我们总是把数据结构映射到固定的位置 (并且为数据结构的分配使用专用的分配器，总是从固定位置分配)，就可以直接把数据结构映射到磁盘上，甚至也可以实现 write-ahead log。</p>
+</div></div>
+</div>
+<div class="slideshow" name="game_state"><div>
+<h1 id="wal-log">你甚至可以实现 WAL Log</h1>
+<h2 id="_1">比大家想象的简单</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">superblock</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">u32</span><span class="w"> </span><span class="n">magic</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="n">wal</span><span class="p">[</span><span class="mi">256</span><span class="p">];</span>
+<span class="w">    </span><span class="p">...</span>
+<span class="p">};</span>
+</code></pre></div>
+
+<ul>
+<li>对于任何数据结构操作，先把所有的 side effects 写入 wal<ul>
+<li>(代码示例里偷懒了，只记了命令，crash 时数据结构是一致的)</li>
+</ul>
+</li>
+<li>然后执行操作，清除 WAL</li>
+</ul>
+<h2 id="single-level-store">恭喜你，发明了 “<a href="https://dl.acm.org/doi/10.1145/3477132.3483563">single-level store</a>” 操作系统！</h2>
+<ul>
+<li>在 persistent memory 时代很有可能复活</li>
+</ul>
+</div></div>
+
+<h2> 2. 关系型数据库
+ </h2>
+<div class="slideshow" name="what_we_need"><div>
+<h1 id="_1">需求：一个非常非常好的数据结构</h1>
+<h2 id="_2">好用</h2>
+<ul>
+<li>能处理几乎任意类型的数据结构</li>
+<li>好对任何人来说都比较好上手</li>
+</ul>
+<h2 id="_3">性能</h2>
+<ul>
+<li>全校一起选课，系统不能崩 (不能一把大锁保平安)</li>
+</ul>
+<h2 id="crash-consistent">持久化 (Crash Consistent) 和一致性</h2>
+<ul>
+<li>系统故障，数据不能丢</li>
+<li>数据结构需要支持 multi-write<ul>
+<li>例子：批量导入学生选课信息，需要 all-or-nothing</li>
+</ul>
+</li>
+<li>同时满足这些需求的东西真的能存在吗？</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="think"><div>
+<h1 id="_1">反思：我们是怎么实现数据结构的？</h1>
+<h2 id="pointer-machine">我们的计算机是 Pointer machine</h2>
+<ul>
+<li>实现数据结构其实不需要 “数组”</li>
+<li>malloc(constant) 分配固定大小的内存，就能实现任意数据结构</li>
+</ul>
+<h2 id="pointer">Pointer 是对象之间的关系</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">node</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="n">value</span><span class="p">[</span><span class="mi">32</span><span class="p">];</span><span class="w">  </span><span class="c1">// Record</span>
+<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">node</span><span class="w"> </span><span class="o">*</span><span class="n">left</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">right</span><span class="p">;</span><span class="w">  </span><span class="c1">// Pointers</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>离散数学：整个计算机世界都是在二元关系上 foramlize 的</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="relational_model"><div>
+<h1 id="relational-database">Relational Database (关系型数据库)</h1>
+<h2 id="surprisingly-simple">一个 surprisingly simple 的模型</h2>
+<ul>
+<li>
+<a href="https://dl.acm.org/doi/10.1145/362384.362685">A relational model of data for large shared data banks</a><ul>
+<li>Edgar F. Codd: 1981 Turing Award Winner</li>
+<li>“Future users of large data banks must be protected from having to know how the data is organized in the machine.”<ul>
+<li>我做了很多年 program synthesis; 但凡是 end-user 的，最后的设计理念都会回到这一篇 paper</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="everything-is-a-table">Everything is a table</h2>
+<ul>
+<li>每行一个对象；对象可以用 id 索引其他对象</li>
+<li>struct = table 的一行</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="rdbms_diagram"><div>
+<h1 id="_1">关系数据库模型</h1>
+<h2 id="_2">“对象和指针”</h2>
+<p><img alt="" src="static/img/rdbms-jw.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="rdbms_query"><div>
+<h1 id="_1">关系数据库查询：指针 “配对”</h1>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="n">Courses</span><span class="p">.</span><span class="n">Title</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">Student</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">Takes_Course</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">Student</span><span class="p">.</span><span class="n">ID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Takes_Course</span><span class="p">.</span><span class="n">ID</span><span class="w">  </span><span class="c1">-- Key</span>
+<span class="k">JOIN</span><span class="w"> </span><span class="n">Courses</span>
+<span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">Takes_Course</span><span class="p">.</span><span class="n">ClassID</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Courses</span><span class="p">.</span><span class="n">ClassID</span><span class="w">  </span><span class="c1">-- Key</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">Student</span><span class="p">.</span><span class="n">Name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="s1">'张%'</span>
+</code></pre></div>
+
+<p><img alt="" src="static/img/rdbms-jw.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="acid_era"><div>
+<h1 id="_1">从模型到实现：数据库系统</h1>
+<h2 id="acid">“ACID” 数据库开启软件的新时代</h2>
+<ul>
+<li>A (Atomicity), C (Consistency), I (Isolation), D (Durability)<ul>
+<li>Serializability: 并发执行的效果等价于某种串行执行</li>
+<li>Strong crash consistency: 系统 crash 也不会损坏或丢失</li>
+</ul>
+</li>
+</ul>
+<h2 id="transaction">支持任意长 (允许混合任意计算) 的 Transaction</h2>
+<ul>
+<li>这个特性太重要了</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">tx_begin</span><span class="p">();</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">user1</span><span class="p">.</span><span class="n">balance</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">m</span><span class="p">)</span><span class="w"> </span><span class="n">tx_abort</span><span class="p">();</span><span class="w">  </span><span class="c1">// SQL</span>
+<span class="n">user1</span><span class="p">.</span><span class="n">balance</span><span class="w"> </span><span class="o">-=</span><span class="w"> </span><span class="n">m</span><span class="p">;</span><span class="w">  </span><span class="c1">// SQL</span>
+<span class="n">user2</span><span class="p">.</span><span class="n">balance</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">m</span><span class="p">;</span><span class="w">  </span><span class="c1">// SQL</span>
+<span class="n">tx_commit</span><span class="p">();</span>
+</code></pre></div>
+</div></div>
+
+<div class="slideshow" name="acid_db"><div>
+<h1 id="acid">ACID 数据库</h1>
+<h2 id="_1">学过《操作系统》就很好理解了</h2>
+<ul>
+<li>并发执行的效果 = 一把大锁保平安</li>
+<li>但性能远优于粗粒度加锁</li>
+<li>完全自动的崩溃恢复<ul>
+<li>应用数据交给数据库 = <strong>一劳永逸</strong>
+</li>
+<li>甚至在应用有 bug 的时候，都还可以<a href="https://www.zhihu.com/question/602083441/answer/3038238487">强行抢救</a>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">关系数据库：海量的实现优化</h2>
+<ul>
+<li>查询优化 (rewriting)</li>
+<li>索引 (B+ Tree 等数据结构)</li>
+<li>缓存、分库分表、并发控制、读写分离……<ul>
+<li>只要不是大到 “国民级” 的应用，数据库都能搞定</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 2.1. 数据库系统：实现
+ </h3>
+<div class="slideshow" name="db_vs_compiler"><div>
+<h1 id="databases-vs-compilers">Databases v.s. Compilers</h1>
+<h2 id="rewriting">实现查询 = 实现编译优化 (语义等价的 rewriting)</h2>
+<ul>
+<li>我选择抄作业 (<a href="https://15445.courses.cs.cmu.edu/">CMU 15-445</a>, Andy Pavlo) 😂</li>
+</ul>
+<p><img alt="center w:800" src="static/img/sql-exec.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="concurrent_program"><div>
+<h1 id="_1">一个超级复杂的并发程序</h1>
+<h2 id="sql">每个 SQL 都操作数据库的一部分</h2>
+<ul>
+<li>Write(x)</li>
+<li>Read(y)<ul>
+<li>用于维护 “磁盘上的数据结构”</li>
+<li>类似文件系统，write-ahead logging (crash consistency)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">但并发控制更困难</h2>
+<ul>
+<li>T_1: <code>tx_begin(); x = 1; may_crash(); y = 2; tx_commit()</code>
+</li>
+<li>T_2: <code>tx_begin(); y = 1; sleep(100000); x = 2; tx_commit()</code><ul>
+<li>2 Phase Locking: 由于 Tx 可以执行任意代码，所以只能 “边执行边上锁” + deadlock detection，遇到死锁就 rollback，commit 时释放</li>
+<li>MVCC: 每次都开一个新的 git branch (copy-on-write)，commit 的时候向 main merge，检测到冲突就 rollback</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="sqlite_example"><div>
+<h1 id="sqlite">例子：SQLite</h1>
+<h2 id="_1">无处不在的数据库</h2>
+<blockquote>
+<p><a href="https://sqlite.org/index.html">SQLite</a> is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured, SQL database engine. SQLite is the most used database engine in the world…</p>
+</blockquote>
+<ul>
+<li>一个基于文件实现的支持 SQL 的 “数据结构”</li>
+<li>Android, iOS, macOS, Chrome, … 中广泛内嵌了 SQLite<ul>
+<li>Zero Configuration (发行版自带 libsqlite3.so；适合 “年轻人的第一个应用”)</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/sqlite.svg"></p>
+</div></div>
+
+<h2> 3. 从 SQL 到 NoSQL (NewSQL)
+ </h2>
+<div class="slideshow" name="national_scale"><div>
+<h1 id="_1">实现 “国民级” 的应用</h1>
+<h2 id="sql">“透明” 的 SQL 就有些困难了</h2>
+<div class="codehilite"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">chat_records</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="p">(</span><span class="n">sender_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="n">user_id1</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">receiver_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="n">user_id2</span><span class="p">)</span>
+<span class="w">   </span><span class="k">OR</span><span class="w"> </span><span class="p">(</span><span class="n">sender_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="n">user_id2</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="n">receiver_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="n">user_id1</span><span class="p">)</span>
+<span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="k">timestamp</span><span class="w"> </span><span class="k">DESC</span>
+<span class="k">LIMIT</span><span class="w"> </span><span class="mi">10</span>
+</code></pre></div>
+
+<ul>
+<li>正确，但压力给到数据库引擎<ul>
+<li>分库、分表、读写分离、索引、缓存、优化……</li>
+</ul>
+</li>
+<li><strong>永远无法预知程序员会写出怎样的 query</strong></li>
+<li>提供了功能 = 被滥用 → Performance Bug</li>
+<li>任何 “Systems” 都无法避免的 tech debt<ul>
+<li>例子：fork()</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="kv_store"><div>
+<h1 id="_1">解决办法：做减法</h1>
+<h2 id="scale-out-subset">只支持一个 “够用” 但可以 scale out 的 subset</h2>
+<ul>
+<li>Key-value store</li>
+<li>应用程序全靠 key 管理数据<ul>
+<li><code>user:{uid}</code></li>
+<li><code>user:{uid}:like_history (a list)</code></li>
+<li>List 支持 append/pop/range 等操作</li>
+<li>应用场景：🍠 上的点赞/浏览/历史记录</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">关键的性能优化</h2>
+<ul>
+<li>给 key 做 hash，load balance 到多台机器上</li>
+<li>Everything is append-only<ul>
+<li>LSM-Tree; 只支持 append 的 list; …</li>
+</ul>
+</li>
+<li>分布式高性能、高可靠就完成了</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="redis"><div>
+<h1 id="redis-everything-is-in-memory">Redis: Everything is In-memory</h1>
+<h2 id="key-value-store-get-set">核心：key-value store (GET, SET)</h2>
+<ul>
+<li>支持存储数据结构：String, List, Set, Hash, Sorted Set, …, <a href="https://redis.io/docs/latest/develop/data-types/streams/">Stream</a>
+</li>
+<li>支持查询<ul>
+<li><code>FT.SEARCH products "@price:[200 300] @category:misc"</code></li>
+</ul>
+</li>
+<li>甚至支持 <a href="https://redis.io/docs/latest/develop/interact/transactions/">MULTI/WATCH/EXEC</a> 事务</li>
+</ul>
+<h2 id="_1">应用：高性能缓存</h2>
+<ul>
+<li>点赞插入 <code>user:{uid}:like_history</code>; 更新 <code>user:{uid}:like_count</code>
+</li>
+<li>定期合成一条 persistent 数据库的插入</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="nosql_persist"><div>
+<h1 id="nosql-newsql">NoSQL &amp; NewSQL</h1>
+<h2 id="sql">提供 SQL 的一个子集</h2>
+<ul>
+<li>MongoDB (Document):<ul>
+<li>Key → BSON (Binary JSON，比 JSON 支持更多类型)</li>
+<li>例子：创建一个新 document (message)，然后 append 到 <code>user:{uid}.messages</code>
+</li>
+</ul>
+</li>
+<li>Cassandra (Column)<ul>
+<li>CQL: 依然是 Table 的模型</li>
+<li>(限制程序员的滥用)</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">messages</span><span class="w"> </span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span><span class="w"> </span><span class="n">message_id</span><span class="p">,</span><span class="w"> </span><span class="n">content</span><span class="p">,</span><span class="w"> </span><span class="k">timestamp</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">'1234567'</span><span class="p">,</span><span class="w"> </span><span class="n">now</span><span class="p">(),</span><span class="w"> </span><span class="n">message</span><span class="p">,</span><span class="w"> </span><span class="n">toTimestamp</span><span class="p">(</span><span class="n">now</span><span class="p">()));</span>
+</code></pre></div>
+
+<h2 id="sql_1">甚至提供完整的 SQL 支持</h2>
+<ul>
+<li>Google Spanner; TiDB; CockroachDB</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="vector_db"><div>
+<h1 id="vector-database">Vector Database</h1>
+<h2 id="ai">AI 应用的新基础设施</h2>
+<ul>
+<li>Embedding model: 将 context 映射为高维向量 (距离越近，语义越近)</li>
+<li>Vector database: 存储和检索向量的数据库<ul>
+<li>ANN: Approximate Nearest Neighbor 返回 “最近” 的文档</li>
+</ul>
+</li>
+</ul>
+<p><img alt="" src="static/img/lect-2026.png"></p>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 数据库系统\n \u003c/h1\u003e\n\u003cdiv class=\"slideshow\" name=\"review\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"review-comments\"\u003eReview \u0026amp; Comments\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e持久化：文件系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eLinux: 块设备上的一个数据结构\u003c/li\u003e\n\u003cli\u003e支持 crash consistency 和 recovery\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e我们用文件系统来做什么？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e保存\u003cstrong\u003e应用程序\u003c/strong\u003e用的数据\u003c/li\u003e\n\u003cli\u003e我们总是通过应用程序访问文件 (哪怕是 cat, sort)\u003cul\u003e\n\u003cli\u003e课件.pptx, 作业.docx, 电影.mp4, Projects/oslabs/… \u003c/li\u003e\n\u003cli\u003e这也是为什么应用程序的 crash consistency 也很重要\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e文件系统提供了 “原始” 的 API\u003cul\u003e\n\u003cli\u003e文件 (byte array)、目录\u003c/li\u003e\n\u003cli\u003e有没有更好的保存应用程序数据的方法？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 1. 持久保存应用数据\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"what_is_app\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e什么是 “应用程序”？\u003c/h1\u003e\n\u003cblockquote\u003e\n\u003cp\u003e软件是物理世界过程在信息世界中的投影。\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003ch2 id=\"persist-data\"\u003e软件天生有 persist data 的需求\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e个人信息 (学籍……)\u003c/li\u003e\n\u003cli\u003e订单\u003c/li\u003e\n\u003cli\u003e日志 (支付记录、维护记录)……\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"crud\"\u003e本质：数据结构的 CRUD\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://ehallapp.nju.edu.cn/jwapp/sys/teacherJxrwApp/*default/index.do\"\u003e教务系统\u003c/a\u003e\u003cul\u003e\n\u003cli\u003e管理员、教务员、教师、学生看到不同的数据和操作接口\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\n\u003ca href=\"https://cs.nju.edu.cn/yuanyao/course/dismath/lec1.pptx\"\u003e演示文稿\u003c/a\u003e\u003cul\u003e\n\u003cli\u003eXML 描述的数据结构 (ISO/IEC 29500)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.1. 使用目录和文件\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"persist_data_fs\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"everything-is-a-file\"\u003eEverything is a File\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003eehall.nju.edu.cn/teacherJxrwApp/22020230/4\n├── enrollment\n│   ├── 231220001.md\n│   └── ...\n├── syllabus\n│   ├── 1-intro.md\n│   └── ...\n└── textbook\n    └── 1-ostep.md\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"unix-find-grep\"\u003eUNIX 世界中的工具都能用了：find, grep, …\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e甚至可以用 symlink 去实现 “引用” (enroll/id/student -\u0026gt; …)\u003c/li\u003e\n\u003cli\u003e自动得到的 agent friendly (非常巨大的优势)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fs_as_db\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e优点和缺点\u003c/h1\u003e\n\u003ch2 id=\"tool-friendly-agent-friendly\"\u003eTool friendly 和 agent friendly 的代价\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eCrash consistency 实现需要小心\u003cul\u003e\n\u003cli\u003e最好是 append-only 的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e性能稍差一些\u003cul\u003e\n\u003cli\u003e每次都需要去文件系统 API 绕一圈，还有隐藏的读/写放大\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e结论：小规模系统 (例如课程主页) 的选择\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e提交存储在 \u003ccode\u003e/var/www/filerecv/OS2026/M1/[stuid]\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e\n\u003ccode\u003e2026-04-04-19-26-43.tar.bz2\u003c/code\u003e: 提交\u003c/li\u003e\n\u003cli\u003e\n\u003ccode\u003e2026-04-04-19-26-43.tar.bz2.result\u003c/code\u003e: 结果\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e统计 Accepted 数量：\u003ccode\u003ecat **/*.result | grep ... | wc -l\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eRejudge M5: \u003ccode\u003eecho M5/**/*.result | xargs rm\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 1.2. 直接保存数据结构\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"persist_data_1\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"hack\"\u003e一个有趣的 Hack\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e直接在文件 (虚拟磁盘) 上构建\u003cstrong\u003e数据结构\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e就像 ELF, BMP, …\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003esuperblock\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003estudent\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003es\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003ecourse\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003ec\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003estudent\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003estuid\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e16\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003ecourse\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ecid\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e16\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e实现数据结构的 CRUD: \u003ccode\u003eexpel(s);\u003c/code\u003e \u003ccode\u003eenroll(s, c);\u003c/code\u003e …\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"mmap-persist\"\u003e甚至可以直接把数据结构 mmap 到内存，直接 persist 指针\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e坑：mmap region 不会自动 write-back\u003c/li\u003e\n\u003cli\u003e需要 msync (2); 而且 msync 并不保证 crash consistency\u003c/li\u003e\n\u003cli\u003e还需要额外的 fdatasync\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"persistence/mmds\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"memory-mapped\"\u003e\u003ca href=\"/OS/demos/persistence/mmds\"\u003eMemory-mapped 数据结构\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e如果我们总是把数据结构映射到固定的位置 (并且为数据结构的分配使用专用的分配器，总是从固定位置分配)，就可以直接把数据结构映射到磁盘上，甚至也可以实现 write-ahead log。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"game_state\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"wal-log\"\u003e你甚至可以实现 WAL Log\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e比大家想象的简单\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003esuperblock\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"n\"\u003eu32\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emagic\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ewal\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e256\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e...\u003c/span\u003e\n\u003cspan class=\"p\"\u003e};\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e对于任何数据结构操作，先把所有的 side effects 写入 wal\u003cul\u003e\n\u003cli\u003e(代码示例里偷懒了，只记了命令，crash 时数据结构是一致的)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e然后执行操作，清除 WAL\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"single-level-store\"\u003e恭喜你，发明了 “\u003ca href=\"https://dl.acm.org/doi/10.1145/3477132.3483563\"\u003esingle-level store\u003c/a\u003e” 操作系统！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e在 persistent memory 时代很有可能复活\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 关系型数据库\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"what_we_need\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e需求：一个非常非常好的数据结构\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e好用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e能处理几乎任意类型的数据结构\u003c/li\u003e\n\u003cli\u003e好对任何人来说都比较好上手\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e性能\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e全校一起选课，系统不能崩 (不能一把大锁保平安)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"crash-consistent\"\u003e持久化 (Crash Consistent) 和一致性\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e系统故障，数据不能丢\u003c/li\u003e\n\u003cli\u003e数据结构需要支持 multi-write\u003cul\u003e\n\u003cli\u003e例子：批量导入学生选课信息，需要 all-or-nothing\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e同时满足这些需求的东西真的能存在吗？\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"think\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e反思：我们是怎么实现数据结构的？\u003c/h1\u003e\n\u003ch2 id=\"pointer-machine\"\u003e我们的计算机是 Pointer machine\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e实现数据结构其实不需要 “数组”\u003c/li\u003e\n\u003cli\u003emalloc(constant) 分配固定大小的内存，就能实现任意数据结构\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"pointer\"\u003ePointer 是对象之间的关系\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003enode\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003evalue\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e32\u003c/span\u003e\u003cspan class=\"p\"\u003e];\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Record\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003enode\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eleft\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003eright\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Pointers\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e离散数学：整个计算机世界都是在二元关系上 foramlize 的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"relational_model\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"relational-database\"\u003eRelational Database (关系型数据库)\u003c/h1\u003e\n\u003ch2 id=\"surprisingly-simple\"\u003e一个 surprisingly simple 的模型\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003ca href=\"https://dl.acm.org/doi/10.1145/362384.362685\"\u003eA relational model of data for large shared data banks\u003c/a\u003e\u003cul\u003e\n\u003cli\u003eEdgar F. Codd: 1981 Turing Award Winner\u003c/li\u003e\n\u003cli\u003e“Future users of large data banks must be protected from having to know how the data is organized in the machine.”\u003cul\u003e\n\u003cli\u003e我做了很多年 program synthesis; 但凡是 end-user 的，最后的设计理念都会回到这一篇 paper\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"everything-is-a-table\"\u003eEverything is a table\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e每行一个对象；对象可以用 id 索引其他对象\u003c/li\u003e\n\u003cli\u003estruct = table 的一行\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"rdbms_diagram\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e关系数据库模型\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e“对象和指针”\u003c/h2\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/rdbms-jw.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"rdbms_query\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e关系数据库查询：指针 “配对”\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003eSELECT\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eCourses\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eTitle\u003c/span\u003e\n\u003cspan class=\"k\"\u003eFROM\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eStudent\u003c/span\u003e\n\u003cspan class=\"k\"\u003eJOIN\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eTakes_Course\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003eON\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eStudent\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eID\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eTakes_Course\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eID\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e-- Key\u003c/span\u003e\n\u003cspan class=\"k\"\u003eJOIN\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eCourses\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"k\"\u003eON\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eTakes_Course\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eClassID\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eCourses\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eClassID\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e-- Key\u003c/span\u003e\n\u003cspan class=\"k\"\u003eWHERE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eStudent\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eName\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eLIKE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'张%'\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/rdbms-jw.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"acid_era\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e从模型到实现：数据库系统\u003c/h1\u003e\n\u003ch2 id=\"acid\"\u003e“ACID” 数据库开启软件的新时代\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eA (Atomicity), C (Consistency), I (Isolation), D (Durability)\u003cul\u003e\n\u003cli\u003eSerializability: 并发执行的效果等价于某种串行执行\u003c/li\u003e\n\u003cli\u003eStrong crash consistency: 系统 crash 也不会损坏或丢失\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"transaction\"\u003e支持任意长 (允许混合任意计算) 的 Transaction\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e这个特性太重要了\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003etx_begin\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003cspan class=\"k\"\u003eif\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003euser1\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ebalance\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e\u0026lt;\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003em\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003etx_abort\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// SQL\u003c/span\u003e\n\u003cspan class=\"n\"\u003euser1\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ebalance\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e-=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003em\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// SQL\u003c/span\u003e\n\u003cspan class=\"n\"\u003euser2\u003c/span\u003e\u003cspan class=\"p\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003ebalance\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e+=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003em\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\u003cspan class=\"w\"\u003e  \u003c/span\u003e\u003cspan class=\"c1\"\u003e// SQL\u003c/span\u003e\n\u003cspan class=\"n\"\u003etx_commit\u003c/span\u003e\u003cspan class=\"p\"\u003e();\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"acid_db\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"acid\"\u003eACID 数据库\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e学过《操作系统》就很好理解了\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e并发执行的效果 = 一把大锁保平安\u003c/li\u003e\n\u003cli\u003e但性能远优于粗粒度加锁\u003c/li\u003e\n\u003cli\u003e完全自动的崩溃恢复\u003cul\u003e\n\u003cli\u003e应用数据交给数据库 = \u003cstrong\u003e一劳永逸\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e甚至在应用有 bug 的时候，都还可以\u003ca href=\"https://www.zhihu.com/question/602083441/answer/3038238487\"\u003e强行抢救\u003c/a\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e关系数据库：海量的实现优化\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e查询优化 (rewriting)\u003c/li\u003e\n\u003cli\u003e索引 (B+ Tree 等数据结构)\u003c/li\u003e\n\u003cli\u003e缓存、分库分表、并发控制、读写分离……\u003cul\u003e\n\u003cli\u003e只要不是大到 “国民级” 的应用，数据库都能搞定\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 2.1. 数据库系统：实现\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"db_vs_compiler\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"databases-vs-compilers\"\u003eDatabases v.s. Compilers\u003c/h1\u003e\n\u003ch2 id=\"rewriting\"\u003e实现查询 = 实现编译优化 (语义等价的 rewriting)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e我选择抄作业 (\u003ca href=\"https://15445.courses.cs.cmu.edu/\"\u003eCMU 15-445\u003c/a\u003e, Andy Pavlo) 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"center w:800\" src=\"static/img/sql-exec.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"concurrent_program\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e一个超级复杂的并发程序\u003c/h1\u003e\n\u003ch2 id=\"sql\"\u003e每个 SQL 都操作数据库的一部分\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eWrite(x)\u003c/li\u003e\n\u003cli\u003eRead(y)\u003cul\u003e\n\u003cli\u003e用于维护 “磁盘上的数据结构”\u003c/li\u003e\n\u003cli\u003e类似文件系统，write-ahead logging (crash consistency)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e但并发控制更困难\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eT_1: \u003ccode\u003etx_begin(); x = 1; may_crash(); y = 2; tx_commit()\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003eT_2: \u003ccode\u003etx_begin(); y = 1; sleep(100000); x = 2; tx_commit()\u003c/code\u003e\u003cul\u003e\n\u003cli\u003e2 Phase Locking: 由于 Tx 可以执行任意代码，所以只能 “边执行边上锁” + deadlock detection，遇到死锁就 rollback，commit 时释放\u003c/li\u003e\n\u003cli\u003eMVCC: 每次都开一个新的 git branch (copy-on-write)，commit 的时候向 main merge，检测到冲突就 rollback\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"sqlite_example\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"sqlite\"\u003e例子：SQLite\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e无处不在的数据库\u003c/h2\u003e\n\u003cblockquote\u003e\n\u003cp\u003e\u003ca href=\"https://sqlite.org/index.html\"\u003eSQLite\u003c/a\u003e is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured, SQL database engine. SQLite is the most used database engine in the world…\u003c/p\u003e\n\u003c/blockquote\u003e\n\u003cul\u003e\n\u003cli\u003e一个基于文件实现的支持 SQL 的 “数据结构”\u003c/li\u003e\n\u003cli\u003eAndroid, iOS, macOS, Chrome, … 中广泛内嵌了 SQLite\u003cul\u003e\n\u003cli\u003eZero Configuration (发行版自带 libsqlite3.so；适合 “年轻人的第一个应用”)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/sqlite.svg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 从 SQL 到 NoSQL (NewSQL)\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"national_scale\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e实现 “国民级” 的应用\u003c/h1\u003e\n\u003ch2 id=\"sql\"\u003e“透明” 的 SQL 就有些困难了\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003eSELECT\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\n\u003cspan class=\"k\"\u003eFROM\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003echat_records\u003c/span\u003e\n\u003cspan class=\"k\"\u003eWHERE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esender_id\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e@\u003c/span\u003e\u003cspan class=\"n\"\u003euser_id1\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eAND\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ereceiver_id\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e@\u003c/span\u003e\u003cspan class=\"n\"\u003euser_id2\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"w\"\u003e   \u003c/span\u003e\u003cspan class=\"k\"\u003eOR\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003esender_id\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e@\u003c/span\u003e\u003cspan class=\"n\"\u003euser_id2\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eAND\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003ereceiver_id\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e=\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e@\u003c/span\u003e\u003cspan class=\"n\"\u003euser_id1\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"k\"\u003eORDER\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eBY\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003etimestamp\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eDESC\u003c/span\u003e\n\u003cspan class=\"k\"\u003eLIMIT\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"mi\"\u003e10\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e正确，但压力给到数据库引擎\u003cul\u003e\n\u003cli\u003e分库、分表、读写分离、索引、缓存、优化……\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\u003cstrong\u003e永远无法预知程序员会写出怎样的 query\u003c/strong\u003e\u003c/li\u003e\n\u003cli\u003e提供了功能 = 被滥用 → Performance Bug\u003c/li\u003e\n\u003cli\u003e任何 “Systems” 都无法避免的 tech debt\u003cul\u003e\n\u003cli\u003e例子：fork()\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"kv_store\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e解决办法：做减法\u003c/h1\u003e\n\u003ch2 id=\"scale-out-subset\"\u003e只支持一个 “够用” 但可以 scale out 的 subset\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eKey-value store\u003c/li\u003e\n\u003cli\u003e应用程序全靠 key 管理数据\u003cul\u003e\n\u003cli\u003e\u003ccode\u003euser:{uid}\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003e\u003ccode\u003euser:{uid}:like_history (a list)\u003c/code\u003e\u003c/li\u003e\n\u003cli\u003eList 支持 append/pop/range 等操作\u003c/li\u003e\n\u003cli\u003e应用场景：🍠 上的点赞/浏览/历史记录\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e关键的性能优化\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e给 key 做 hash，load balance 到多台机器上\u003c/li\u003e\n\u003cli\u003eEverything is append-only\u003cul\u003e\n\u003cli\u003eLSM-Tree; 只支持 append 的 list; …\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e分布式高性能、高可靠就完成了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"redis\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"redis-everything-is-in-memory\"\u003eRedis: Everything is In-memory\u003c/h1\u003e\n\u003ch2 id=\"key-value-store-get-set\"\u003e核心：key-value store (GET, SET)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e支持存储数据结构：String, List, Set, Hash, Sorted Set, …, \u003ca href=\"https://redis.io/docs/latest/develop/data-types/streams/\"\u003eStream\u003c/a\u003e\n\u003c/li\u003e\n\u003cli\u003e支持查询\u003cul\u003e\n\u003cli\u003e\u003ccode\u003eFT.SEARCH products \"@price:[200 300] @category:misc\"\u003c/code\u003e\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e甚至支持 \u003ca href=\"https://redis.io/docs/latest/develop/interact/transactions/\"\u003eMULTI/WATCH/EXEC\u003c/a\u003e 事务\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e应用：高性能缓存\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e点赞插入 \u003ccode\u003euser:{uid}:like_history\u003c/code\u003e; 更新 \u003ccode\u003euser:{uid}:like_count\u003c/code\u003e\n\u003c/li\u003e\n\u003cli\u003e定期合成一条 persistent 数据库的插入\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"nosql_persist\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"nosql-newsql\"\u003eNoSQL \u0026amp; NewSQL\u003c/h1\u003e\n\u003ch2 id=\"sql\"\u003e提供 SQL 的一个子集\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eMongoDB (Document):\u003cul\u003e\n\u003cli\u003eKey → BSON (Binary JSON，比 JSON 支持更多类型)\u003c/li\u003e\n\u003cli\u003e例子：创建一个新 document (message)，然后 append 到 \u003ccode\u003euser:{uid}.messages\u003c/code\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003eCassandra (Column)\u003cul\u003e\n\u003cli\u003eCQL: 依然是 Table 的模型\u003c/li\u003e\n\u003cli\u003e(限制程序员的滥用)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003eINSERT\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003eINTO\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emessages\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003euser_id\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emessage_id\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003econtent\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"k\"\u003etimestamp\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"k\"\u003eVALUES\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s1\"\u003e'1234567'\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003enow\u003c/span\u003e\u003cspan class=\"p\"\u003e(),\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003emessage\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003etoTimestamp\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003enow\u003c/span\u003e\u003cspan class=\"p\"\u003e()));\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"sql_1\"\u003e甚至提供完整的 SQL 支持\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eGoogle Spanner; TiDB; CockroachDB\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"vector_db\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"vector-database\"\u003eVector Database\u003c/h1\u003e\n\u003ch2 id=\"ai\"\u003eAI 应用的新基础设施\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eEmbedding model: 将 context 映射为高维向量 (距离越近，语义越近)\u003c/li\u003e\n\u003cli\u003eVector database: 存储和检索向量的数据库\u003cul\u003e\n\u003cli\u003eANN: Approximate Nearest Neighbor 返回 “最近” 的文档\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/lect-2026.png\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect27.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>

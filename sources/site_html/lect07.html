@@ -1,0 +1,326 @@
+<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>Lecture Notes</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css"/><meta name="next-head-count" content="5"/><link rel="preload" href="/_next/static/css/f1360f1f2c658522.css" as="style"/><link rel="stylesheet" href="/_next/static/css/f1360f1f2c658522.css" data-n-g=""/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-c67a75d1b6f99dc8.js"></script><script src="/_next/static/chunks/webpack-91af2217067b1eba.js" defer=""></script><script src="/_next/static/chunks/framework-fdf20b67f7acabe0.js" defer=""></script><script src="/_next/static/chunks/main-3929bf55b0f13a18.js" defer=""></script><script src="/_next/static/chunks/pages/_app-00b06920b385caf1.js" defer=""></script><script src="/_next/static/chunks/552-69764e03c4955849.js" defer=""></script><script src="/_next/static/chunks/pages/%5B%5B...index%5D%5D-7ab9411a70c105bc.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_buildManifest.js" defer=""></script><script src="/_next/static/5oc85hUK-mNqby8Yf0bnI/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div class="bg-slate-300/10"><div class="sticky top-0 z-40 w-full backdrop-blur flex-none border-b border-slate-900/10 bg-white/75 supports-backdrop-blur:bg-white/60"><div class="max-w-8xl mx-auto"><div class="py-4 border-b border-slate-900/10 lg:px-8 lg:border-0 dark:border-slate-300/10 mx-4 lg:mx-0"><div class="relative flex items-center"><a href="/">Yanyan&#x27;s wiki</a><form class="text-xs text-slate-500"> for <input type="text" name="token" class="font-mono text-xs w-16" maxLength="8"/></form><div class="relative hidden lg:flex items-center ml-4 pl-4 border-l"><nav class="text-sm leading-6 font-semibold text-slate-700 dark:text-slate-200"><ul class="flex space-x-8"><li><a class="hover:text-sky-500 dark:hover:text-sky-400" href="/OS/2026/">操作系统 (2026 春)</a></li></ul></nav></div></div></div></div></div><div class="container mx-auto max-w-5xl flex flex-col min-h-screen px-4"><div class="wiki-new bg-neutral-200/10"><div><h1> 访问操作系统对象
+ </h1>
+<h2> 1. Review & Comments
+ </h2>
+<div class="slideshow" name="review_and_comments"><div>
+<h1 id="_1">关于实验的更新</h1>
+<h2 id="322-main">周日 (3.22) 中午更新了 main 分支</h2>
+<ul>
+<li>Bug: 新版本的框架，旧版本的 testkit 😭<ul>
+<li>新版本 SystemTest 的参数变了</li>
+<li>于是无论如何也通不过测试了</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">不太会，怎么办？</h2>
+<ul>
+<li>让我从零开始假装小白演示一次<ul>
+<li>让 AI 把 main 往后挪一个 commit</li>
+<li>再让 AI 同步回来</li>
+<li>干脆让 AI Agent 直接把实验全做完算了 😂</li>
+</ul>
+</li>
+<li>
+<strong>拥抱世界的变化</strong>：让 AI 放大你的 “自主性”</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="program_and_process"><div>
+<h1 id="_1">复习：程序和进程</h1>
+<h2 id="_2">进程：一个封闭的世界</h2>
+<ul>
+<li>加载了一个程序</li>
+<li>除了寄存器和内存是程序 “自己” 的，其他都需要通过系统调用访问<ul>
+<li>进程管理 API: spawn, fork, execve, exit</li>
+<li>内存管理 API: mmap, munmap, mprotect</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">操作系统里肯定还有其他对象的！</h2>
+<ul>
+<li>也需要一些 API 来管理它们</li>
+<li>(这是本次课的内容)</li>
+</ul>
+</div></div>
+
+<h2> 2. 操作系统中的对象
+ </h2>
+<div class="slideshow" name="os_object_api"><div>
+<h1 id="api">操作系统对象和 API</h1>
+<h2 id="_1">程序员脑袋里想的</h2>
+<ul>
+<li>请求操作系统帮他 “做一件事”<ul>
+<li>读取网络请求、写入文件、和其他进程通信……</li>
+<li>本质上都是 “访问操作系统中的对象”</li>
+</ul>
+</li>
+</ul>
+<div class="codehilite"><pre><span></span><code><span class="n">Path</span><span class="p">(</span><span class="s2">"/proc/1234/maps"</span><span class="p">)</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span>
+<span class="n">GetMemoryMap</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span>
+<span class="n">ReadProcessMemory</span><span class="p">(</span><span class="n">pid</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">buf</span><span class="p">,</span> <span class="n">size</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="_2">操作系统设计者脑袋里想的</h2>
+<ul>
+<li>提供一套<strong>简单、稳定</strong>的通用 API (抽象层)<ul>
+<li>能在此基础上 “二次开发” 出任何东西</li>
+<li>Windows: 开发者要什么我就给什么 (CreateFileW, WriteFile, SetFilePointerEx, OpenProcess, VirtualQueryEx, K32EnumProcessModulesEx, OpenProcess, ReadProcessMemory, …)</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="everything_is_file"><div>
+<h1 id="unix-everything-is-a-file">UNIX: Everything is a File</h1>
+<h2 id="_1">回头想：什么是文件？</h2>
+<ul>
+<li>一个小学电脑课就学过的概念<ul>
+<li>一个有名字的<strong>数据</strong>对象 (字节序列)</li>
+<li>可以对任意位置读取/写入</li>
+</ul>
+</li>
+</ul>
+<h2 id="_2">一个非常普适的抽象</h2>
+<ul>
+<li>
+<strong>任何数据流/数组</strong>，一个正在向你发送数据的服务器连接、连接到系统的打印机/终端/显卡、一把锁、一个管道……它们都可以假装自己是<strong>文件</strong>
+</li>
+</ul>
+<h2 id="_3">最后，用 “目录” 来管理名字</h2>
+<ul>
+<li>甚至操作系统内部可以直接用一个 dict[Path,bytes] 来实现</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="jyywiki"><div>
+<h1 id="everything-is-a-file-contd">Everything is a File (cont’d)</h1>
+<h2 id="_1">文件系统可以用于构建任何信息系统</h2>
+<ul>
+<li>例子：课程网站<ul>
+<li>提交会被保存到 /var/www/filerecv</li>
+<li>评测完毕后结果会生成一个 .result 文件</li>
+<li>刷新页面时会遍历目录树</li>
+</ul>
+</li>
+<li>(为什么不用数据库呢？)</li>
+</ul>
+<h2 id="build-everything-with-blockflow">Build Everything with BlockFlow</h2>
+<ul>
+<li>基于文件系统的实现不就是最好的<strong>模型</strong>吗？</li>
+<li>让 LLM 帮我翻译成数据库/serverless 的实现不就行了？ <ul>
+<li>还可以自动证明 idempotence 和语义等价 🤔</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="everything_is_file_cont"><div>
+<h1 id="everything-is-a-file-contd">Everything is a File (cont’d)</h1>
+<h2 id="_1">那么，到底有什么呢？</h2>
+<ul>
+<li>Filesystem Hierarchy Standard <a href="http://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html">FHS</a>: enables <em>software and user</em> to predict the location of installed files and directories</li>
+</ul>
+<p><img alt="" src="static/img/fhs.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="benefits_of_everything_file"><div>
+<h1 id="unix-philosophy">UNIX Philosophy</h1>
+<h2 id="keep-it-simple-stupid">Keep It Simple, Stupid</h2>
+<ul>
+<li>(1)  Do one thing and do it well. (2)  Work together. (3) Handle text streams as a universal interface.</li>
+</ul>
+<h2 id="_1">操作系统还会 “假装” 一些文件</h2>
+<ul>
+<li>/proc, /dev, …<ul>
+<li>真实的设备 /dev/sda, /dev/tty</li>
+<li>虚假的设备 /dev/urandom, /dev/null (黑洞)</li>
+</ul>
+</li>
+<li>操作系统只要把它们当成 “可读写的对象”，就可以用文件 API 访问了</li>
+</ul>
+<h2 id="_2">实现小工具 + 数据的组合和复用</h2>
+<ul>
+<li>自然语言和编程语言的<strong>平衡点</strong> (quick &amp; dirty)，当然<a href="https://web.mit.edu/%7Esimsong/www/ugh.pdf">广受诟病</a>
+</li>
+<li>在 Agentic AI 时代，即将成为历史</li>
+</ul>
+<div class="codehilite"><pre><span></span><code>grep<span class="w"> </span>-s<span class="w"> </span>VmRSS<span class="w"> </span>/proc/*<span class="o">[</span><span class="m">0</span>-9<span class="o">]</span>/status<span class="w"> </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{sum += $2} END {print sum " kB"}'</span>
+</code></pre></div>
+</div></div>
+
+<h2> 3. 访问操作系统中的对象
+ </h2>
+<h3> 3.1. 文件描述符
+ </h3>
+<div class="slideshow" name="file_descriptor_pointer"><div>
+<h1 id="_1">文件描述符：访问操作系统对象的 “指针”</h1>
+<div class="codehilite"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">FILE</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="c1">// Inside CrazyOS</span>
+<span class="w">    </span><span class="kt">char</span><span class="w"> </span><span class="o">*</span><span class="n">data</span><span class="p">;</span>
+<span class="w">    </span><span class="kt">size_t</span><span class="w"> </span><span class="n">offset</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div>
+
+<ul>
+<li>这不就是在 CrazyOS 里允许多个 buffer 吗<ul>
+<li>open: f = malloc(sizeof(struct FILE));</li>
+<li>close: free(f);</li>
+<li>read/write: *(f-&gt;data++);</li>
+<li>lseek: f-&gt; += offset;</li>
+<li>dup: f_new = f;</li>
+</ul>
+</li>
+</ul>
+<h2 id="struct-file">应用程序怎么访问操作系统里的 struct FILE 呢？</h2>
+<ul>
+<li>让应用程序持有一个由操作系统解读的 “指针”</li>
+<li>“The open() system call opens the file specified by pathname.”</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/crazy-os"><div><div>
+<h1 id="crazy-os"><a href="/OS/demos/virtualization/crazy-os">Crazy OS</a></h1>
+<p>我们希望 “模拟” 一个操作系统：crazy-os.c 能加载 argv 指定的 binary (p1, p2, …)，基于 mini-rv32ima.h 模拟单步执行 (RISC-V 指令)，并能够处理 syscall。</p>
+</div></div>
+</div>
+<div class="slideshow" name="fd_allocation"><div>
+<h1 id="_1">文件描述符</h1>
+<h2 id="_2">另一个 “地址空间”</h2>
+<ul>
+<li>0 (stdin), 1 (stdout), 2 (stderr), …</li>
+<li>open() 总是分配最小的未使用描述符<ul>
+<li>新打开的文件从 3 开始分配</li>
+<li>文件关闭后，编号可以重复利用</li>
+</ul>
+</li>
+<li>(让 AI 调用命令行工具确定我的进程最多能同时打开多少文件，再编一个程序确认)</li>
+</ul>
+<h2 id="windows-handle">Windows Handle (把手；握把；<strong>把柄</strong>)</h2>
+<ul>
+<li>非常形象的名字，除了<a href="https://www.tesla.com/ownersmanual/model3/zh_cn/GUID-7A32EC01-A17E-42CC-A15B-2E0A39FD07AB.html">你不会用</a> 😂</li>
+</ul>
+<p><img alt="" src="static/img/handle.jpg"></p>
+</div></div>
+
+<div class="code-card" path="virtualization/filedesc"><div><div>
+<h1 id="_1"><a href="/OS/demos/virtualization/filedesc">文件描述符</a></h1>
+<p>文件描述符是一个用于访问文件或其他输入/输出资源的 “指针”。在 Unix 和类 Unix 操作系统中，文件描述符是一个非负整数，用于表示一个打开的文件、管道、网络连接或其他类似的资源。当一个程序打开一个文件或创建一个数据流时，操作系统会返回一个文件描述符，程序可以通过这个描述符来读取、写入或操作对应的文件或资源。</p>
+</div></div>
+</div>
+<div class="slideshow" name="windows_handle"><div>
+<h1 id="_1">“句柄” 乌龙</h1>
+<p><img alt="" src="static/img/win-handle.jpg"></p>
+</div></div>
+
+<div class="slideshow" name="fd_offset"><div>
+<h1 id="_1">操作系统的真正复杂性</h1>
+<h2 id="api">API 之间会产生<strong>互相影响</strong>
+</h2>
+<ul>
+<li>fork() 以后，offset 会发生什么？<ul>
+<li>这就是 fork() 看似优雅，实际<a href="https://dl.acm.org/doi/10.1145/3317550.3321435">复杂</a>的地方</li>
+<li>软件系统的每一处设计都要小心考虑和其他部分的交互</li>
+</ul>
+</li>
+</ul>
+<h2 id="windows-handle-api">Windows Handle API</h2>
+<ul>
+<li>默认 handle 是<strong>不继承</strong>的 (和 UNIX 默认继承相反)<ul>
+<li>可以在创建时设置 bInheritHandles，或者运行时修改</li>
+<li>“最小权限原则”</li>
+</ul>
+</li>
+<li>lpStartupInfo 用于配置 stdin, stdout, stderr<ul>
+<li>Linux 引入了 O_CLOEXEC</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<h3> 3.2. 特殊的文件
+ </h3>
+<div class="slideshow" name="special_files"><div>
+<h1 id="_1">看看系统里到底有什么文件吧！</h1>
+<div class="codehilite"><pre><span></span><code>ls<span class="w"> </span>-l<span class="w"> </span>/proc/*/fd/*<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="p">|</span><span class="w"> </span>awk<span class="w"> </span><span class="s1">'{print $(NF-2), $(NF-1), $NF}'</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span><span class="p">|</span><span class="w"> </span>claude<span class="w"> </span>explain<span class="w"> </span>it
+</code></pre></div>
+
+<h2 id="intelligence-is-cheap">Intelligence is Cheap</h2>
+<ul>
+<li>完全可以用自然语言描述<strong>任何意图</strong>
+</li>
+<li>人类更需要的是想象力<ul>
+<li>我的观点：想象力本质上是可枚举的</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="slideshow" name="annon_pipe"><div>
+<h1 id="_1">匿名管道</h1>
+<h2 id="_2">创建一个<strong>仅进程内部可见</strong>的管道</h2>
+<div class="codehilite"><pre><span></span><code><span class="kt">int</span><span class="w"> </span><span class="nf">pipe</span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">pipefd</span><span class="p">[</span><span class="mi">2</span><span class="p">]);</span>
+</code></pre></div>
+
+<ul>
+<li>返回两个文件描述符</li>
+<li>进程同时拥有读口和写口<ul>
+<li>看起来没用？不，fork 就有用了</li>
+</ul>
+</li>
+</ul>
+<h2 id="_3">想知道发生了什么？</h2>
+<ul>
+<li>不需要读文档，直接调试示例代码</li>
+<li>甚至直接让 AI 帮我们 “翻译” 程序状态 (像 Tower of Hanoi 那样)</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/pipe"><div><div>
+<h1 id="unix"><a href="/OS/demos/virtualization/pipe">UNIX 管道</a></h1>
+<p>UNIX 管道 (pipe) 是一种典型的进程间通信机制，允许数据在不同的进程之间单向流动。管道可以被视为一种特殊的文件，其中一个进程将数据写入管道的一端，而另一个进程从另一端读取数据。我们完全可以借助 AI 生成的辅助可视化工具来理解这一过程。</p>
+</div></div>
+</div>
+<div class="slideshow" name="testkit"><div>
+<h1 id="testkit">综合例子：TestKit</h1>
+<h2 id="c">C 语言的测试框架</h2>
+<ul>
+<li>直接在代码里写单元测试和系统测试<ul>
+<li>随时随地调用内部函数</li>
+<li>全部在子进程中运行 (允许直接 crash)</li>
+</ul>
+</li>
+<li>还是 “很不错” 的想法和代码呢<ul>
+<li>用来理解原理很不错</li>
+<li>(但也许以后也不需要了)</li>
+</ul>
+</li>
+</ul>
+<h2 id="_1">正确打开方式</h2>
+<ul>
+<li>让 LLM 帮我写测试用例</li>
+<li>用魔法打败魔法 (M1 的 testcases 都是 AIGC)<ul>
+<li>我甚至看都没看一眼 🤔</li>
+</ul>
+</li>
+</ul>
+</div></div>
+
+<div class="code-card" path="virtualization/testkit"><div><div>
+<h1 id="testkit"><a href="/OS/demos/virtualization/testkit">TestKit 测试框架</a></h1>
+<p>Writing test cases fearlessly! 这是同学们的第一个测试框架：支持单元测试和系统测试，自动注册测试用例并在程序退出后运行。最重要的特点是它使用简单：你只需要包含 testkit.h，并且链接 testkit.c 即可。</p>
+</div></div>
+</div>
+<div class="note" name="takeaways"><div>
+<h1 id="takeaways">Takeaways</h1>
+<p>操作系统必需提供机制供应用程序访问操作系统对象。对于 UNIX 系统，文件描述符是操作系统中表示打开文件 (操作系统对象) 的指针；而 Windows 则更直接地提供了 handle 机制。</p>
+</div></div>
+
+<div class="note" name="readings"><div>
+<h1 id="_1">阅读材料</h1>
+<p>教科书 Operating Systems: Three Easy Pieces:</p>
+<ul>
+<li>第 39 章 - Files and Directories</li>
+</ul>
+</div></div>
+</div></div></div><div class="bg-neutral-100 text-center text-neutral-600 dark:bg-neutral-600 dark:text-neutral-200 lg:text-left"><div class="bg-neutral-200 p-6 text-center dark:bg-neutral-700"><a rel="license" href="http://creativecommons.org/licenses/by-nc/4.0/">Creative Commons License: BY-NC 4.0</a><br/><a href="https://beian.miit.gov.cn/">苏 ICP 备 2020049101 号</a></div></div></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"rawSource":"\u003ch1\u003e 访问操作系统对象\n \u003c/h1\u003e\n\u003ch2\u003e 1. Review \u0026 Comments\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"review_and_comments\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e关于实验的更新\u003c/h1\u003e\n\u003ch2 id=\"322-main\"\u003e周日 (3.22) 中午更新了 main 分支\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eBug: 新版本的框架，旧版本的 testkit 😭\u003cul\u003e\n\u003cli\u003e新版本 SystemTest 的参数变了\u003c/li\u003e\n\u003cli\u003e于是无论如何也通不过测试了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e不太会，怎么办？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e让我从零开始假装小白演示一次\u003cul\u003e\n\u003cli\u003e让 AI 把 main 往后挪一个 commit\u003c/li\u003e\n\u003cli\u003e再让 AI 同步回来\u003c/li\u003e\n\u003cli\u003e干脆让 AI Agent 直接把实验全做完算了 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e\n\u003cstrong\u003e拥抱世界的变化\u003c/strong\u003e：让 AI 放大你的 “自主性”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"program_and_process\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e复习：程序和进程\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e进程：一个封闭的世界\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e加载了一个程序\u003c/li\u003e\n\u003cli\u003e除了寄存器和内存是程序 “自己” 的，其他都需要通过系统调用访问\u003cul\u003e\n\u003cli\u003e进程管理 API: spawn, fork, execve, exit\u003c/li\u003e\n\u003cli\u003e内存管理 API: mmap, munmap, mprotect\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e操作系统里肯定还有其他对象的！\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e也需要一些 API 来管理它们\u003c/li\u003e\n\u003cli\u003e(这是本次课的内容)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 2. 操作系统中的对象\n \u003c/h2\u003e\n\u003cdiv class=\"slideshow\" name=\"os_object_api\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"api\"\u003e操作系统对象和 API\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e程序员脑袋里想的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e请求操作系统帮他 “做一件事”\u003cul\u003e\n\u003cli\u003e读取网络请求、写入文件、和其他进程通信……\u003c/li\u003e\n\u003cli\u003e本质上都是 “访问操作系统中的对象”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"n\"\u003ePath\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"s2\"\u003e\"/proc/1234/maps\"\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\u003cspan class=\"o\"\u003e.\u003c/span\u003e\u003cspan class=\"n\"\u003eread_text\u003c/span\u003e\u003cspan class=\"p\"\u003e()\u003c/span\u003e\n\u003cspan class=\"n\"\u003eGetMemoryMap\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003cspan class=\"n\"\u003eReadProcessMemory\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"n\"\u003epid\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"n\"\u003eaddr\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"n\"\u003ebuf\u003c/span\u003e\u003cspan class=\"p\"\u003e,\u003c/span\u003e \u003cspan class=\"n\"\u003esize\u003c/span\u003e\u003cspan class=\"p\"\u003e)\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"_2\"\u003e操作系统设计者脑袋里想的\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e提供一套\u003cstrong\u003e简单、稳定\u003c/strong\u003e的通用 API (抽象层)\u003cul\u003e\n\u003cli\u003e能在此基础上 “二次开发” 出任何东西\u003c/li\u003e\n\u003cli\u003eWindows: 开发者要什么我就给什么 (CreateFileW, WriteFile, SetFilePointerEx, OpenProcess, VirtualQueryEx, K32EnumProcessModulesEx, OpenProcess, ReadProcessMemory, …)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"everything_is_file\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix-everything-is-a-file\"\u003eUNIX: Everything is a File\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e回头想：什么是文件？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e一个小学电脑课就学过的概念\u003cul\u003e\n\u003cli\u003e一个有名字的\u003cstrong\u003e数据\u003c/strong\u003e对象 (字节序列)\u003c/li\u003e\n\u003cli\u003e可以对任意位置读取/写入\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e一个非常普适的抽象\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e\n\u003cstrong\u003e任何数据流/数组\u003c/strong\u003e，一个正在向你发送数据的服务器连接、连接到系统的打印机/终端/显卡、一把锁、一个管道……它们都可以假装自己是\u003cstrong\u003e文件\u003c/strong\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e最后，用 “目录” 来管理名字\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e甚至操作系统内部可以直接用一个 dict[Path,bytes] 来实现\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"jyywiki\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"everything-is-a-file-contd\"\u003eEverything is a File (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e文件系统可以用于构建任何信息系统\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e例子：课程网站\u003cul\u003e\n\u003cli\u003e提交会被保存到 /var/www/filerecv\u003c/li\u003e\n\u003cli\u003e评测完毕后结果会生成一个 .result 文件\u003c/li\u003e\n\u003cli\u003e刷新页面时会遍历目录树\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e(为什么不用数据库呢？)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"build-everything-with-blockflow\"\u003eBuild Everything with BlockFlow\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e基于文件系统的实现不就是最好的\u003cstrong\u003e模型\u003c/strong\u003e吗？\u003c/li\u003e\n\u003cli\u003e让 LLM 帮我翻译成数据库/serverless 的实现不就行了？ \u003cul\u003e\n\u003cli\u003e还可以自动证明 idempotence 和语义等价 🤔\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"everything_is_file_cont\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"everything-is-a-file-contd\"\u003eEverything is a File (cont’d)\u003c/h1\u003e\n\u003ch2 id=\"_1\"\u003e那么，到底有什么呢？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003eFilesystem Hierarchy Standard \u003ca href=\"http://refspecs.linuxfoundation.org/FHS_3.0/fhs/index.html\"\u003eFHS\u003c/a\u003e: enables \u003cem\u003esoftware and user\u003c/em\u003e to predict the location of installed files and directories\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/fhs.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"benefits_of_everything_file\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix-philosophy\"\u003eUNIX Philosophy\u003c/h1\u003e\n\u003ch2 id=\"keep-it-simple-stupid\"\u003eKeep It Simple, Stupid\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e(1)  Do one thing and do it well. (2)  Work together. (3) Handle text streams as a universal interface.\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e操作系统还会 “假装” 一些文件\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e/proc, /dev, …\u003cul\u003e\n\u003cli\u003e真实的设备 /dev/sda, /dev/tty\u003c/li\u003e\n\u003cli\u003e虚假的设备 /dev/urandom, /dev/null (黑洞)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e操作系统只要把它们当成 “可读写的对象”，就可以用文件 API 访问了\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_2\"\u003e实现小工具 + 数据的组合和复用\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e自然语言和编程语言的\u003cstrong\u003e平衡点\u003c/strong\u003e (quick \u0026amp; dirty)，当然\u003ca href=\"https://web.mit.edu/%7Esimsong/www/ugh.pdf\"\u003e广受诟病\u003c/a\u003e\n\u003c/li\u003e\n\u003cli\u003e在 Agentic AI 时代，即将成为历史\u003c/li\u003e\n\u003c/ul\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003egrep\u003cspan class=\"w\"\u003e \u003c/span\u003e-s\u003cspan class=\"w\"\u003e \u003c/span\u003eVmRSS\u003cspan class=\"w\"\u003e \u003c/span\u003e/proc/*\u003cspan class=\"o\"\u003e[\u003c/span\u003e\u003cspan class=\"m\"\u003e0\u003c/span\u003e-9\u003cspan class=\"o\"\u003e]\u003c/span\u003e/status\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003eawk\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'{sum += $2} END {print sum \" kB\"}'\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch2\u003e 3. 访问操作系统中的对象\n \u003c/h2\u003e\n\u003ch3\u003e 3.1. 文件描述符\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"file_descriptor_pointer\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e文件描述符：访问操作系统对象的 “指针”\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"k\"\u003estruct\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nc\"\u003eFILE\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"p\"\u003e{\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"c1\"\u003e// Inside CrazyOS\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003echar\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"o\"\u003e*\u003c/span\u003e\u003cspan class=\"n\"\u003edata\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"kt\"\u003esize_t\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003eoffset\u003c/span\u003e\u003cspan class=\"p\"\u003e;\u003c/span\u003e\n\u003cspan class=\"p\"\u003e}\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e这不就是在 CrazyOS 里允许多个 buffer 吗\u003cul\u003e\n\u003cli\u003eopen: f = malloc(sizeof(struct FILE));\u003c/li\u003e\n\u003cli\u003eclose: free(f);\u003c/li\u003e\n\u003cli\u003eread/write: *(f-\u0026gt;data++);\u003c/li\u003e\n\u003cli\u003elseek: f-\u0026gt; += offset;\u003c/li\u003e\n\u003cli\u003edup: f_new = f;\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"struct-file\"\u003e应用程序怎么访问操作系统里的 struct FILE 呢？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e让应用程序持有一个由操作系统解读的 “指针”\u003c/li\u003e\n\u003cli\u003e“The open() system call opens the file specified by pathname.”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/crazy-os\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"crazy-os\"\u003e\u003ca href=\"/OS/demos/virtualization/crazy-os\"\u003eCrazy OS\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e我们希望 “模拟” 一个操作系统：crazy-os.c 能加载 argv 指定的 binary (p1, p2, …)，基于 mini-rv32ima.h 模拟单步执行 (RISC-V 指令)，并能够处理 syscall。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"fd_allocation\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e文件描述符\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e另一个 “地址空间”\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e0 (stdin), 1 (stdout), 2 (stderr), …\u003c/li\u003e\n\u003cli\u003eopen() 总是分配最小的未使用描述符\u003cul\u003e\n\u003cli\u003e新打开的文件从 3 开始分配\u003c/li\u003e\n\u003cli\u003e文件关闭后，编号可以重复利用\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e(让 AI 调用命令行工具确定我的进程最多能同时打开多少文件，再编一个程序确认)\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"windows-handle\"\u003eWindows Handle (把手；握把；\u003cstrong\u003e把柄\u003c/strong\u003e)\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e非常形象的名字，除了\u003ca href=\"https://www.tesla.com/ownersmanual/model3/zh_cn/GUID-7A32EC01-A17E-42CC-A15B-2E0A39FD07AB.html\"\u003e你不会用\u003c/a\u003e 😂\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/handle.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/filedesc\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e\u003ca href=\"/OS/demos/virtualization/filedesc\"\u003e文件描述符\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003e文件描述符是一个用于访问文件或其他输入/输出资源的 “指针”。在 Unix 和类 Unix 操作系统中，文件描述符是一个非负整数，用于表示一个打开的文件、管道、网络连接或其他类似的资源。当一个程序打开一个文件或创建一个数据流时，操作系统会返回一个文件描述符，程序可以通过这个描述符来读取、写入或操作对应的文件或资源。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"windows_handle\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e“句柄” 乌龙\u003c/h1\u003e\n\u003cp\u003e\u003cimg alt=\"\" src=\"static/img/win-handle.jpg\"\u003e\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"fd_offset\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e操作系统的真正复杂性\u003c/h1\u003e\n\u003ch2 id=\"api\"\u003eAPI 之间会产生\u003cstrong\u003e互相影响\u003c/strong\u003e\n\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003efork() 以后，offset 会发生什么？\u003cul\u003e\n\u003cli\u003e这就是 fork() 看似优雅，实际\u003ca href=\"https://dl.acm.org/doi/10.1145/3317550.3321435\"\u003e复杂\u003c/a\u003e的地方\u003c/li\u003e\n\u003cli\u003e软件系统的每一处设计都要小心考虑和其他部分的交互\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"windows-handle-api\"\u003eWindows Handle API\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e默认 handle 是\u003cstrong\u003e不继承\u003c/strong\u003e的 (和 UNIX 默认继承相反)\u003cul\u003e\n\u003cli\u003e可以在创建时设置 bInheritHandles，或者运行时修改\u003c/li\u003e\n\u003cli\u003e“最小权限原则”\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003elpStartupInfo 用于配置 stdin, stdout, stderr\u003cul\u003e\n\u003cli\u003eLinux 引入了 O_CLOEXEC\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003ch3\u003e 3.2. 特殊的文件\n \u003c/h3\u003e\n\u003cdiv class=\"slideshow\" name=\"special_files\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e看看系统里到底有什么文件吧！\u003c/h1\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003els\u003cspan class=\"w\"\u003e \u003c/span\u003e-l\u003cspan class=\"w\"\u003e \u003c/span\u003e/proc/*/fd/*\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"m\"\u003e2\u003c/span\u003e\u0026gt;/dev/null\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"se\"\u003e\\\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003eawk\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"s1\"\u003e'{print $(NF-2), $(NF-1), $NF}'\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"se\"\u003e\\\u003c/span\u003e\n\u003cspan class=\"w\"\u003e    \u003c/span\u003e\u003cspan class=\"p\"\u003e|\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003eclaude\u003cspan class=\"w\"\u003e \u003c/span\u003eexplain\u003cspan class=\"w\"\u003e \u003c/span\u003eit\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003ch2 id=\"intelligence-is-cheap\"\u003eIntelligence is Cheap\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e完全可以用自然语言描述\u003cstrong\u003e任何意图\u003c/strong\u003e\n\u003c/li\u003e\n\u003cli\u003e人类更需要的是想象力\u003cul\u003e\n\u003cli\u003e我的观点：想象力本质上是可枚举的\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"slideshow\" name=\"annon_pipe\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e匿名管道\u003c/h1\u003e\n\u003ch2 id=\"_2\"\u003e创建一个\u003cstrong\u003e仅进程内部可见\u003c/strong\u003e的管道\u003c/h2\u003e\n\u003cdiv class=\"codehilite\"\u003e\u003cpre\u003e\u003cspan\u003e\u003c/span\u003e\u003ccode\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"nf\"\u003epipe\u003c/span\u003e\u003cspan class=\"p\"\u003e(\u003c/span\u003e\u003cspan class=\"kt\"\u003eint\u003c/span\u003e\u003cspan class=\"w\"\u003e \u003c/span\u003e\u003cspan class=\"n\"\u003epipefd\u003c/span\u003e\u003cspan class=\"p\"\u003e[\u003c/span\u003e\u003cspan class=\"mi\"\u003e2\u003c/span\u003e\u003cspan class=\"p\"\u003e]);\u003c/span\u003e\n\u003c/code\u003e\u003c/pre\u003e\u003c/div\u003e\n\n\u003cul\u003e\n\u003cli\u003e返回两个文件描述符\u003c/li\u003e\n\u003cli\u003e进程同时拥有读口和写口\u003cul\u003e\n\u003cli\u003e看起来没用？不，fork 就有用了\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_3\"\u003e想知道发生了什么？\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e不需要读文档，直接调试示例代码\u003c/li\u003e\n\u003cli\u003e甚至直接让 AI 帮我们 “翻译” 程序状态 (像 Tower of Hanoi 那样)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/pipe\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"unix\"\u003e\u003ca href=\"/OS/demos/virtualization/pipe\"\u003eUNIX 管道\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eUNIX 管道 (pipe) 是一种典型的进程间通信机制，允许数据在不同的进程之间单向流动。管道可以被视为一种特殊的文件，其中一个进程将数据写入管道的一端，而另一个进程从另一端读取数据。我们完全可以借助 AI 生成的辅助可视化工具来理解这一过程。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"slideshow\" name=\"testkit\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"testkit\"\u003e综合例子：TestKit\u003c/h1\u003e\n\u003ch2 id=\"c\"\u003eC 语言的测试框架\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e直接在代码里写单元测试和系统测试\u003cul\u003e\n\u003cli\u003e随时随地调用内部函数\u003c/li\u003e\n\u003cli\u003e全部在子进程中运行 (允许直接 crash)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003cli\u003e还是 “很不错” 的想法和代码呢\u003cul\u003e\n\u003cli\u003e用来理解原理很不错\u003c/li\u003e\n\u003cli\u003e(但也许以后也不需要了)\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003ch2 id=\"_1\"\u003e正确打开方式\u003c/h2\u003e\n\u003cul\u003e\n\u003cli\u003e让 LLM 帮我写测试用例\u003c/li\u003e\n\u003cli\u003e用魔法打败魔法 (M1 的 testcases 都是 AIGC)\u003cul\u003e\n\u003cli\u003e我甚至看都没看一眼 🤔\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"code-card\" path=\"virtualization/testkit\"\u003e\u003cdiv\u003e\u003cdiv\u003e\n\u003ch1 id=\"testkit\"\u003e\u003ca href=\"/OS/demos/virtualization/testkit\"\u003eTestKit 测试框架\u003c/a\u003e\u003c/h1\u003e\n\u003cp\u003eWriting test cases fearlessly! 这是同学们的第一个测试框架：支持单元测试和系统测试，自动注册测试用例并在程序退出后运行。最重要的特点是它使用简单：你只需要包含 testkit.h，并且链接 testkit.c 即可。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\u003c/div\u003e\n\u003cdiv class=\"note\" name=\"takeaways\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"takeaways\"\u003eTakeaways\u003c/h1\u003e\n\u003cp\u003e操作系统必需提供机制供应用程序访问操作系统对象。对于 UNIX 系统，文件描述符是操作系统中表示打开文件 (操作系统对象) 的指针；而 Windows 则更直接地提供了 handle 机制。\u003c/p\u003e\n\u003c/div\u003e\u003c/div\u003e\n\n\u003cdiv class=\"note\" name=\"readings\"\u003e\u003cdiv\u003e\n\u003ch1 id=\"_1\"\u003e阅读材料\u003c/h1\u003e\n\u003cp\u003e教科书 Operating Systems: Three Easy Pieces:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003e第 39 章 - Files and Directories\u003c/li\u003e\n\u003c/ul\u003e\n\u003c/div\u003e\u003c/div\u003e\n"},"__N_SSG":true},"page":"/[[...index]]","query":{"index":["OS","2026","lect7.md"]},"buildId":"5oc85hUK-mNqby8Yf0bnI","isFallback":false,"gsp":true,"scriptLoader":[]}</script></body></html>
