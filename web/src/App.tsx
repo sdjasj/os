@@ -52,6 +52,8 @@ import type {
   ReadingRecord,
   ReadingState,
 } from './types'
+import { scrollElementIntoView, scrollWindowTo } from './scroll'
+import { useBodyScrollLock } from './useBodyScrollLock'
 
 type ThemeMode = 'system' | 'light' | 'dark'
 
@@ -164,18 +166,20 @@ function ThemeIcon({ mode }: { mode: ThemeMode }) {
   return <Monitor size={18} />
 }
 
-function AppHeader({ route, onSearch, theme, onTheme, onMenu }: {
+function AppHeader({ route, onSearch, theme, onTheme, onMenu, menuOpen, searchOpen }: {
   route: Route
   onSearch: () => void
   theme: ThemeMode
   onTheme: () => void
   onMenu: () => void
+  menuOpen: boolean
+  searchOpen: boolean
 }) {
   const themeLabel = theme === 'system' ? '跟随系统' : theme === 'light' ? '浅色模式' : '深色模式'
   return (
     <header className="app-header">
       <div className="header-inner">
-        <button className="icon-button mobile-menu-button" type="button" aria-label="打开课程目录" aria-haspopup="dialog" onClick={onMenu}>
+        <button className="icon-button mobile-menu-button" type="button" aria-label="打开课程目录" aria-haspopup="dialog" aria-expanded={menuOpen} aria-controls="course-navigation" onClick={onMenu}>
           <Menu size={20} />
         </button>
         <a className="brand" href="#/" aria-label="OS 2026 教程首页">
@@ -191,7 +195,7 @@ function AppHeader({ route, onSearch, theme, onTheme, onMenu }: {
           <a className={['实验与代码', 'MiniLab', '代码示例'].includes(routeLabel(route)) ? 'active' : ''} aria-current={['实验与代码', 'MiniLab', '代码示例'].includes(routeLabel(route)) ? 'page' : undefined} href="#/practice">实践</a>
         </nav>
         <div className="header-actions">
-          <button className="search-trigger" type="button" onClick={onSearch} aria-label="搜索全部教程" aria-haspopup="dialog">
+          <button className="search-trigger" type="button" onClick={onSearch} aria-label="搜索全部教程" aria-haspopup="dialog" aria-expanded={searchOpen} aria-controls="global-search">
             <Search size={17} />
             <span>搜索教程</span>
             <kbd><Command size={12} /> K</kbd>
@@ -208,6 +212,7 @@ function AppHeader({ route, onSearch, theme, onTheme, onMenu }: {
 function MobileNavigation({ open, onClose }: { open: boolean; onClose: () => void }) {
   const panelRef = useRef<HTMLElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
+  useBodyScrollLock(open)
 
   useEffect(() => {
     if (!open) return
@@ -233,14 +238,14 @@ function MobileNavigation({ open, onClose }: { open: boolean; onClose: () => voi
     window.addEventListener('keydown', handleKey)
     return () => {
       window.removeEventListener('keydown', handleKey)
-      previousFocus.current?.focus()
+      if (previousFocus.current?.isConnected) previousFocus.current.focus()
     }
   }, [open, onClose])
 
   if (!open) return null
   return (
-    <div className="drawer-layer" role="presentation" onMouseDown={onClose}>
-      <aside ref={panelRef} className="mobile-drawer" role="dialog" aria-modal="true" aria-label="课程导航" onMouseDown={(event) => event.stopPropagation()}>
+    <div className="drawer-layer" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <aside id="course-navigation" ref={panelRef} className="mobile-drawer" role="dialog" aria-modal="true" aria-label="课程导航">
         <div className="drawer-head">
           <div><span className="eyebrow">COURSE MAP</span><h2>学习导航</h2></div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="关闭课程导航"><X size={20} /></button>
@@ -251,7 +256,7 @@ function MobileNavigation({ open, onClose }: { open: boolean; onClose: () => voi
         <a className="drawer-primary-link" href="#/practice" onClick={onClose}><FlaskConical size={18} />实验与代码</a>
         <div className="drawer-lecture-grid">
           {lectures.map((lecture) => (
-            <a key={lecture.id} href={documentHref(lecture)} onClick={onClose} title={lecture.shortTitle}>
+            <a key={lecture.id} href={documentHref(lecture)} onClick={onClose} title={lecture.shortTitle} aria-label={`第 ${lecture.number} 讲：${lecture.shortTitle}`}>
               {String(lecture.number).padStart(2, '0')}
             </a>
           ))}
@@ -475,7 +480,7 @@ function LectureRail({ current, open, onClose }: { current: ContentDocument; ope
       <div className="rail-head"><span className="eyebrow">{label}</span><button type="button" className="icon-button rail-close" onClick={onClose} aria-label="关闭章节目录"><X size={19} /></button></div>
       <nav>
         {collection.map((document) => (
-          <a key={document.id} href={documentHref(document)} className={document.id === current.id ? 'active' : ''} onClick={onClose} title={document.shortTitle}>
+          <a key={document.id} href={documentHref(document)} className={document.id === current.id ? 'active' : ''} aria-current={document.id === current.id ? 'page' : undefined} onClick={onClose} title={document.shortTitle}>
             <span>{document.kind === 'lab' ? `M${document.number}` : String(document.number).padStart(2, '0')}</span>
             <div><strong>{document.shortTitle}</strong><small>{document.phase}</small></div>
           </a>
@@ -500,7 +505,7 @@ function TableOfContents({ document, headings, active, mobile, onClose }: {
       <div className="toc-head"><span className="eyebrow">ON THIS PAGE</span>{mobile && <button className="icon-button" type="button" onClick={onClose} aria-label="关闭本讲目录"><X size={19} /></button>}</div>
       <nav>
         {visible.map((heading) => (
-          <a key={heading.id} className={`${heading.depth === 3 ? 'toc-h3' : ''} ${active === heading.id ? 'active' : ''}`} href={documentHref(document, heading.id)} onClick={onClose}>
+          <a key={heading.id} className={`${heading.depth === 3 ? 'toc-h3' : ''} ${active === heading.id ? 'active' : ''}`} aria-current={active === heading.id ? 'location' : undefined} href={documentHref(document, heading.id)} onClick={onClose}>
             <span />{heading.text}
           </a>
         ))}
@@ -527,6 +532,7 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
   const onProgressRef = useRef(onProgress)
   const handledLocationRef = useRef<string | undefined>(undefined)
   const overlayPreviousFocusRef = useRef<HTMLElement | null>(null)
+  useBodyScrollLock(railOpen || tocOpen)
 
   useEffect(() => {
     activeRef.current = active
@@ -550,7 +556,7 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
     const locationKey = `${document.id}:${initialSection ?? '__resume__'}`
     if (handledLocationRef.current === locationKey) return
     if (!section) {
-      window.scrollTo({ top: 0 })
+      scrollWindowTo(0)
       const frame = window.requestAnimationFrame(() => {
         handledLocationRef.current = locationKey
         const title = articleRef.current?.querySelector<HTMLElement>('h1')
@@ -567,7 +573,7 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
       const target = window.document.getElementById(section)
       if (!target) return
       handledLocationRef.current = locationKey
-      target.scrollIntoView({ block: 'start' })
+      scrollElementIntoView(target)
       if (focusTimer) window.clearTimeout(focusTimer)
       focusTimer = window.setTimeout(() => {
         if (!cancelled) window.document.getElementById(section)?.focus({ preventScroll: true })
@@ -591,6 +597,18 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
       if (focusTimer) window.clearTimeout(focusTimer)
     }
   }, [document.id, initialSection])
+
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1221px)')
+    const closeMobileOverlays = () => {
+      if (!desktop.matches) return
+      setRailOpen(false)
+      setTocOpen(false)
+    }
+    closeMobileOverlays()
+    desktop.addEventListener('change', closeMobileOverlays)
+    return () => desktop.removeEventListener('change', closeMobileOverlays)
+  }, [])
 
   useEffect(() => {
     if (!railOpen && !tocOpen) return
@@ -618,7 +636,7 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
     window.addEventListener('keydown', handleKey)
     return () => {
       window.removeEventListener('keydown', handleKey)
-      overlayPreviousFocusRef.current?.focus()
+      if (overlayPreviousFocusRef.current?.isConnected) overlayPreviousFocusRef.current.focus()
     }
   }, [railOpen, tocOpen])
 
@@ -651,7 +669,7 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
       setProgress(nextProgress)
 
       const candidates = [...article.querySelectorAll<HTMLElement>('h2[id], h3[id]')]
-      let nextActive = candidates[0]?.id
+      let nextActive: string | undefined
       for (const heading of candidates) {
         if (heading.getBoundingClientRect().top <= 170) nextActive = heading.id
         else break
@@ -690,7 +708,7 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
 
   return (
     <main id="main-content" className="reader-page">
-      <div className="reading-progress" style={{ width: `${progress}%` }} />
+      <div className="reading-progress" style={{ width: `${progress}%` }} role="progressbar" aria-label="本章阅读进度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress} />
       <button className="rail-overlay" type="button" aria-label="关闭章节目录" data-visible={railOpen} onClick={() => setRailOpen(false)} />
       <LectureRail current={document} open={railOpen} onClose={() => setRailOpen(false)} />
       <article ref={articleRef} className="reader-article">
@@ -716,11 +734,11 @@ function ReaderPage({ document, initialSection, record, onProgress, onComplete }
       </article>
       <TableOfContents document={document} headings={headings} active={active} />
       <div className="mobile-reader-bar">
-        <button type="button" onClick={() => setRailOpen(true)} aria-expanded={railOpen} aria-controls="reader-rail" aria-haspopup="dialog"><Menu size={18} /><span>章节</span></button>
-        <button type="button" onClick={() => setTocOpen(true)} aria-expanded={tocOpen} aria-controls="mobile-toc" aria-haspopup="dialog"><ListTree size={18} /><span>本讲目录</span></button>
+        <button type="button" onClick={() => { setTocOpen(false); setRailOpen(true) }} aria-expanded={railOpen} aria-controls="reader-rail" aria-haspopup="dialog"><Menu size={18} /><span>章节</span></button>
+        <button type="button" onClick={() => { setRailOpen(false); setTocOpen(true) }} aria-expanded={tocOpen} aria-controls="mobile-toc" aria-haspopup="dialog"><ListTree size={18} /><span>本讲目录</span></button>
         {next ? <a href={documentHref(next)}><ArrowRight size={18} /><span>下一{document.kind === 'lecture' ? '讲' : '章'}</span></a> : <a href="#/"><Home size={18} /><span>首页</span></a>}
       </div>
-      {tocOpen && <div className="toc-layer" role="presentation" onMouseDown={() => setTocOpen(false)}><div onMouseDown={(event) => event.stopPropagation()}><TableOfContents document={document} headings={headings} active={active} mobile onClose={() => setTocOpen(false)} /></div></div>}
+      {tocOpen && <div className="toc-layer" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setTocOpen(false) }}><div><TableOfContents document={document} headings={headings} active={active} mobile onClose={() => setTocOpen(false)} /></div></div>}
     </main>
   )
 }
@@ -782,7 +800,16 @@ function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void })
   const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
   const results = useMemo(() => searchContent(query), [query])
+  useBodyScrollLock(open)
+
+  useEffect(() => setActiveIndex(0), [query])
+
+  useEffect(() => {
+    if (!open || !results[activeIndex]) return
+    window.document.getElementById(`search-result-${activeIndex}`)?.scrollIntoView({ block: 'nearest' })
+  }, [activeIndex, open, results])
 
   useEffect(() => {
     if (!open) return
@@ -807,23 +834,28 @@ function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void })
     window.addEventListener('keydown', handleKey)
     return () => {
       window.removeEventListener('keydown', handleKey)
-      previousFocus.current?.focus()
+      if (previousFocus.current?.isConnected) previousFocus.current.focus()
     }
   }, [open, onClose])
 
   if (!open) return null
   const suggestions = ['fork', 'pthread_mutex_lock', 'fsync', 'WAL', 'CUDA']
   return (
-    <div className="search-layer" role="presentation" onMouseDown={onClose}>
-      <section ref={dialogRef} className="search-dialog" role="dialog" aria-modal="true" aria-label="搜索全部教程" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="search-input-row"><Search size={21} /><input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.nativeEvent.isComposing && results[0]) { window.location.hash = results[0].href.slice(1); onClose() } }} placeholder="搜索概念、API、实验或代码……" aria-label="搜索词" /><button className="search-close" type="button" onClick={onClose} aria-label="关闭搜索"><X size={18} /></button></div>
+    <div className="search-layer" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <section id="global-search" ref={dialogRef} className="search-dialog" role="dialog" aria-modal="true" aria-label="搜索全部教程">
+        <div className="search-input-row"><Search size={21} /><input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) return
+          if (event.key === 'ArrowDown' && results.length) { event.preventDefault(); setActiveIndex((index) => (index + 1) % results.length) }
+          else if (event.key === 'ArrowUp' && results.length) { event.preventDefault(); setActiveIndex((index) => (index - 1 + results.length) % results.length) }
+          else if (event.key === 'Enter' && results[activeIndex]) { window.location.hash = results[activeIndex].href.slice(1); onClose() }
+        }} placeholder="搜索概念、API、实验或代码……" aria-label="搜索词" role="combobox" aria-autocomplete="list" aria-expanded={results.length > 0} aria-controls={results.length > 0 ? 'search-results' : undefined} aria-activedescendant={results[activeIndex] ? `search-result-${activeIndex}` : undefined} /><button className="search-close" type="button" onClick={onClose} aria-label="关闭搜索"><X size={18} /></button></div>
         <div className="search-content">
           {!query.trim() ? (
             <div className="search-empty"><span className="eyebrow">TRY A QUERY</span><h2>跨 30 讲、17 章和全部代码搜索</h2><p>中文概念、英文 API 和代码符号都可以直接输入。</p><div className="suggestion-list">{suggestions.map((item) => <button key={item} type="button" onClick={() => setQuery(item)}>{item}</button>)}</div></div>
           ) : results.length ? (
-            <div className="search-results"><div className="search-result-count" aria-live="polite">找到 {results.length} 个最相关结果</div>{results.map((result) => <a key={result.id} href={result.href} onClick={onClose}><span className={`result-kind kind-${result.kind}`}>{result.kind === 'lecture' ? '讲' : result.kind === 'topic' ? '题' : result.kind === 'lab' ? '验' : '码'}</span><div><small>{result.eyebrow}</small><h3>{result.title}</h3><p>{result.context}</p></div><ChevronRight size={18} /></a>)}</div>
+            <div className="search-results"><div className="search-result-count" aria-live="polite">找到 {results.length} 个最相关结果</div><div id="search-results" className="search-result-list" role="listbox">{results.map((result, index) => <a id={`search-result-${index}`} role="option" aria-selected={index === activeIndex} className={index === activeIndex ? 'active' : ''} key={result.id} href={result.href} onPointerEnter={() => setActiveIndex(index)} onFocus={() => setActiveIndex(index)} onClick={onClose}><span className={`result-kind kind-${result.kind}`}>{result.kind === 'lecture' ? '讲' : result.kind === 'topic' ? '题' : result.kind === 'lab' ? '验' : '码'}</span><div><small>{result.eyebrow}</small><h3>{result.title}</h3><p>{result.context}</p></div><ChevronRight size={18} /></a>)}</div></div>
           ) : (
-            <div className="no-results"><Search size={28} /><h2>没有找到“{query}”</h2><p>试试更短的概念、系统调用名，或去掉空格后重试。</p></div>
+            <div className="no-results" role="status" aria-live="polite"><Search size={28} /><h2>没有找到“{query}”</h2><p>试试更短的概念、系统调用名，或去掉空格后重试。</p></div>
           )}
         </div>
         <div className="search-foot"><span><kbd>↵</kbd> 打开结果</span><span><kbd>Esc</kbd> 关闭</span><span>搜索范围：教程、标题、代码</span></div>
@@ -859,7 +891,7 @@ export function App() {
 
   useEffect(() => {
     if (route.view === 'document' && findDocument(route.kind, route.number)) return
-    window.scrollTo({ top: 0 })
+    scrollWindowTo(0)
     const title = route.view === 'lectures' ? '30 讲逐讲教程' : route.view === 'topics' ? '17 章主题教程' : route.view === 'practice' ? '实验与代码' : route.view === 'example' ? route.filename : route.view === 'not-found' || route.view === 'document' ? '页面未找到' : '系统实验手册'
     window.document.title = `${title} · OS/2026`
     const frame = window.requestAnimationFrame(() => {
@@ -871,9 +903,18 @@ export function App() {
   }, [route])
 
   useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1221px)')
+    const closeMobileMenu = () => { if (desktop.matches) setMenuOpen(false) }
+    closeMobileMenu()
+    desktop.addEventListener('change', closeMobileMenu)
+    return () => desktop.removeEventListener('change', closeMobileMenu)
+  }, [])
+
+  useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement
       const editing = /INPUT|TEXTAREA|SELECT/.test(target.tagName) || target.isContentEditable
+      if (window.document.documentElement.dataset.overlayOpen === 'true' || window.document.querySelector('[aria-modal="true"]')) return
       if ((event.metaKey || event.ctrlKey) && event.key.toLocaleLowerCase() === 'k') {
         event.preventDefault()
         openSearch()
@@ -932,7 +973,7 @@ export function App() {
   return (
     <>
       <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); const main = window.document.getElementById('main-content'); main?.setAttribute('tabindex', '-1'); main?.focus() }}>跳到正文</a>
-      <AppHeader route={route} onSearch={openSearch} theme={mode} onTheme={cycle} onMenu={openMenu} />
+      <AppHeader route={route} onSearch={openSearch} theme={mode} onTheme={cycle} onMenu={openMenu} menuOpen={menuOpen} searchOpen={searchOpen} />
       {page}
       <footer className="site-footer"><div><a className="brand footer-brand" href="#/"><span className="brand-mark">OS</span><span className="brand-copy"><strong>系统实验手册</strong><small>JYY · OS/2026</small></span></a><p>基于 JYY 原课程 PPT 整理的非官方学习教程；转载、修改和再分发请保留原作者署名，并遵守 CC BY-NC 4.0 非商业许可。</p></div><div className="footer-links"><a href="#/lectures">逐讲教程</a><a href="#/topics">主题教程</a><a href="#/practice">实验与代码</a><a href="https://jyywiki.cn/OS/2026/" target="_blank" rel="noreferrer">课程原站 <ExternalLink size={13} /></a><a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noreferrer">CC BY-NC 4.0 <ExternalLink size={13} /></a></div></footer>
       <MobileNavigation open={menuOpen} onClose={closeMenu} />

@@ -3,6 +3,7 @@ import { X, ZoomIn } from 'lucide-react'
 import { renderMarkdown } from '../markdown'
 import { copyText } from '../clipboard'
 import type { ContentDocument, HeadingItem } from '../types'
+import { useBodyScrollLock } from '../useBodyScrollLock'
 
 interface MarkdownViewProps {
   content: ContentDocument
@@ -14,6 +15,7 @@ export const MarkdownView = memo(function MarkdownView({ content, onHeadings }: 
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const imageOpenerRef = useRef<HTMLElement | null>(null)
   const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null)
+  useBodyScrollLock(Boolean(zoomedImage))
   const rendered = useMemo(() => renderMarkdown(content), [content])
   const html = useMemo(() => ({ __html: rendered.html }), [rendered.html])
 
