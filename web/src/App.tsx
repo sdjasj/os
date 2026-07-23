@@ -14,6 +14,7 @@ import {
   FlaskConical,
   GraduationCap,
   Home,
+  LayoutGrid,
   Layers3,
   ListTree,
   Menu,
@@ -44,6 +45,16 @@ import {
   phaseDefinitions,
   topics,
 } from './content'
+import {
+  findTutorialProject,
+  findTutorialProjectCatalog,
+  hasTutorialProject,
+  loadTutorialProject,
+  portalUrl,
+  projectSlugFromPathname,
+  type TutorialProject,
+} from './projects'
+import { ProjectLoadingPage, ProjectPortal, ProjectTutorialApp, UnknownProjectPage } from './ProjectSite'
 import type {
   CodeExample,
   ContentDocument,
@@ -195,6 +206,9 @@ function AppHeader({ route, onSearch, theme, onTheme, onMenu, menuOpen, searchOp
           <a className={['实验与代码', 'MiniLab', '代码示例'].includes(routeLabel(route)) ? 'active' : ''} aria-current={['实验与代码', 'MiniLab', '代码示例'].includes(routeLabel(route)) ? 'page' : undefined} href="#/practice">实践</a>
         </nav>
         <div className="header-actions">
+          <a className="icon-button project-library-link" href={portalUrl()} title="返回项目学习库" aria-label="返回项目学习库">
+            <LayoutGrid size={18} />
+          </a>
           <button className="search-trigger" type="button" onClick={onSearch} aria-label="搜索全部教程" aria-haspopup="dialog" aria-expanded={searchOpen} aria-controls="global-search">
             <Search size={17} />
             <span>搜索教程</span>
@@ -251,6 +265,7 @@ function MobileNavigation({ open, onClose }: { open: boolean; onClose: () => voi
           <button className="icon-button" type="button" onClick={onClose} aria-label="关闭课程导航"><X size={20} /></button>
         </div>
         <a className="drawer-primary-link" href="#/" onClick={onClose}><Home size={18} />课程首页</a>
+        <a className="drawer-primary-link" href={portalUrl()} onClick={onClose}><LayoutGrid size={18} />全部项目</a>
         <a className="drawer-primary-link" href="#/lectures" onClick={onClose}><GraduationCap size={18} />30 讲逐讲教程</a>
         <a className="drawer-primary-link" href="#/topics" onClick={onClose}><Layers3 size={18} />17 章主题教程</a>
         <a className="drawer-primary-link" href="#/practice" onClick={onClose}><FlaskConical size={18} />实验与代码</a>
@@ -868,7 +883,7 @@ function NotFoundPage() {
   return <main id="main-content" className="not-found section-shell"><span className="eyebrow">404 · INVALID STATE</span><h1>这个状态不存在。</h1><p>链接可能已经失效，回到课程地图重新选择一个学习入口。</p><a className="button button-primary" href="#/"><Home size={17} /> 回到首页</a></main>
 }
 
-export function App() {
+function OsApp() {
   const [route, setRoute] = useState<Route>(parseRoute)
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -975,9 +990,52 @@ export function App() {
       <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); const main = window.document.getElementById('main-content'); main?.setAttribute('tabindex', '-1'); main?.focus() }}>跳到正文</a>
       <AppHeader route={route} onSearch={openSearch} theme={mode} onTheme={cycle} onMenu={openMenu} menuOpen={menuOpen} searchOpen={searchOpen} />
       {page}
-      <footer className="site-footer"><div><a className="brand footer-brand" href="#/"><span className="brand-mark">OS</span><span className="brand-copy"><strong>系统实验手册</strong><small>JYY · OS/2026</small></span></a><p>基于 JYY 原课程 PPT 整理的非官方学习教程；转载、修改和再分发请保留原作者署名，并遵守 CC BY-NC 4.0 非商业许可。</p></div><div className="footer-links"><a href="#/lectures">逐讲教程</a><a href="#/topics">主题教程</a><a href="#/practice">实验与代码</a><a href="https://jyywiki.cn/OS/2026/" target="_blank" rel="noreferrer">课程原站 <ExternalLink size={13} /></a><a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noreferrer">CC BY-NC 4.0 <ExternalLink size={13} /></a></div></footer>
+      <footer className="site-footer"><div><a className="brand footer-brand" href="#/"><span className="brand-mark">OS</span><span className="brand-copy"><strong>系统实验手册</strong><small>JYY · OS/2026</small></span></a><p>基于 JYY 原课程 PPT 整理的非官方学习教程；转载、修改和再分发请保留原作者署名，并遵守 CC BY-NC 4.0 非商业许可。</p></div><div className="footer-links"><a href={portalUrl()}>全部项目</a><a href="#/lectures">逐讲教程</a><a href="#/topics">主题教程</a><a href="#/practice">实验与代码</a><a href="https://jyywiki.cn/OS/2026/" target="_blank" rel="noreferrer">课程原站 <ExternalLink size={13} /></a><a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noreferrer">CC BY-NC 4.0 <ExternalLink size={13} /></a></div></footer>
       <MobileNavigation open={menuOpen} onClose={closeMenu} />
       <SearchDialog open={searchOpen} onClose={closeSearch} />
     </>
   )
+}
+
+function LazyProjectTutorialApp({ slug }: { slug: string }) {
+  const catalog = findTutorialProjectCatalog(slug)
+  const [project, setProject] = useState<TutorialProject | undefined>(() => findTutorialProject(slug))
+  const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    const loaded = findTutorialProject(slug)
+    if (loaded) {
+      setProject(loaded)
+      setFailed(false)
+      return () => { active = false }
+    }
+    setProject(undefined)
+    setFailed(false)
+    loadTutorialProject(slug).then(
+      (nextProject) => {
+        if (active) setProject(nextProject)
+      },
+      () => {
+        if (active) setFailed(true)
+      },
+    )
+    return () => { active = false }
+  }, [attempt, slug])
+
+  if (!catalog) return <UnknownProjectPage slug={slug} />
+  if (project) return <ProjectTutorialApp project={project} />
+  return <ProjectLoadingPage project={catalog} error={failed} onRetry={failed ? () => setAttempt((value) => value + 1) : undefined} />
+}
+
+export function App() {
+  const projectSlug = projectSlugFromPathname()
+  const legacyOsRoute = !projectSlug && /^#\/(?:lectures?|topics?|practice|labs?|example)(?:\/|$)/.test(window.location.hash)
+
+  if (!projectSlug) return legacyOsRoute ? <OsApp /> : <ProjectPortal />
+  if (projectSlug === 'os') return <OsApp />
+
+  if (!hasTutorialProject(projectSlug)) return <UnknownProjectPage slug={projectSlug} />
+  return <LazyProjectTutorialApp slug={projectSlug} />
 }

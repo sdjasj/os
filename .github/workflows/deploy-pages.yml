@@ -1,4 +1,4 @@
-name: Deploy OS tutorial to GitHub Pages
+name: Deploy project learning library to GitHub Pages
 
 on:
   push:
@@ -20,6 +20,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Validate tutorial content
+        run: python3 scripts/check_project.py
 
       - name: Set up Node.js
         uses: actions/setup-node@v6

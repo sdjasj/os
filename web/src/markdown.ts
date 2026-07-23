@@ -21,6 +21,13 @@ import x86asm from 'highlight.js/lib/languages/x86asm'
 import katex from 'katex'
 import { marked } from 'marked'
 import { examples, resolveRepoPath, sourceAssets } from './content'
+import {
+  findProjectDocumentByRepoPath,
+  projectDocumentHref,
+  projectTrackHrefForReadme,
+  sourceUrlForRepoPath,
+  type ProjectDocument,
+} from './projects'
 import type { ContentDocument, HeadingItem } from './types'
 
 hljs.registerLanguage('bash', bash)
@@ -63,7 +70,35 @@ function sourceLectureUrl(repoPath: string): string | undefined {
   return `https://jyywiki.cn/OS/2026/lect${Number(match[1])}.md`
 }
 
+function asProjectDocument(document: ContentDocument): ProjectDocument | undefined {
+  const candidate = document as Partial<ProjectDocument>
+  return candidate.projectSlug && candidate.routeId ? candidate as ProjectDocument : undefined
+}
+
+function routeForProjectMarkdownLink(href: string, document: ProjectDocument): string {
+  if (/^(https?:|mailto:|tel:)/i.test(href)) return href
+
+  const [pathPart, anchor] = href.split('#', 2)
+  if (!pathPart) return projectDocumentHref(document, anchor || undefined)
+
+  const repoPath = resolveRepoPath(document.repoPath, pathPart)
+  const targetDocument = findProjectDocumentByRepoPath(document.projectSlug, repoPath)
+  if (targetDocument) return projectDocumentHref(targetDocument, anchor || undefined)
+
+  if (/README\.md$/i.test(repoPath)) {
+    const trackHref = projectTrackHrefForReadme(document.projectSlug, repoPath)
+    if (trackHref) return trackHref
+  }
+
+  const sourceUrl = sourceUrlForRepoPath(document.projectSlug, repoPath)
+  if (sourceUrl) return anchor ? `${sourceUrl}#${anchor}` : sourceUrl
+
+  return href
+}
+
 function routeForMarkdownLink(href: string, document: ContentDocument): string {
+  const projectDocument = asProjectDocument(document)
+  if (projectDocument) return routeForProjectMarkdownLink(href, projectDocument)
   if (/^(https?:|mailto:|tel:)/i.test(href)) return href
   if (href === '/') return 'https://jyywiki.cn/'
   if (href.startsWith('/OS/')) return `https://jyywiki.cn${href}`
@@ -114,6 +149,11 @@ function routeForMarkdownLink(href: string, document: ContentDocument): string {
 
 function assetForImage(src: string, document: ContentDocument): string {
   if (/^(https?:|data:|blob:)/i.test(src)) return src
+  const projectDocument = asProjectDocument(document)
+  if (projectDocument) {
+    const repoPath = resolveRepoPath(document.repoPath, src)
+    return sourceUrlForRepoPath(projectDocument.projectSlug, repoPath) ?? src
+  }
   const repoPath = resolveRepoPath(document.repoPath, src)
   return sourceAssets[repoPath] ?? (src.startsWith('/OS/') ? `https://jyywiki.cn${src}` : src)
 }
@@ -157,7 +197,10 @@ function renderMathOutsideCode(raw: string): string {
 }
 
 export function renderMarkdown(document: ContentDocument): RenderedMarkdown {
-  const preparedMarkdown = document.kind === 'lab' ? document.raw : renderMathOutsideCode(document.raw)
+  const publishableRaw = asProjectDocument(document)
+    ? document.raw.replaceAll('/home/yanzhen/', '/path/to/')
+    : document.raw
+  const preparedMarkdown = document.kind === 'lab' ? publishableRaw : renderMathOutsideCode(publishableRaw)
   const rawHtml = marked.parse(preparedMarkdown) as string
   const cleanHtml = DOMPurify.sanitize(rawHtml, {
     ADD_ATTR: ['target', 'rel', 'loading', 'decoding', 'data-lightbox'],

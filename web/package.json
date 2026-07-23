@@ -1,11 +1,12 @@
 {
-  "name": "jyy-os-2026-reader",
+  "name": "project-tutorial-library",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && vite build",
+    "postbuild": "node scripts/create-route-entrypoints.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
