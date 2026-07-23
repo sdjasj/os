@@ -18,9 +18,8 @@ import sql from 'highlight.js/lib/languages/sql'
 import typescript from 'highlight.js/lib/languages/typescript'
 import xml from 'highlight.js/lib/languages/xml'
 import x86asm from 'highlight.js/lib/languages/x86asm'
-import katex from 'katex'
-import { marked } from 'marked'
 import { examples, resolveRepoPath, sourceAssets } from './content'
+import { createMarkdownParser } from './math'
 import {
   findProjectDocumentByRepoPath,
   projectDocumentHref,
@@ -62,7 +61,8 @@ hljs.registerLanguage('x86asm', x86asm)
 hljs.registerLanguage('cuda', cpp)
 hljs.registerLanguage('gdb', plaintext)
 
-marked.setOptions({ gfm: true, breaks: false })
+const markdownParser = createMarkdownParser(true)
+const plainMarkdownParser = createMarkdownParser(false)
 
 function sourceLectureUrl(repoPath: string): string | undefined {
   const match = /sources\/notes\/lect0?(\d+)\.md$/.exec(repoPath)
@@ -171,37 +171,12 @@ export interface RenderedMarkdown {
   headings: HeadingItem[]
 }
 
-function renderMathOutsideCode(raw: string): string {
-  return raw
-    .split(/(```[\s\S]*?```)/g)
-    .map((part, index) => {
-      if (index % 2 === 1) return part
-      return part
-        .replace(/\\\[([\s\S]*?)\\\]/g, (_match, expression: string) => {
-          const html = katex.renderToString(expression.trim(), {
-            displayMode: true,
-            throwOnError: false,
-            strict: false,
-          })
-          return `\n<div class="math-block">${html}</div>\n`
-        })
-        .replace(/\\\((.+?)\\\)/g, (_match, expression: string) => {
-          return katex.renderToString(expression.trim(), {
-            displayMode: false,
-            throwOnError: false,
-            strict: false,
-          })
-        })
-    })
-    .join('')
-}
-
 export function renderMarkdown(document: ContentDocument): RenderedMarkdown {
   const publishableRaw = asProjectDocument(document)
     ? document.raw.replaceAll('/home/yanzhen/', '/path/to/')
     : document.raw
-  const preparedMarkdown = document.kind === 'lab' ? publishableRaw : renderMathOutsideCode(publishableRaw)
-  const rawHtml = marked.parse(preparedMarkdown) as string
+  const parser = document.kind === 'lab' ? plainMarkdownParser : markdownParser
+  const rawHtml = parser.parse(publishableRaw) as string
   const cleanHtml = DOMPurify.sanitize(rawHtml, {
     ADD_ATTR: ['target', 'rel', 'loading', 'decoding', 'data-lightbox'],
   })
@@ -279,6 +254,12 @@ export function renderMarkdown(document: ContentDocument): RenderedMarkdown {
     wrapper.setAttribute('aria-label', '可横向滚动的数据表格')
     table.parentNode?.insertBefore(wrapper, table)
     wrapper.append(table)
+  })
+
+  parsed.querySelectorAll<HTMLElement>('.math-block').forEach((math) => {
+    math.tabIndex = 0
+    math.setAttribute('role', 'region')
+    math.setAttribute('aria-label', '数学公式，内容过宽时可横向滚动')
   })
 
   parsed.querySelectorAll<HTMLElement>('pre code').forEach((code) => {

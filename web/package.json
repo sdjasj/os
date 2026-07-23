@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test:math": "node --test --experimental-strip-types tests/math.test.ts",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.node.json && vite build",
     "postbuild": "node scripts/create-route-entrypoints.mjs",
     "preview": "vite preview"
