@@ -54,12 +54,13 @@ PROJECT_TUTORIALS = {
     "strix": {"chapter_count": 14, "tutorial_dirs": ("guide",)},
     "arvo": {"chapter_count": 2, "tutorial_dirs": ("guide",)},
     "mini-swe-agent": {"chapter_count": 1, "tutorial_dirs": ("guide",)},
+    "openhands": {"chapter_count": 15, "tutorial_dirs": ("guide",)},
 }
 
-EXPECTED_PROJECT_CHAPTERS = 94
+EXPECTED_PROJECT_CHAPTERS = 109
 PROJECT_CHAPTER_SUMMARY = (
     "CubeSandbox 11, E2B 12, MiniMind 24, Ray 30, "
-    "Strix 14, ARVO 2, mini-swe-agent 1"
+    "Strix 14, ARVO 2, mini-swe-agent 1, OpenHands 15"
 )
 ALLOWED_PROJECT_SUFFIXES = {".md", ".py"}
 NON_CHAPTER_DIRECTORY_NAMES = {"example", "examples", "sample", "samples"}
@@ -408,7 +409,8 @@ def main() -> int:
         f"17 thematic chapters, 30 detailed lecture chapters, "
         f"{len(image_references)} course images, "
         f"{len(authored)} authored Markdown files, "
-        f"7 imported project tutorials ({PROJECT_CHAPTER_SUMMARY}; "
+        f"{len(PROJECT_TUTORIALS)} imported project tutorials "
+        f"({PROJECT_CHAPTER_SUMMARY}; "
         f"total {EXPECTED_PROJECT_CHAPTERS}), "
         f"{project_markdown_count} project Markdown files"
     )

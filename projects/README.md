@@ -15,6 +15,7 @@
 | Strix | `<project-root>/strix/docs/learning-guide/*.md`、`<project-root>/strix/docs/PROJECT_OVERVIEW_ZH.md` | `strix` | 14 | [`48b4821`](https://github.com/usestrix/strix/commit/48b4821f6960f38a289118a5c17b7e88e3a168b2) · [上游仓库](https://github.com/usestrix/strix) |
 | ARVO | `<project-root>/arvo/docs/ARVO_论文与数据构造解读.md`、`<project-root>/arvo/docs/CyberGym-E2E_从_ARVO_构造数据集解读.md` | `arvo` | 2 | ARVO [`bceb742`](https://github.com/n132/arvo/commit/bceb742e4a8e563f0d53ea2e000496d85291168c) · CyberGym-E2E [`b861317`](https://github.com/sunblaze-ucb/cybergym-e2e/commit/b861317f11641b14ab6ba08b5179d0b044601057) |
 | mini-swe-agent | `<project-root>/mini-swe-agent/PROJECT_GUIDE_ZH.md` | `mini-swe-agent` | 1 | [`38c01a1`](https://github.com/SWE-agent/mini-swe-agent/commit/38c01a19ed1a58dd17dd7c95010e4f69d059c777) · [上游仓库](https://github.com/SWE-agent/mini-swe-agent) |
+| OpenHands | 基于 `<project-root>/OpenHands/{README.md,Development.md,pyproject.toml,openhands/**,frontend/**,enterprise/**,tests/**}` 中的固定快照创作，仅导入 `guide/*.md` 教程 | `openhands` | 15 | [`6b04532`](https://github.com/OpenHands/OpenHands/commit/6b04532541bf2b757d4820d31387b6cba6ffcaea) · [上游仓库](https://github.com/OpenHands/OpenHands) |
 
 ## 章节计数与辅助文件
 
@@ -27,6 +28,7 @@
 - Strix：项目总览加 `00` 至 `12` 共 14 章；学习指南 `README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。
 - ARVO：两篇中文解读均计为章节。组合目录没有统一的根许可证，因此没有推测或合成 `UPSTREAM_LICENSE`。
 - mini-swe-agent：`PROJECT_GUIDE_ZH.md` 计 1 章；`UPSTREAM_LICENSE` 是辅助文件。
+- OpenHands：`00` 至 `14` 共 15 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程为基于固定提交独立创作的源码导读，不声称教程文件存在于上游提交；每章的源码入口映射到该提交中实际存在的代表性文件。根许可证说明 OpenHands 开源部分使用 MIT，而 `enterprise/` 使用其独立许可证，因此导入的 `UPSTREAM_LICENSE` 仅保留这一上游归属边界，不扩大 Enterprise 授权。
 
 许可证只是保留上游归属和许可信息，不代表本仓库重新授权教程或上游项目。教程中的源码路径和相对链接仍以对应快照的上游仓库结构为语境。
 
