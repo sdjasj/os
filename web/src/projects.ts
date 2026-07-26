@@ -164,7 +164,7 @@ function makeDocument(
   const title = cleanInlineMarkdown(raw.match(/^#\s+(.+)$/m)?.[1] ?? filename)
   const shortTitle = title
     .replace(/^第\s*\d+\s*[章节讲]?\s*[：:]?\s*/, '')
-    .replace(/^\d+[.、\s:：-]+/, '')
+    .replace(/^\d+[.·、\s:：-]+/, '')
     .trim()
   const headings = extractHeadings(raw)
   const routeName = track.routeName?.(relativePath) ?? routeStem(relativePath)
@@ -482,6 +482,99 @@ const projectSeeds: ProjectSeed[] = [
       copiedDirectory: 'openclaw/guide/', originalDirectory: 'docs/internal/openclaw-code-study/',
       include: (path) => /^\d{2}-.+\.md$/.test(path),
     }],
+  },
+  {
+    slug: 'pwn-college',
+    mark: 'PWN',
+    title: 'pwn.college 中文教程（非官方）',
+    subtitle: '从 Linux 基础到系统与软件利用',
+    description: '按官方主学习路径建立终端、汇编、网络、密码、程序安全、系统安全与软件利用的完整原理框架。',
+    category: '系统与安全',
+    level: '入门 → 进阶',
+    tags: ['Linux', 'x86-64', 'Binary Security', 'Kernel'],
+    tone: 'rose',
+    updatedAt: '2026-07-26',
+    snapshot: '25334e8',
+    repositoryUrl: 'https://github.com/pwncollege/challenges',
+    repositoryRef: '25334e88d440fc1a45c1f445c88eda7ea00865f2',
+    repositoryRoots: [{
+      pathPrefix: 'projects/pwn-college/',
+      url: 'https://github.com/sdjasj/os',
+      ref: 'e543c397957abed3be810a3a31fc5f321fbdb29a',
+    }],
+    safetyNote: '双用途安全内容：仅在自有、隔离或明确授权的环境中学习；教程不含挑战答案，也不得用于未授权测试。',
+    tracks: [
+      {
+        id: 'start', eyebrow: 'START HERE', title: '平台与学习边界',
+        description: '先建立学习路线、社区协作方式、授权边界与安全实验习惯。',
+        copiedDirectory: 'pwn-college/docs/00-start-here/',
+        originalDirectory: 'projects/pwn-college/docs/00-start-here/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'linux', eyebrow: 'FOUNDATIONS', title: 'Linux Luminarium',
+        description: '系统掌握 Shell、路径、管道、变量、权限、进程、脚本与终端。',
+        copiedDirectory: 'pwn-college/docs/01-linux-luminarium/',
+        originalDirectory: 'projects/pwn-college/docs/01-linux-luminarium/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'computing', eyebrow: 'COMPUTING 101', title: '计算机底层基础',
+        description: '沿 x86-64、内存、栈、系统调用、调试与 socket 建立机器模型。',
+        copiedDirectory: 'pwn-college/docs/02-computing-101/',
+        originalDirectory: 'projects/pwn-college/docs/02-computing-101/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'programs', eyebrow: 'PROGRAM INTERACTION', title: 'Playing With Programs',
+        description: '学习编码、HTTP、程序能力边界和 SQL 数据流。',
+        copiedDirectory: 'pwn-college/docs/03-playing-with-programs/',
+        originalDirectory: 'projects/pwn-college/docs/03-playing-with-programs/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'intro-security', eyebrow: 'SECURITY FOUNDATIONS', title: '网络安全导论',
+        description: '把 Web、网络、密码、访问控制、逆向和二进制安全连接起来。',
+        copiedDirectory: 'pwn-college/docs/04-intro-to-cybersecurity/',
+        originalDirectory: 'projects/pwn-college/docs/04-intro-to-cybersecurity/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'program-security', eyebrow: 'AUTHORIZED SECURITY', title: '程序安全',
+        description: '用内存不变量、逆向、ROP 与分配器生命周期分析程序风险。',
+        copiedDirectory: 'pwn-college/docs/05-program-security/',
+        originalDirectory: 'projects/pwn-college/docs/05-program-security/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'system-security', eyebrow: 'AUTHORIZED SECURITY', title: '系统安全',
+        description: '理解沙箱、竞态、内核、微体系结构与跨层系统防御。',
+        copiedDirectory: 'pwn-college/docs/06-system-security/',
+        originalDirectory: 'projects/pwn-college/docs/06-system-security/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'software-exploitation', eyebrow: 'DEFENSIVE ANALYSIS', title: '软件利用原理',
+        description: '从格式串、FILE、利用原语、堆与内核对象理解约束和缓解。',
+        copiedDirectory: 'pwn-college/docs/07-software-exploitation/',
+        originalDirectory: 'projects/pwn-college/docs/07-software-exploitation/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'community', eyebrow: 'FURTHER LEARNING', title: 'Community Material',
+        description: '按方向浏览社区 dojo，并在主线之后选择 ARM、密码、Fuzzing 等专题。',
+        copiedDirectory: 'pwn-college/docs/90-community/',
+        originalDirectory: 'projects/pwn-college/docs/90-community/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+      {
+        id: 'reference', eyebrow: 'REFERENCE', title: '参考附录',
+        description: '随时查阅 Linux、编码、系统调用、GDB、pwntools、实验环境和术语。',
+        copiedDirectory: 'pwn-college/docs/99-appendices/',
+        originalDirectory: 'projects/pwn-college/docs/99-appendices/',
+        include: (path) => /^\d{2}-.+\.md$/.test(path),
+      },
+    ],
   },
 ]
 

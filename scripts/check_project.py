@@ -57,12 +57,28 @@ PROJECT_TUTORIALS = {
     "openhands": {"chapter_count": 15, "tutorial_dirs": ("guide",)},
     "codex": {"chapter_count": 19, "tutorial_dirs": ("guide",)},
     "openclaw": {"chapter_count": 14, "tutorial_dirs": ("guide",)},
+    "pwn-college": {
+        "chapter_count": 67,
+        "tutorial_dirs": (
+            "docs/00-start-here",
+            "docs/01-linux-luminarium",
+            "docs/02-computing-101",
+            "docs/03-playing-with-programs",
+            "docs/04-intro-to-cybersecurity",
+            "docs/05-program-security",
+            "docs/06-system-security",
+            "docs/07-software-exploitation",
+            "docs/90-community",
+            "docs/99-appendices",
+        ),
+    },
 }
 
-EXPECTED_PROJECT_CHAPTERS = 142
+EXPECTED_PROJECT_CHAPTERS = 209
 PROJECT_CHAPTER_SUMMARY = (
     "CubeSandbox 11, E2B 12, MiniMind 24, Ray 30, "
-    "Strix 14, ARVO 2, mini-swe-agent 1, OpenHands 15, Codex 19, OpenClaw 14"
+    "Strix 14, ARVO 2, mini-swe-agent 1, OpenHands 15, Codex 19, "
+    "OpenClaw 14, pwn.college 67"
 )
 ALLOWED_PROJECT_SUFFIXES = {".md", ".py"}
 NON_CHAPTER_DIRECTORY_NAMES = {"example", "examples", "sample", "samples"}

@@ -3,7 +3,7 @@
 这是教程仓库的静态阅读网站。根页面是项目门户，每个项目有独立 URL、学习路线、项目内搜索和阅读进度。目前包含：
 
 - OS/2026：30 讲逐讲详解、17 章主题教程、9 个 MiniLab 和 18 个可运行 C 示例；
-- CubeSandbox、E2B、MiniMind、Ray、Strix、ARVO、mini-SWE-agent、OpenHands、Codex 与 OpenClaw：合计 142 篇源码/研究教程；
+- CubeSandbox、E2B、MiniMind、Ray、Strix、ARVO、mini-SWE-agent、OpenHands、Codex、OpenClaw 与非官方 pwn.college 中文教程：合计 209 篇源码/研究/安全原理教程；
 - 课内目录、全文搜索、代码高亮与复制、公式、表格、图片预览、深色模式和本地阅读进度。
 
 ## 本地开发
@@ -39,4 +39,4 @@ npm run preview
 
 修改教程 Markdown 后重新运行构建即可，不需要维护第二份内容。阅读进度和主题选择保存在浏览器 `localStorage`，不会上传。导入来源和安全边界见 [`projects/README.md`](../projects/README.md)。
 
-OS 课程原始资料来自 JYY 的 OS/2026 公开课程站点，并采用 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)。其他项目的源码归属与许可证保存在各自 `projects/<slug>/UPSTREAM_LICENSE`；教程内容不会重新授权上游项目。
+OS 课程原始资料来自 JYY 的 OS/2026 公开课程站点，并采用 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)。其他项目的源码归属、适用许可证与无统一许可证时的例外均记录在 [项目清单](../projects/README.md)；教程内容不会重新授权上游项目。
