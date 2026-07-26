@@ -55,12 +55,13 @@ PROJECT_TUTORIALS = {
     "arvo": {"chapter_count": 2, "tutorial_dirs": ("guide",)},
     "mini-swe-agent": {"chapter_count": 1, "tutorial_dirs": ("guide",)},
     "openhands": {"chapter_count": 15, "tutorial_dirs": ("guide",)},
+    "codex": {"chapter_count": 19, "tutorial_dirs": ("guide",)},
 }
 
-EXPECTED_PROJECT_CHAPTERS = 109
+EXPECTED_PROJECT_CHAPTERS = 128
 PROJECT_CHAPTER_SUMMARY = (
     "CubeSandbox 11, E2B 12, MiniMind 24, Ray 30, "
-    "Strix 14, ARVO 2, mini-swe-agent 1, OpenHands 15"
+    "Strix 14, ARVO 2, mini-swe-agent 1, OpenHands 15, Codex 19"
 )
 ALLOWED_PROJECT_SUFFIXES = {".md", ".py"}
 NON_CHAPTER_DIRECTORY_NAMES = {"example", "examples", "sample", "samples"}
