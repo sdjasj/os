@@ -462,6 +462,27 @@ const projectSeeds: ProjectSeed[] = [
       } as Record<string, string>)[path] ?? 'README.md',
     }],
   },
+  {
+    slug: 'openclaw',
+    mark: 'OC',
+    title: 'OpenClaw',
+    subtitle: '多渠道 AI Agent 平台源码学习',
+    description: '从 CLI 与 Gateway 启动出发，沿消息链路、Agent 工具循环、会话上下文、插件 SDK、Telegram 与 SQLite 建立完整心智模型。',
+    category: 'AI Agent',
+    level: '入门 → 进阶',
+    tags: ['Agent Runtime', 'Gateway', 'Plugin SDK', 'Channels'],
+    tone: 'teal',
+    updatedAt: '2026-07-26',
+    snapshot: 'fc3476b',
+    repositoryUrl: 'https://github.com/openclaw/openclaw',
+    repositoryRef: 'fc3476b116b982d96e94cc86e3daf0f080c84ada',
+    tracks: [{
+      id: 'source', eyebrow: 'SOURCE WALKTHROUGH', title: '源码与实践主线',
+      description: '先补齐 TypeScript、Node.js 与协议背景，再沿真实源码读通启动、消息、Agent、插件、频道和状态，最后完成递进式实验。',
+      copiedDirectory: 'openclaw/guide/', originalDirectory: 'docs/internal/openclaw-code-study/',
+      include: (path) => /^\d{2}-.+\.md$/.test(path),
+    }],
+  },
 ]
 
 interface SelectedProjectFile {
