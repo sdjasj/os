@@ -19,6 +19,7 @@
 | Codex | 基于 `<project-root>/codex/{README.md,AGENTS.md,LICENSE,NOTICE,justfile,defs.bzl,docs/**,codex-cli/**,codex-rs/**,sdk/**}` 中的固定快照独立创作，仅导入 `guide/*.md` 教程 | `codex` | 19 | [`61a4488`](https://github.com/openai/codex/commit/61a44880a85d2fd0d8770908dea5733495e571c8) · [上游仓库](https://github.com/openai/codex) |
 | OpenClaw | 基于 `<project-root>/openclaw/docs/internal/openclaw-code-study/*.md` 的用户授权教程快照，仅导入指定 Markdown | `openclaw` | 14 | [`fc3476b`](https://github.com/openclaw/openclaw/commit/fc3476b116b982d96e94cc86e3daf0f080c84ada) · [上游仓库](https://github.com/openclaw/openclaw) |
 | Hands-On Modern RL | 基于 `<project-root>/hands-on-modern-rl/{README.md,LICENSE,code/**,docs/**}` 固定快照独立创作，仅导入 `guide/*.md` 教程 | `hands-on-modern-rl` | 14 | [`7c0372d`](https://github.com/walkinglabs/hands-on-modern-rl/commit/7c0372d4806c0dc478df46ed522ab64e58dda1d6) · [上游仓库](https://github.com/walkinglabs/hands-on-modern-rl) |
+| verl | 基于 `<project-root>/verl/{README.md,LICENSE,Notice.txt,setup.py,examples/grpo_trainer/**,examples/data_preprocess/gsm8k_tool_agent_loop.py,docs/advance/**,docs/sglang_multiturn/**,verl/trainer/**,verl/experimental/agent_loop/**,verl/experimental/reward_loop/**,verl/tools/**,verl/workers/rollout/sglang_rollout/**,verl/utils/dataset/rl_dataset.py}` 与 `<project-root>/arvo/cybergym-e2e-upstream/{README.md,LICENSE,scripts/validate.py,scripts/run_agent.py,scripts/utils.py}` 固定快照独立创作，仅导入 `guide/*.md` 教程 | `verl` | 13 | verl [`983cb0f`](https://github.com/verl-project/verl/commit/983cb0f24443f87b3d161fad318445130a620b07) · CyberGym-E2E [`b861317`](https://github.com/sunblaze-ucb/cybergym-e2e/commit/b861317f11641b14ab6ba08b5179d0b044601057) |
 | pwn.college 中文原理教程 | 用户明确授权的 `<project-root>/security/{README.md,NOTICE.md,docs/00-start-here/*.md,docs/01-linux-luminarium/*.md,docs/02-computing-101/*.md,docs/03-playing-with-programs/*.md,docs/04-intro-to-cybersecurity/*.md,docs/05-program-security/*.md,docs/06-system-security/*.md,docs/07-software-exploitation/*.md,docs/90-community/README.md,docs/99-appendices/*.md}` 本地教程快照 | `pwn-college` | 67 | 官方内容语境 [`25334e8`](https://github.com/pwncollege/challenges/commit/25334e88d440fc1a45c1f445c88eda7ea00865f2) · 教程内容 [`e543c39`](https://github.com/sdjasj/os/commit/e543c397957abed3be810a3a31fc5f321fbdb29a) |
 
 ## 章节计数与辅助文件
@@ -36,6 +37,7 @@
 - Codex：`00` 至 `18` 共 19 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程为基于固定提交独立创作的源码导读，不声称教程文件存在于上游提交；每章的源码入口映射到该提交中实际存在的代表性文件。上游整体采用 Apache-2.0，`NOTICE` 还标注了部分 Ratatui 衍生代码的 MIT 归属；导入许可证仅用于保留这一上游边界。
 - OpenClaw：`00` 至 `13` 共 14 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程是基于固定提交独立生成并经用户明确授权发布的中文源码导读，不声称教程文件存在于上游提交；正文中的相对源码链接映射到该提交中的真实文件。`UPSTREAM_LICENSE` 原样保留上游 MIT 许可证，不重新授权教程内容。
 - Hands-On Modern RL：`00` 至 `13` 共 14 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程基于固定提交独立创作，每章的源码入口映射到该提交中实际存在的代表性文件。用户本轮授权生成并本地集成，但未请求推送或部署；教程衍生内容遵守上游 CC BY-NC-SA 4.0，`UPSTREAM_LICENSE` 原样保留许可证文本，不扩大授权。
+- verl：`00` 至 `12` 共 13 章；`guide/README.md` 是辅助文件。教程以 verl 的 GRPO、SGLang、Agent Loop、Reward Loop 源码学习为主线，以 CyberGym-E2E 作为多阶段环境接入案例；教程为基于两个固定提交独立创作，不声称文件存在于任一上游提交。两个上游仓库分别声明 Apache License 2.0，本站不合并许可证文件，也不重新授权教程、源码或用户任务数据。用户本轮授权生成并本地集成，但未请求推送或部署。
 - pwn.college：59 篇官方主路径 module 教程、7 篇参考附录及 1 篇 Community Material 索引共 67 个展示章节。发布副本将 Community 的 `README.md` 改名为 `00-community-materials.md`；根 `README.md`、`NOTICE.md`、8 个主分区索引和附录索引是辅助文件。教程由本站工作区独立生成，并经用户本轮明确授权公开展示；它没有项目级许可证，因此不创建 `UPSTREAM_LICENSE`，公开可读不表示获得再利用授权，也不重新授权 pwn.college 或第三方材料。
 
 许可证只是保留上游归属和许可信息，不代表本仓库重新授权教程或上游项目。教程中的源码路径和相对链接仍以对应快照的上游仓库结构为语境。
@@ -46,7 +48,7 @@
 
 - CS336 Assignment 1 的作业说明和个人实现按用户要求排除，不进入 `projects/`。
 - 不复制 `.env` 或其他凭据配置、模型与 checkpoint、训练或评测数据、日志、缓存、虚拟环境、构建产物、`node_modules` 和 Git 元数据。
-- 不复制漏洞数据库、漏洞样本、利用代码或 PoC。Strix 与 ARVO 仅导入指定的教程 Markdown，不导入扫描数据、漏洞语料或复现材料。
+- 不复制漏洞数据库、漏洞样本、利用代码或 PoC。Strix 与 ARVO 仅导入指定的教程 Markdown，不导入扫描数据、漏洞语料或复现材料；verl 教程也只引用 CyberGym-E2E 的通用环境与验证接口，不导入任务数据、补丁或运行产物。
 - pwn.college 项目只导入原创教程 Markdown，不导入挑战二进制、题面副本、flag、solver、精确 payload 或 walkthrough。双用途章节仅使用本地玩具程序、符号模型和防御分析，并要求只在自有、隔离或明确授权环境中学习。
 - 除 Ray 明确列出的使用示例外，不复制任何项目源码；Ray 示例也只限 `ray_usage_guide/examples/` 中的 Python 文件和 README。Codex 与 Hands-On Modern RL 教程同样不复制源码、用户配置、认证信息、模型、数据、日志、缓存或构建产物。
 
