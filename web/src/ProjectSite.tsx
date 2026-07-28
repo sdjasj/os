@@ -53,6 +53,7 @@ type ProjectRoute =
 
 interface PortalEntry {
   slug: string
+  externalUrl?: string
   mark: string
   title: string
   subtitle: string
@@ -261,8 +262,24 @@ function portalEntries(): PortalEntry[] {
     trackCount: 3,
     updatedAt: '2026-07-23',
   }
+  const rlhfBookEntry: PortalEntry = {
+    slug: 'rlhf-book-zh',
+    externalUrl: 'https://sdjasj.github.io/rlhf-book-zh/',
+    mark: 'RLHF',
+    title: 'RLHF 中文书',
+    subtitle: 'Nathan Lambert · 非官方中文译本',
+    description: '系统讲解指令微调、偏好数据、奖励模型、策略梯度、DPO、RLVR 与语言模型后训练。',
+    category: 'AI 与训练系统',
+    level: '入门 → 进阶',
+    tags: ['RLHF', '奖励模型', 'DPO', 'RLVR'],
+    tone: 'violet',
+    documentCount: 20,
+    trackCount: 1,
+    updatedAt: '2026-07-28',
+  }
   return [
     osEntry,
+    rlhfBookEntry,
     ...tutorialProjectCatalog.map((project) => ({
       slug: project.slug,
       mark: project.mark,
@@ -281,9 +298,15 @@ function portalEntries(): PortalEntry[] {
 }
 
 function PortalProjectCard({ entry }: { entry: PortalEntry }) {
+  const external = Boolean(entry.externalUrl)
   return (
     <article className={`portal-project-card portal-tone-${entry.tone}`}>
-      <a href={projectUrl(entry.slug)} aria-label={`打开 ${entry.title} 教程`}>
+      <a
+        href={entry.externalUrl ?? projectUrl(entry.slug)}
+        target={external ? '_blank' : undefined}
+        rel={external ? 'noreferrer' : undefined}
+        aria-label={external ? `阅读 ${entry.title}（在新标签页打开）` : `打开 ${entry.title} 教程`}
+      >
         <div className="portal-card-topline">
           <span className="portal-project-mark" aria-hidden="true">{entry.mark}</span>
           <span className="portal-project-category">{entry.category}</span>
@@ -301,7 +324,9 @@ function PortalProjectCard({ entry }: { entry: PortalEntry }) {
           <span><Layers3 size={15} /> {entry.trackCount} 条路线</span>
           <span>{entry.level}</span>
         </div>
-        <span className="card-link">进入项目 <ArrowRight size={16} /></span>
+        <span className="card-link">
+          {external ? <>阅读中文书 <ExternalLink size={16} /></> : <>进入项目 <ArrowRight size={16} /></>}
+        </span>
       </a>
     </article>
   )
