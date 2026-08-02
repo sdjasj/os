@@ -3524,6 +3524,7 @@ kbd {
 .pdf-page-scroll { position: relative; min-width: 0; min-height: 0; flex: 1 1 auto; overflow: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .pdf-page-centered { display: flex; width: max-content; min-width: 100%; min-height: 100%; padding: 26px; align-items: flex-start; justify-content: center; }
 .pdf-page-shell { position: relative; overflow: hidden; min-width: 480px; min-height: 68vh; flex: 0 0 auto; background: #fff; box-shadow: 0 5px 28px rgb(11 21 27 / 18%); }
+.pdf-page-shell.page-ready { min-width: 0; min-height: 0; }
 .pdf-page-shell canvas { position: absolute; z-index: 1; inset: 0; display: block; background: #fff; }
 .pdf-page-loading, .pdf-page-error { position: absolute; z-index: 4; inset: 0; display: flex; padding: 28px; align-items: center; justify-content: center; flex-direction: column; gap: 13px; background: #fff; color: #52616b; text-align: center; }
 .pdf-page-loading strong, .pdf-page-error strong { max-width: 420px; font-size: 12px; line-height: 1.6; }

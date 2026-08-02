@@ -73,6 +73,27 @@ const THEME_KEY = 'os26-theme'
 const READING_KEY = 'pdf-library-reading-v1'
 let pdfJsPromise: Promise<typeof import('pdfjs-dist')> | undefined
 
+const pdfCMapAssets = import.meta.glob('../node_modules/pdfjs-dist/cmaps/*.bcmap', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>
+
+const pdfCMapUrls = new Map(
+  Object.entries(pdfCMapAssets).map(([path, url]) => [path.split('/').pop() ?? path, url]),
+)
+
+class BundledPdfBinaryDataFactory {
+  async fetch({ kind, filename }: { kind: string; filename: string }): Promise<Uint8Array> {
+    if (kind !== 'cMapUrl') throw new Error(`Unsupported PDF.js binary data kind: ${kind}`)
+    const url = pdfCMapUrls.get(filename)
+    if (!url) throw new Error(`Missing bundled PDF.js CMap: ${filename}`)
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`Unable to load bundled PDF.js CMap: ${filename}`)
+    return new Uint8Array(await response.arrayBuffer())
+  }
+}
+
 function loadPdfJs() {
   if (!pdfJsPromise) {
     pdfJsPromise = import('pdfjs-dist').then((pdfjs) => {
@@ -390,7 +411,13 @@ function PdfReader({ book, initialPage }: { book: PdfBook; initialPage: number }
     loadPdfJs()
       .then((pdfjs) => {
         if (cancelled) return undefined
-        loadingTask = pdfjs.getDocument({ url: book.url })
+        loadingTask = pdfjs.getDocument({
+          url: book.url,
+          cMapUrl: 'bundled:/',
+          cMapPacked: true,
+          useWorkerFetch: false,
+          BinaryDataFactory: BundledPdfBinaryDataFactory,
+        })
         return loadingTask.promise
       })
       .then(async (loaded) => {
@@ -560,7 +587,7 @@ function PdfReader({ book, initialPage }: { book: PdfBook; initialPage: number }
 
           <div ref={stageRef} className="pdf-page-scroll" aria-busy={loadingDocument || loadingPage} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
             <div className="pdf-page-centered">
-              <div className="pdf-page-shell" style={{ width: pageSize.width || undefined, height: pageSize.height || undefined }}>
+              <div className={`pdf-page-shell ${pageSize.height ? 'page-ready' : ''}`} style={{ width: pageSize.width || undefined, height: pageSize.height || undefined }}>
                 <canvas ref={canvasRef} aria-label={`《${book.title}》第 ${currentPage} 页`} role="img" />
                 <div ref={textLayerRef} className="pdf-text-layer textLayer" />
                 {(loadingDocument || loadingPage) && <div className="pdf-page-loading" role="status"><span className="project-loading-spinner" /><strong>{loadingDocument ? '正在打开 PDF…' : `正在渲染第 ${currentPage} 页…`}</strong></div>}
