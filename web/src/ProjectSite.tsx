@@ -42,6 +42,7 @@ import {
 import { scrollElementIntoView, scrollWindowTo } from './scroll'
 import type { HeadingItem, ReadingRecord, ReadingState } from './types'
 import { useBodyScrollLock } from './useBodyScrollLock'
+import { pdfLibrarySummary } from './pdfLibrary'
 
 type ThemeMode = 'system' | 'light' | 'dark'
 
@@ -65,6 +66,7 @@ interface PortalEntry {
   documentCount: number
   trackCount: number
   updatedAt: string
+  actionLabel?: string
 }
 
 interface ProjectSearchResult {
@@ -277,9 +279,25 @@ function portalEntries(): PortalEntry[] {
     trackCount: 1,
     updatedAt: '2026-07-28',
   }
+  const pdfLibraryEntry: PortalEntry = {
+    slug: pdfLibrarySummary.slug,
+    mark: 'PDF',
+    title: 'PDF 阅读书库',
+    subtitle: '大模型 · 智能体 · GPU · 安全',
+    description: `集中阅读 ${pdfLibrarySummary.bookCount} 本技术资料，共 ${pdfLibrarySummary.pageCount} 页；支持移动端适配、目录跳转和本地阅读进度。`,
+    category: '综合学习资料',
+    level: '按主题自由阅读',
+    tags: ['PDF', 'LLM', 'Agent', 'CUDA', 'Security'],
+    tone: 'amber',
+    documentCount: pdfLibrarySummary.bookCount,
+    trackCount: pdfLibrarySummary.categoryCount,
+    updatedAt: '2026-08-02',
+    actionLabel: '进入书库',
+  }
   return [
     osEntry,
     rlhfBookEntry,
+    pdfLibraryEntry,
     ...tutorialProjectCatalog.map((project) => ({
       slug: project.slug,
       mark: project.mark,
@@ -305,7 +323,7 @@ function PortalProjectCard({ entry }: { entry: PortalEntry }) {
         href={entry.externalUrl ?? projectUrl(entry.slug)}
         target={external ? '_blank' : undefined}
         rel={external ? 'noreferrer' : undefined}
-        aria-label={external ? `阅读 ${entry.title}（在新标签页打开）` : `打开 ${entry.title} 教程`}
+        aria-label={external ? `阅读 ${entry.title}（在新标签页打开）` : `打开 ${entry.title}`}
       >
         <div className="portal-card-topline">
           <span className="portal-project-mark" aria-hidden="true">{entry.mark}</span>
@@ -325,7 +343,7 @@ function PortalProjectCard({ entry }: { entry: PortalEntry }) {
           <span>{entry.level}</span>
         </div>
         <span className="card-link">
-          {external ? <>阅读中文书 <ExternalLink size={16} /></> : <>进入项目 <ArrowRight size={16} /></>}
+          {external ? <>阅读中文书 <ExternalLink size={16} /></> : <>{entry.actionLabel ?? '进入项目'} <ArrowRight size={16} /></>}
         </span>
       </a>
     </article>

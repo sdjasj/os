@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from urllib.parse import unquote
@@ -122,10 +123,90 @@ SENSITIVE_CONTENT_RULES = (
     ),
 )
 
+PDF_LIBRARY_FILES = {
+    "Agent_Architecture_Design_Tutorial_2026_Expanded.pdf": {
+        "pages": 102,
+        "sha256": "86aaa6512500b190ae680bef1373ed86d5860151aae3f35be99ac2f75ca3bd8a",
+    },
+    "CTF二进制与网络安全进阶教程_LaTeX精排版.pdf": {
+        "pages": 86,
+        "sha256": "d27b88978f3e3ddef0769408c7db6da857c8c033f61fee93b2acd592344bea30",
+    },
+    "LLM_Jailbreak_Zero_to_Defense_CN.pdf": {
+        "pages": 137,
+        "sha256": "7f6b0b59d92079464a512670e1d1fcda2728e039f557fde04a18ea1ab25210eb",
+    },
+    "LLM基础知识概念大全_教科书增强版.pdf": {
+        "pages": 181,
+        "sha256": "ff1f1e4e8c922b0b1e29c81d28372f6fac9a6fc6978e8776af5e2f37c726dbee",
+    },
+    "PMPP_CUDA_Tutorial_CN_Revised.pdf": {
+        "pages": 191,
+        "sha256": "2754caea367171b4c1c5fbac4ac4d498bb2ae4992fa91de9e2d5ae95a421b1cb",
+    },
+    "PPO_GRPO_DPO_From_Scratch_CN.pdf": {
+        "pages": 81,
+        "sha256": "19251965213584f3faab4459c4fc495e36ce0c8c9981ffbe044681b3538f5b08",
+    },
+    "cyber_benchmark_data_construction_report_zh.pdf": {
+        "pages": 31,
+        "sha256": "8a87718dcc722b9e3433ce163631b0a73b4e1abf978a221c181848a7e60c8f0c",
+    },
+    "大模型安全与智能体安全面试题库_小红书牛客归纳版.pdf": {
+        "pages": 49,
+        "sha256": "ac6b266a0f11caf303f349f3626dd9e01e2bafaa8197dc363edd1987d9faca75",
+    },
+    "大模型面经八股详解_小红书牛客汇总_公式修复版.pdf": {
+        "pages": 22,
+        "sha256": "cc269d1be106a7e2ccc804aa84c7190d258d4fc21cb82de68c251a65dfb4833b",
+    },
+    "网络安全面经八股详解_小红书与牛客整理.pdf": {
+        "pages": 68,
+        "sha256": "86f14d9196bf1e1fd18212f5c0103a04c7a497cffbf714fdcd0332d7499edf10",
+    },
+}
+
 
 def require(path: Path, errors: list[str]) -> None:
     if not path.exists():
         errors.append(f"missing: {path.relative_to(ROOT)}")
+
+
+def check_pdf_library(pdf_root: Path, errors: list[str]) -> tuple[int, int]:
+    require(pdf_root, errors)
+    if not pdf_root.is_dir():
+        return 0, 0
+
+    actual_names = {path.name for path in pdf_root.iterdir()}
+    expected_names = set(PDF_LIBRARY_FILES)
+    for filename in sorted(actual_names - expected_names):
+        errors.append(f"unexpected PDF library file: pdf/{filename}")
+    for filename in sorted(expected_names - actual_names):
+        errors.append(f"missing PDF library file: pdf/{filename}")
+
+    for filename, spec in PDF_LIBRARY_FILES.items():
+        document = pdf_root / filename
+        if not document.exists():
+            continue
+        relative_document = document.relative_to(ROOT)
+        if document.is_symlink():
+            errors.append(f"symbolic link not allowed: {relative_document}")
+            continue
+        if not document.is_file():
+            errors.append(f"not a regular PDF file: {relative_document}")
+            continue
+        data = document.read_bytes()
+        if not data.startswith(b"%PDF-"):
+            errors.append(f"invalid PDF signature: {relative_document}")
+        if len(data) > 95 * 1024 * 1024:
+            errors.append(f"PDF exceeds safe GitHub object size: {relative_document}")
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != spec["sha256"]:
+            errors.append(f"PDF snapshot mismatch: {relative_document}")
+
+    return len(PDF_LIBRARY_FILES), sum(
+        int(spec["pages"]) for spec in PDF_LIBRARY_FILES.values()
+    )
 
 
 def check_local_links(document: Path, errors: list[str]) -> None:
@@ -417,6 +498,7 @@ def main() -> int:
         require(html / reference, errors)
 
     project_markdown_count = check_project_files(ROOT / "projects", errors)
+    pdf_count, pdf_page_count = check_pdf_library(ROOT / "pdf", errors)
 
     if errors:
         print("validation failed:")
@@ -432,7 +514,8 @@ def main() -> int:
         f"{len(PROJECT_TUTORIALS)} imported project tutorials "
         f"({PROJECT_CHAPTER_SUMMARY}; "
         f"total {EXPECTED_PROJECT_CHAPTERS}), "
-        f"{project_markdown_count} project Markdown files"
+        f"{project_markdown_count} project Markdown files, "
+        f"{pdf_count} public PDFs ({pdf_page_count} pages)"
     )
     return 0
 

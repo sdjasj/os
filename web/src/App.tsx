@@ -28,6 +28,8 @@ import {
 import {
   Fragment,
   type ReactNode,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -65,6 +67,8 @@ import type {
 } from './types'
 import { scrollElementIntoView, scrollWindowTo } from './scroll'
 import { useBodyScrollLock } from './useBodyScrollLock'
+
+const LazyPdfLibraryApp = lazy(() => import('./PdfLibrarySite').then(({ PdfLibraryApp }) => ({ default: PdfLibraryApp })))
 
 type ThemeMode = 'system' | 'light' | 'dark'
 
@@ -1035,6 +1039,13 @@ export function App() {
 
   if (!projectSlug) return legacyOsRoute ? <OsApp /> : <ProjectPortal />
   if (projectSlug === 'os') return <OsApp />
+  if (projectSlug === 'pdf-library') {
+    return (
+      <Suspense fallback={<div className="pdf-app-loading" role="status"><BookOpen size={28} /><strong>正在打开 PDF 书库…</strong></div>}>
+        <LazyPdfLibraryApp />
+      </Suspense>
+    )
+  }
 
   if (!hasTutorialProject(projectSlug)) return <UnknownProjectPage slug={projectSlug} />
   return <LazyProjectTutorialApp slug={projectSlug} />
