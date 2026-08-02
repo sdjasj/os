@@ -28,7 +28,8 @@ import {
   useState,
 } from 'react'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+// The legacy build polyfills APIs still missing from older iOS Safari and Android WebViews.
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
 import {
   formatPdfSize,
   pdfBookHref,
@@ -71,7 +72,7 @@ interface RawOutlineItem {
 
 const THEME_KEY = 'os26-theme'
 const READING_KEY = 'pdf-library-reading-v1'
-let pdfJsPromise: Promise<typeof import('pdfjs-dist')> | undefined
+let pdfJsPromise: Promise<typeof import('pdfjs-dist/legacy/build/pdf.mjs')> | undefined
 
 const pdfCMapAssets = import.meta.glob('../node_modules/pdfjs-dist/cmaps/*.bcmap', {
   eager: true,
@@ -96,7 +97,7 @@ class BundledPdfBinaryDataFactory {
 
 function loadPdfJs() {
   if (!pdfJsPromise) {
-    pdfJsPromise = import('pdfjs-dist').then((pdfjs) => {
+    pdfJsPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((pdfjs) => {
       pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
       return pdfjs
     })
