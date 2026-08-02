@@ -26,7 +26,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
-      target: 'es2022',
+      target: 'es2018',
       sourcemap: false,
     },
   }

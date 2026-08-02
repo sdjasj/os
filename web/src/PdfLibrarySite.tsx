@@ -29,7 +29,7 @@ import {
 } from 'react'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist'
 // The legacy build polyfills APIs still missing from older iOS Safari and Android WebViews.
-import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url'
+import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker&url'
 import {
   formatPdfSize,
   pdfBookHref,
@@ -97,8 +97,16 @@ class BundledPdfBinaryDataFactory {
 
 function loadPdfJs() {
   if (!pdfJsPromise) {
-    pdfJsPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((pdfjs) => {
-      pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+    pdfJsPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then(async (pdfjs) => {
+      const needsMainThreadWorker = /\bQuark\//i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints > 0 && matchMedia('(max-width: 820px)').matches)
+      if (needsMainThreadWorker) {
+        // Some mobile shells expose Worker while stalling on module workers, so use PDF.js's fallback.
+        const worker = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs')
+        ;(globalThis as typeof globalThis & { pdfjsWorker?: typeof worker }).pdfjsWorker = worker
+      } else {
+        pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
+      }
       return pdfjs
     })
   }
@@ -387,6 +395,7 @@ function PdfReader({ book, initialPage }: { book: PdfBook; initialPage: number }
   const [loadingDocument, setLoadingDocument] = useState(true)
   const [loadingPage, setLoadingPage] = useState(false)
   const [error, setError] = useState<string>()
+  const [reloadKey, setReloadKey] = useState(0)
   const [pageSize, setPageSize] = useState({ width: 0, height: 0 })
   const stageRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -407,16 +416,28 @@ function PdfReader({ book, initialPage }: { book: PdfBook; initialPage: number }
     let cancelled = false
     let loadingTask: PDFDocumentLoadingTask | undefined
     let loadedDocument: PDFDocumentProxy | undefined
+    const controller = new AbortController()
     setLoadingDocument(true)
     setError(undefined)
     loadPdfJs()
-      .then((pdfjs) => {
+      .then(async (pdfjs) => {
+        const response = await fetch(book.url, {
+          signal: controller.signal,
+          credentials: 'same-origin',
+        })
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const data = new Uint8Array(await response.arrayBuffer())
         if (cancelled) return undefined
         loadingTask = pdfjs.getDocument({
-          url: book.url,
+          data,
           cMapUrl: 'bundled:/',
           cMapPacked: true,
           useWorkerFetch: false,
+          disableRange: true,
+          disableStream: true,
+          isOffscreenCanvasSupported: false,
+          isImageDecoderSupported: false,
+          useWasm: false,
           BinaryDataFactory: BundledPdfBinaryDataFactory,
         })
         return loadingTask.promise
@@ -430,15 +451,20 @@ function PdfReader({ book, initialPage }: { book: PdfBook; initialPage: number }
         const rawOutline = await loaded.getOutline() as RawOutlineItem[] | null
         if (!cancelled && rawOutline) setOutline(await flattenOutline(loaded, rawOutline))
       })
-      .catch(() => { if (!cancelled) setError('PDF 加载失败，请检查网络后重试，或直接打开原文件。') })
+      .catch((reason: unknown) => {
+        if (cancelled) return
+        const detail = reason instanceof Error ? reason.message.replace(/\s+/g, ' ').slice(0, 120) : ''
+        setError(`PDF 加载失败${detail ? `：${detail}` : ''}`)
+      })
       .finally(() => { if (!cancelled) setLoadingDocument(false) })
     return () => {
       cancelled = true
+      controller.abort()
       setDocumentProxy(undefined)
       if (loadingTask) void loadingTask.destroy()
       else if (loadedDocument) void loadedDocument.cleanup()
     }
-  }, [book.url])
+  }, [book.url, reloadKey])
 
   useEffect(() => {
     const stage = stageRef.current
@@ -592,7 +618,7 @@ function PdfReader({ book, initialPage }: { book: PdfBook; initialPage: number }
                 <canvas ref={canvasRef} aria-label={`《${book.title}》第 ${currentPage} 页`} role="img" />
                 <div ref={textLayerRef} className="pdf-text-layer textLayer" />
                 {(loadingDocument || loadingPage) && <div className="pdf-page-loading" role="status"><span className="project-loading-spinner" /><strong>{loadingDocument ? '正在打开 PDF…' : `正在渲染第 ${currentPage} 页…`}</strong></div>}
-                {error && <div className="pdf-page-error" role="alert"><FileText size={28} /><strong>{error}</strong><a className="button button-secondary" href={book.url} target="_blank" rel="noreferrer">打开原 PDF <ExternalLink size={15} /></a></div>}
+                {error && <div className="pdf-page-error" role="alert"><FileText size={28} /><strong>{error}</strong><button className="button button-primary" type="button" onClick={() => setReloadKey((value) => value + 1)}>重新加载</button><a className="button button-secondary" href={book.url} target="_blank" rel="noreferrer">打开原 PDF <ExternalLink size={15} /></a></div>}
               </div>
             </div>
           </div>
