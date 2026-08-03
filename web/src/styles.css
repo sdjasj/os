@@ -1703,8 +1703,13 @@ kbd {
   max-width: 100%;
   margin: 24px 0;
   padding: 12px;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
   text-align: center;
+  -webkit-overflow-scrolling: touch;
 }
+
+.math-block > .katex-display { min-width: max-content; margin: 0; }
 
 .markdown-body .katex { font-size: 1.05em; }
 

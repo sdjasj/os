@@ -35,6 +35,10 @@ jobs:
         working-directory: web
         run: npm ci
 
+      - name: Test math rendering
+        working-directory: web
+        run: npm run test:math
+
       - name: Build static site
         working-directory: web
         run: npm run build
