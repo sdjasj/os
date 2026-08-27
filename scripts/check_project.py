@@ -60,6 +60,10 @@ PROJECT_TUTORIALS = {
     "openclaw": {"chapter_count": 14, "tutorial_dirs": ("guide",)},
     "hands-on-modern-rl": {"chapter_count": 14, "tutorial_dirs": ("guide",)},
     "verl": {"chapter_count": 13, "tutorial_dirs": ("guide",)},
+    "megatron-lm": {
+        "chapter_count": 24,
+        "tutorial_dirs": ("foundations", "source", "labs"),
+    },
     "pwn-college": {
         "chapter_count": 67,
         "tutorial_dirs": (
@@ -77,11 +81,12 @@ PROJECT_TUTORIALS = {
     },
 }
 
-EXPECTED_PROJECT_CHAPTERS = 236
+EXPECTED_PROJECT_CHAPTERS = 260
 PROJECT_CHAPTER_SUMMARY = (
     "CubeSandbox 11, E2B 12, MiniMind 24, Ray 30, "
     "Strix 14, ARVO 2, mini-swe-agent 1, OpenHands 15, Codex 19, "
-    "OpenClaw 14, Hands-On Modern RL 14, verl 13, pwn.college 67"
+    "OpenClaw 14, Hands-On Modern RL 14, verl 13, Megatron-LM 24, "
+    "pwn.college 67"
 )
 ALLOWED_PROJECT_SUFFIXES = {".md", ".py"}
 NON_CHAPTER_DIRECTORY_NAMES = {"example", "examples", "sample", "samples"}
