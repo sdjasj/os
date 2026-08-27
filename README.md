@@ -1,6 +1,6 @@
 # 项目学习库与 OS 2026 课程教程
 
-本仓库是一个多项目中文学习站。根页面提供项目目录，每个项目拥有独立 URL、学习路线、全文搜索、长文阅读器和本地阅读进度；当前收录 OS/2026、CubeSandbox、E2B、MiniMind、Ray、Strix、ARVO、mini-SWE-agent、OpenHands、Codex、OpenClaw、Hands-On Modern RL、verl、Megatron-LM、非官方 pwn.college 中文教程，以及包含 10 本技术资料、948 页内容的移动端 PDF 阅读书库。
+本仓库是一个多项目中文学习站。根页面提供项目目录，每个项目拥有独立 URL、学习路线、全文搜索、长文阅读器和本地阅读进度；当前收录 OS/2026、CubeSandbox、E2B、MiniMind、Ray、Strix、ARVO、mini-SWE-agent、OpenHands、Codex、OpenClaw、Hands-On Modern RL、verl、DeepSpeed、Megatron-LM、非官方 pwn.college 中文教程，以及包含 10 本技术资料、948 页内容的移动端 PDF 阅读书库。
 
 其中 OS 项目保存了南京大学 JYY《操作系统原理（2026 春）》公开课程页面的资料快照，并在其 30 讲课程讲义与 9 个 MiniLab 的基础上整理了一套面向实践的中文教程。教程同时提供逐讲详解和按知识依赖重组的主题版，两者共享一组可运行实验。
 
@@ -54,7 +54,7 @@ bash scripts/download_sources.sh
 .
 ├── tutorial/             # 17 章主题版教程
 │   └── lectures/         # 严格对应 30 份 PPT 的逐讲详解
-├── projects/             # 14 个外部项目的教程内容快照与来源边界
+├── projects/             # 15 个外部项目的教程内容快照与来源边界
 ├── pdf/                  # PDF 阅读书库的 10 份公开展示文件
 ├── examples/             # 教程配套的独立、可编译 C 示例
 ├── web/                  # React/Vite 多项目静态阅读网站

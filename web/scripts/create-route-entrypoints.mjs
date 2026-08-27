@@ -2,7 +2,7 @@ import { access, copyFile, mkdir, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
-const projectSlugs = ['os', 'pdf-library', 'cubesandbox', 'e2b', 'minimind', 'ray', 'strix', 'arvo', 'mini-swe-agent', 'openhands', 'codex', 'openclaw', 'hands-on-modern-rl', 'verl', 'megatron-lm', 'pwn-college']
+const projectSlugs = ['os', 'pdf-library', 'cubesandbox', 'e2b', 'minimind', 'ray', 'strix', 'arvo', 'mini-swe-agent', 'openhands', 'codex', 'openclaw', 'hands-on-modern-rl', 'verl', 'deepspeed', 'megatron-lm', 'pwn-college']
 const webRoot = fileURLToPath(new URL('..', import.meta.url))
 const distRoot = path.join(webRoot, 'dist')
 const rootEntrypoint = path.join(distRoot, 'index.html')

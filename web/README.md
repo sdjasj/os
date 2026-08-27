@@ -3,7 +3,7 @@
 这是教程仓库的静态阅读网站。根页面是项目门户，每个项目有独立 URL、学习路线、项目内搜索和阅读进度。目前包含：
 
 - OS/2026：30 讲逐讲详解、17 章主题教程、9 个 MiniLab 和 18 个可运行 C 示例；
-- CubeSandbox、E2B、MiniMind、Ray、Strix、ARVO、mini-SWE-agent、OpenHands、Codex、OpenClaw、Hands-On Modern RL、verl、Megatron-LM 与非官方 pwn.college 中文教程：合计 260 篇源码/研究/实践教程；
+- CubeSandbox、E2B、MiniMind、Ray、Strix、ARVO、mini-SWE-agent、OpenHands、Codex、OpenClaw、Hands-On Modern RL、verl、DeepSpeed、Megatron-LM 与非官方 pwn.college 中文教程：合计 280 篇源码/研究/实践教程；
 - PDF 阅读书库：10 本、948 页大模型、智能体、强化学习、GPU 与安全资料，提供 PDF 内置目录、按页加载、缩放、文字选择、滑动翻页与本地续读；
 - 课内目录、全文搜索、代码高亮与复制、公式、表格、图片预览、深色模式和本地阅读进度。
 
