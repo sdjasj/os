@@ -17,6 +17,7 @@
 | mini-swe-agent | `<project-root>/mini-swe-agent/PROJECT_GUIDE_ZH.md` | `mini-swe-agent` | 1 | [`38c01a1`](https://github.com/SWE-agent/mini-swe-agent/commit/38c01a19ed1a58dd17dd7c95010e4f69d059c777) · [上游仓库](https://github.com/SWE-agent/mini-swe-agent) |
 | OpenHands | 基于 `<project-root>/OpenHands/{README.md,Development.md,pyproject.toml,openhands/**,frontend/**,enterprise/**,tests/**}` 中的固定快照创作，仅导入 `guide/*.md` 教程 | `openhands` | 15 | [`6b04532`](https://github.com/OpenHands/OpenHands/commit/6b04532541bf2b757d4820d31387b6cba6ffcaea) · [上游仓库](https://github.com/OpenHands/OpenHands) |
 | Codex | 基于 `<project-root>/codex/{README.md,AGENTS.md,LICENSE,NOTICE,justfile,defs.bzl,docs/**,codex-cli/**,codex-rs/**,sdk/**}` 中的固定快照独立创作，仅导入 `guide/*.md` 教程 | `codex` | 19 | [`61a4488`](https://github.com/openai/codex/commit/61a44880a85d2fd0d8770908dea5733495e571c8) · [上游仓库](https://github.com/openai/codex) |
+| Pi | 基于 `<project-root>/pi/tutorial/{README.md,00-study-guide.md,...,15-source-index-glossary.md}` 与 `<project-root>/pi/pi-mono/{README.md,AGENTS.md,package.json,LICENSE,packages/**}` 固定快照独立创作，仅导入 `guide/*.md` 教程 | `pi` | 16 | [`4e49492`](https://github.com/earendil-works/pi/commit/4e494929998d6bc4fccf75e0a233f727db4b70ee) · [上游仓库](https://github.com/earendil-works/pi) |
 | OpenClaw | 基于 `<project-root>/openclaw/docs/internal/openclaw-code-study/*.md` 的用户授权教程快照，仅导入指定 Markdown | `openclaw` | 14 | [`fc3476b`](https://github.com/openclaw/openclaw/commit/fc3476b116b982d96e94cc86e3daf0f080c84ada) · [上游仓库](https://github.com/openclaw/openclaw) |
 | Hands-On Modern RL | 基于 `<project-root>/hands-on-modern-rl/{README.md,LICENSE,code/**,docs/**}` 固定快照独立创作，仅导入 `guide/*.md` 教程 | `hands-on-modern-rl` | 14 | [`7c0372d`](https://github.com/walkinglabs/hands-on-modern-rl/commit/7c0372d4806c0dc478df46ed522ab64e58dda1d6) · [上游仓库](https://github.com/walkinglabs/hands-on-modern-rl) |
 | verl | 基于 `<project-root>/verl/{README.md,LICENSE,Notice.txt,setup.py,examples/grpo_trainer/**,examples/data_preprocess/gsm8k_tool_agent_loop.py,docs/advance/**,docs/sglang_multiturn/**,verl/trainer/**,verl/experimental/agent_loop/**,verl/experimental/reward_loop/**,verl/tools/**,verl/workers/rollout/sglang_rollout/**,verl/utils/dataset/rl_dataset.py}` 与 `<project-root>/arvo/cybergym-e2e-upstream/{README.md,LICENSE,scripts/validate.py,scripts/run_agent.py,scripts/utils.py}` 固定快照独立创作，仅导入 `guide/*.md` 教程 | `verl` | 13 | verl [`983cb0f`](https://github.com/verl-project/verl/commit/983cb0f24443f87b3d161fad318445130a620b07) · CyberGym-E2E [`b861317`](https://github.com/sunblaze-ucb/cybergym-e2e/commit/b861317f11641b14ab6ba08b5179d0b044601057) |
@@ -37,6 +38,7 @@
 - mini-swe-agent：`PROJECT_GUIDE_ZH.md` 计 1 章；`UPSTREAM_LICENSE` 是辅助文件。
 - OpenHands：`00` 至 `14` 共 15 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程为基于固定提交独立创作的源码导读，不声称教程文件存在于上游提交；每章的源码入口映射到该提交中实际存在的代表性文件。根许可证说明 OpenHands 开源部分使用 MIT，而 `enterprise/` 使用其独立许可证，因此导入的 `UPSTREAM_LICENSE` 仅保留这一上游归属边界，不扩大 Enterprise 授权。
 - Codex：`00` 至 `18` 共 19 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程为基于固定提交独立创作的源码导读，不声称教程文件存在于上游提交；每章的源码入口映射到该提交中实际存在的代表性文件。上游整体采用 Apache-2.0，`NOTICE` 还标注了部分 Ratatui 衍生代码的 MIT 归属；导入许可证仅用于保留这一上游边界。
+- Pi：`00` 至 `15` 共 16 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程基于固定提交独立生成，每章的源码入口映射到该提交中实际存在的代表性文件；发布副本把相对源码链接改写为固定提交的 GitHub 链接，并将一个本机绝对路径规范化为 `/path/to/...`。`UPSTREAM_LICENSE` 原样保留 Pi 上游 MIT 许可证，仅用于源码归属，不重新授权教程内容。用户本轮明确授权公开教程并部署到 GitHub Pages。
 - OpenClaw：`00` 至 `13` 共 14 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程是基于固定提交独立生成并经用户明确授权发布的中文源码导读，不声称教程文件存在于上游提交；正文中的相对源码链接映射到该提交中的真实文件。`UPSTREAM_LICENSE` 原样保留上游 MIT 许可证，不重新授权教程内容。
 - Hands-On Modern RL：`00` 至 `13` 共 14 章；`guide/README.md` 和 `UPSTREAM_LICENSE` 是辅助文件。教程基于固定提交独立创作，每章的源码入口映射到该提交中实际存在的代表性文件。用户本轮授权生成并本地集成，但未请求推送或部署；教程衍生内容遵守上游 CC BY-NC-SA 4.0，`UPSTREAM_LICENSE` 原样保留许可证文本，不扩大授权。
 - verl：`00` 至 `12` 共 13 章；`guide/README.md` 是辅助文件。教程以 verl 的 GRPO、SGLang、Agent Loop、Reward Loop 源码学习为主线，以 CyberGym-E2E 作为多阶段环境接入案例；教程为基于两个固定提交独立创作，不声称文件存在于任一上游提交。两个上游仓库分别声明 Apache License 2.0，本站不合并许可证文件，也不重新授权教程、源码或用户任务数据。用户本轮授权生成并本地集成，但未请求推送或部署。
@@ -60,7 +62,7 @@
 - 不复制 `.env` 或其他凭据配置、模型与 checkpoint、训练或评测数据、日志、缓存、虚拟环境、构建产物、`node_modules` 和 Git 元数据。
 - `projects/` 不复制漏洞数据库、漏洞样本、利用代码或 PoC。Strix 与 ARVO 仅导入指定的教程 Markdown，不导入扫描数据、漏洞语料或复现材料；verl 教程也只引用 CyberGym-E2E 的通用环境与验证接口，不导入任务数据、补丁或运行产物。`pdf/` 中经用户明确授权的双用途教材按上一节的独立边界公开展示，但不附带真实目标、挑战文件、漏洞语料或运行产物。
 - pwn.college 项目只导入原创教程 Markdown，不导入挑战二进制、题面副本、flag、solver、精确 payload 或 walkthrough。双用途章节仅使用本地玩具程序、符号模型和防御分析，并要求只在自有、隔离或明确授权环境中学习。
-- 除 Ray 明确列出的使用示例外，不复制任何项目源码；Ray 示例也只限 `ray_usage_guide/examples/` 中的 Python 文件和 README。Codex、Hands-On Modern RL、DeepSpeed 与 Megatron-LM 教程同样不复制源码、用户配置、认证信息、模型、checkpoint、数据、日志、缓存、虚拟环境或构建产物。
+- 除 Ray 明确列出的使用示例外，不复制任何项目源码；Ray 示例也只限 `ray_usage_guide/examples/` 中的 Python 文件和 README。Codex、Pi、Hands-On Modern RL、DeepSpeed 与 Megatron-LM 教程同样不复制源码、用户配置、认证信息、模型、checkpoint、数据、日志、缓存、虚拟环境或构建产物。
 
 ## 新增项目的安全导入检查清单
 

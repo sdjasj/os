@@ -57,6 +57,7 @@ PROJECT_TUTORIALS = {
     "mini-swe-agent": {"chapter_count": 1, "tutorial_dirs": ("guide",)},
     "openhands": {"chapter_count": 15, "tutorial_dirs": ("guide",)},
     "codex": {"chapter_count": 19, "tutorial_dirs": ("guide",)},
+    "pi": {"chapter_count": 16, "tutorial_dirs": ("guide",)},
     "openclaw": {"chapter_count": 14, "tutorial_dirs": ("guide",)},
     "hands-on-modern-rl": {"chapter_count": 14, "tutorial_dirs": ("guide",)},
     "verl": {"chapter_count": 13, "tutorial_dirs": ("guide",)},
@@ -85,11 +86,11 @@ PROJECT_TUTORIALS = {
     },
 }
 
-EXPECTED_PROJECT_CHAPTERS = 280
+EXPECTED_PROJECT_CHAPTERS = 296
 PROJECT_CHAPTER_SUMMARY = (
     "CubeSandbox 11, E2B 12, MiniMind 24, Ray 30, "
     "Strix 14, ARVO 2, mini-swe-agent 1, OpenHands 15, Codex 19, "
-    "OpenClaw 14, Hands-On Modern RL 14, verl 13, DeepSpeed 20, Megatron-LM 24, "
+    "Pi 16, OpenClaw 14, Hands-On Modern RL 14, verl 13, DeepSpeed 20, Megatron-LM 24, "
     "pwn.college 67"
 )
 ALLOWED_PROJECT_SUFFIXES = {".md", ".py"}
